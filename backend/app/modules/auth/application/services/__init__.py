@@ -10,7 +10,7 @@ from app.core.security import (
     get_password_hash,
     create_access_token,
     create_refresh_token,
-    verify_token
+    decode_access_token
 )
 from app.core.config import settings
 from app.core.exceptions import (
@@ -179,7 +179,7 @@ class AuthService:
             AuthenticationError: If refresh token is invalid
         """
         # Verify refresh token
-        payload = verify_token(request.refresh_token, token_type="refresh")
+        payload = decode_access_token(request.refresh_token)
         
         if not payload:
             raise AuthenticationError("Invalid or expired refresh token")

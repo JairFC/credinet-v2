@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db_session
+from app.core.database import get_async_db
 from app.core.security import decode_access_token
 from app.core.exceptions import (
     AuthenticationError,
@@ -39,7 +39,7 @@ security = HTTPBearer()
 # DEPENDENCY INJECTION
 # ============================================================================
 
-def get_auth_service(db: AsyncSession = Depends(get_db_session)) -> AuthService:
+def get_auth_service(db: AsyncSession = Depends(get_async_db)) -> AuthService:
     """
     Dependency to get AuthService instance.
     
