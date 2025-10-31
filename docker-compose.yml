@@ -1,0 +1,156 @@
+version: '3.8'
+
+# =============================================================================
+# CREDINET v2.0 - Docker Compose Configuration
+# =============================================================================
+# Fuente de verdad: db/v2.0/init_monolithic_fixed.sql
+# Backend: FastAPI + Clean Architecture (core completo, módulos pendientes)
+# Frontend: React 18 + Vite 5 (base limpia)
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # POSTGRESQL DATABASE v2.0
+  # ===========================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: credinet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-credinet_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-credinet_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-credinet_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=es_MX.UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # ⭐ Base de datos v2.0 - Fuente de verdad única (patch integrado)
+      - ./db/v2.0/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-credinet_user} -d ${POSTGRES_DB:-credinet_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - credinet-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================================================
+  # BACKEND API (FastAPI + Clean Architecture v2.0)
+  # ===========================================================================
+  # Estado: Core 100%, Módulos 0% (pendiente: catalogs, loans, payments, etc.)
+  # ===========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: credinet-backend
+    restart: unless-stopped
+    environment:
+      # Database Connection
+      POSTGRES_USER: ${POSTGRES_USER:-credinet_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-credinet_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-credinet_db}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      DATABASE_URL: postgresql://${POSTGRES_USER:-credinet_user}:${POSTGRES_PASSWORD:-credinet_pass}@postgres:5432/${POSTGRES_DB:-credinet_db}
+      
+      # Application Settings
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DEBUG: ${DEBUG:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      
+      # Security (JWT)
+      SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_production_please}
+      ALGORITHM: ${ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      
+      # CORS (ajusta según tu IP)
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://192.168.98.98:5173,http://192.168.98.98:8000}
+      
+      # File Upload (futuro módulo documents)
+      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-10485760}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - credinet-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================================================================
+  # FRONTEND (React 18 + Vite 5 v2.0)
+  # ===========================================================================
+  # Estado: Base limpia (sin páginas legacy)
+  # ===========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: credinet-frontend
+    restart: unless-stopped
+    environment:
+      # Vite Configuration
+      - VITE_API_URL=${VITE_API_URL:-http://192.168.98.98:8000}
+      - VITE_APP_NAME=${VITE_APP_NAME:-Credinet v2.0}
+      - VITE_APP_VERSION=${VITE_APP_VERSION:-2.0.0}
+      
+      # Hot Reload (Development)
+      - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING:-true}
+      - WATCHPACK_POLLING=${WATCHPACK_POLLING:-true}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/dist
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    depends_on:
+      - backend
+    networks:
+      - credinet-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# =============================================================================
+# VOLUMES (Persistencia de datos)
+# =============================================================================
+volumes:
+  postgres_data:
+    name: credinet-postgres-data
+  backend_uploads:
+    name: credinet-backend-uploads
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  credinet-network:
+    driver: bridge
+    name: credinet-network
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

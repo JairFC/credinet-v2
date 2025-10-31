@@ -1,0 +1,147 @@
++----------------+       +------------+        +--------------+
+|    USER_ROLES  |       |   ROLES    |        |  GUARANTORS   |
++----------------+       +------------+        +--------------+
+| user_id (FK)   |------>| id (PK)    |        | id (PK)      |
+| role_id (FK)   |       | name       |        | user_id (FK) |----+
++----------------+       +------------+        | full_name    |    |
+       |                                       | relationship |    |
+       |                                       | phone_number |    |
+       |                                       | curp         |    |
+       v                                       +--------------+    |
++----------------+       +--------------+                          |
+|     USERS      |       | BENEFICIARIES|                          |
++----------------+       +--------------+                          |
+| id (PK)        |<------| id (PK)      |                          |
+| username       |       | user_id (FK) |                          |
+| password_hash  |       | full_name    |                          |
+| first_name     |       | relationship |                          |
+| last_name      |       | phone_number |                          |
+| email          |       +--------------+                          |
+| phone_number   |                                                 |
+| birth_date     |       +--------------+                          |
+| curp           |       |  ADDRESSES   |                          |
+| profile_pic_url|       +--------------+                          |
++----------------+       | id (PK)      |                          |
+    ^      |      +----->| user_id (FK) |                          |
+    |      |      |      | street       |                          |
+    |      |      |      | external_num |                          |
+    |      |      |      | internal_num |                          |
+    |      |      |      | colony       |                          |
+    |      |      |      | municipality |                          |
+    |      |      |      | state        |                          |
+    |      |      |      | zip_code     |                          |
+    |      |      |      +--------------+                          |
+    |      |      |                                                |
+    |      +------+-----------------------------------------------+
+    |             |
+    +-------------+
+
++-------------------+      +----------------------+     +--------------------+
+|  ASSOCIATE_LEVELS |      |  ASSOCIATE_PROFILES  |     |      LOANS         |
++-------------------+      +----------------------+     +--------------------+
+| id (PK)           |<-----| id (PK)              |     | id (PK)            |
+| name (Plata/Oro)  |      | user_id (FK) --------+---->| user_id (FK) [REQ] |----+
+| min_amount        |      | level_id (FK)        |     | associate_profile_id (FK) |
+| max_amount        |      | contact_person       |<----| amount             |    |
++-------------------+      | contact_email        |     | interest_rate      |    |
+                           | default_comm_rate    |     | commission_rate    |    |
+                           | active               |     | term_biweeks       |    |
+                           +----------------------+     | status             |    |
+                                                        | contract_id (FK)   |----+
+                                                        +--------------------+    |
+                                                                 |                |
+                                                                 |                |
+                                           +--------------------+|                |
+                                           |     CONTRACTS     ||                |
+                                           +--------------------+|                |
+                                           | id (PK)           |<----------------+
+                                           | loan_id (FK)      |                 |
+                                           | file_path         |                 |
+                                           | start_date        |                 |
+                                           | sign_date         |                 |
+                                           | document_number   |                 |
+                                           | status            |                 |
+                                           +--------------------+                 |
+                                                                                  |
+                                                                 v                |
+                                   |                 +--------------------+ | |
+                                   |                 |     PAYMENTS       | | |
+                                   |                 +--------------------+ | |
+                                   |                 | id (PK)            | | |
+                                   |                 | loan_id (FK)       |<+ |
+                                   |                 | amount_paid        |   |
+                                   |                 | payment_date       |   |
+                                   |                 | cut_period_id (FK) |---+
+                                   |                 +--------------------+   |
+                                   |                          |               |
+                                   |                          v               |
+                                   |                 +--------------------+   |
+                                   |                 |    CUT_PERIODS     |   |
+                                   |                 +--------------------+   |
+                                   |                 | id (PK)            |   |
+                                   |                 | cut_number         |   |
+                                   |                 | period_start_date  |   |
+                                   |                 | period_end_date    |   |
+                                   |                 | status             |   |
+                                   |                 | total_payments_exp |   |
+                                   |                 | total_payments_rec |   |
+                                   |                 | total_commission   |   |
+                                   |                 | created_by (FK)    |---+
+                                   |                 | closed_by (FK)     |---+
+                                   |                 +--------------------+   |
+                                   |                          |               |
+                                   +--------------------------+               |
+                                   |                          v               |
+                           +----------------------+  +--------------------+   |
+                           | ASSOCIATE_PAYMENT_ST |  |  CLIENT_DOCUMENTS  |   |
+                           +----------------------+  +--------------------+   |
+                           | id (PK)              |  | id (PK)            |   |
+                           | cut_period_id (FK)   |  | client_id (FK)     |<--+
+                           | associate_id (FK)    |  | document_type_id   |---+
+                           | statement_number     |  | file_name          |   |
+                           | total_payments_count |  | original_file_name |   |
+                           | total_amount_collect |  | file_path          |   |
+                           | total_commission_owed|  | file_size          |   |
+                           | commission_rate_app  |  | mime_type          |   |
+                           | status               |  | status             |   |
+                           | generated_date       |  | upload_date        |   |
+                           | sent_date            |  | reviewed_by (FK)   |---+
+                           | due_date             |  | reviewed_at        |   |
+                           | paid_date            |  | comments           |   |
+                           | paid_amount          |  +--------------------+   |
+                           | payment_method       |           |               |
+                           | payment_reference    |           v               |
+                           | late_fee_amount      |  +--------------------+   |
+                           +----------------------+  |   DOCUMENT_TYPES   |   |
+                                                     +--------------------+   |
+                                                     | id (PK)            |   |
+                                                     | name               |   |
+                                                     | description        |   |
+                                                     | is_required        |   |
+                                                     +--------------------+   |
+                                                                             |
++----------------------+                                                      |
+| SYSTEM_CONFIGURATIONS|                                                      |
++----------------------+                                                      |
+| id (PK)              |                                                      |
+| config_key           |                                                      |
+| config_value         |                                                      |
+| description          |                                                      |
+| config_type          |                                                      |
+| updated_by (FK)      |----------------------------------------------+------+
++----------------------+                                               |
+                                                                       |
+                                                                       v
+                                                              +----------------+
+                                                              |    LEYENDA     |
+                                                              +----------------+
+                                                              | NIVELES:       |
+                                                              | - PLATA        |
+                                                              |   (100k-300k)  |
+                                                              | - ORO          |
+                                                              |   (301k-600k)  |
+                                                              | - PLATINO      |
+                                                              |   (601k-900k)  |
+                                                              | - DIAMANTE     |
+                                                              |   (901k+)      |
+                                                              +----------------+

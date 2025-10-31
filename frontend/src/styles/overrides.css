@@ -1,0 +1,246 @@
+/* Estilos para las tarjetas en la página de detalles del cliente */
+.card {
+  background-color: var(--color-surface-accent);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.card-header {
+  font-size: 1.25rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  color: var(--color-text-primary);
+}
+
+.card-body p {
+  margin-bottom: 0.5rem;
+  color: var(--color-text-secondary);
+}
+
+.card-body p strong {
+  color: var(--color-text-primary);
+}
+
+/* Estilos para los botones */
+.button-primary {
+  background-color: var(--color-primary);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.button-primary:hover {
+  background-color: var(--color-primary-dark);
+}
+
+/* Clases de utilidad de Tailwind CSS (simuladas) */
+.container {
+  max-width: 1200px;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.p-4 {
+  padding: 1rem;
+}
+
+.p-6 {
+  padding: 1.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.mb-6 {
+  margin-bottom: 1.5rem;
+}
+
+.mt-6 {
+  margin-top: 1.5rem;
+}
+
+.mr-6 {
+  margin-right: 1.5rem;
+}
+
+.inline-block {
+  display: inline-block;
+}
+
+.flex {
+  display: flex;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-red-500 {
+  color: #ef4444;
+}
+
+.text-gray-600 {
+  color: var(--color-text-secondary);
+}
+
+.text-3xl {
+  font-size: 1.875rem;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.bg-white {
+  background-color: var(--color-surface);
+}
+
+.shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.rounded-lg {
+  border-radius: 0.5rem;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+.w-24 {
+  width: 6rem;
+}
+
+.h-24 {
+  height: 6rem;
+}
+
+.object-cover {
+  object-fit: cover;
+}
+
+.grid {
+  display: grid;
+}
+
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.gap-6 {
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .md\:col-span-2 {
+    grid-column: span 2 / span 2;
+  }
+}
+
+/* Mejoras específicas para el tema oscuro en formularios */
+.form-input,
+.form-select,
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="date"],
+input[type="number"],
+input[type="password"],
+select {
+  background-color: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus,
+.form-select:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="tel"]:focus,
+input[type="date"]:focus,
+input[type="number"]:focus,
+input[type="password"]:focus,
+select:focus {
+  outline: none !important;
+  border-color: var(--color-focus) !important;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.2) !important;
+}
+
+/* Placeholder específico para tema oscuro */
+.form-input::placeholder,
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="tel"]::placeholder,
+input[type="password"]::placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+/* Labels más visibles */
+.form-label,
+label {
+  color: var(--color-text-primary) !important;
+  font-weight: 500;
+}
+
+/* Mejoras para modo claro */
+body.light-theme .form-input,
+body.light-theme .form-select,
+body.light-theme input[type="text"],
+body.light-theme input[type="email"],
+body.light-theme input[type="tel"],
+body.light-theme input[type="date"],
+body.light-theme input[type="number"],
+body.light-theme input[type="password"],
+body.light-theme select {
+  background-color: #ffffff !important;
+  color: #213547 !important;
+  border: 1px solid #ddd !important;
+}
+
+body.light-theme .form-label,
+body.light-theme label {
+  color: #213547 !important;
+}
+
+body.light-theme .form-input::placeholder,
+body.light-theme input[type="text"]::placeholder,
+body.light-theme input[type="email"]::placeholder,
+body.light-theme input[type="tel"]::placeholder,
+body.light-theme input[type="password"]::placeholder {
+  color: #888 !important;
+}
+
+/* Asegurar que los contenedores de formulario tengan el fondo correcto */
+.form-container,
+.page-container,
+.collapsible-content {
+  background-color: var(--color-surface) !important;
+  color: var(--color-text-primary) !important;
+}

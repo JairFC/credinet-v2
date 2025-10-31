@@ -1,0 +1,271 @@
+/* Estilos comunes para páginas y tablas */
+.clients-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.summary-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.summary-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 20px;
+  flex: 1;
+  min-width: 200px;
+  text-align: center;
+}
+
+.clients-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.clients-table th,
+.clients-table td {
+  border: 1px solid var(--color-border);
+  padding: 12px;
+  text-align: left;
+}
+
+.clients-table th {
+  background-color: var(--color-surface-accent);
+}
+
+.actions-cell {
+  display: flex;
+  gap: 10px;
+}
+
+/* --- Estilos de Formularios --- */
+.form-group {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: var(--color-text-secondary);
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  box-sizing: border-box; /* La clave para unificar tamaños */
+  height: 40px; /* Altura fija para consistencia */
+}
+
+button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button[type="submit"] {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+button[type="submit"]:hover {
+  background-color: var(--color-primary-hover);
+}
+
+button[type="button"] {
+  background-color: var(--color-surface-accent);
+  color: var(--color-text-primary);
+}
+
+/* --- Barra de Herramientas y Búsqueda --- */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-container input {
+  padding-right: 40px; /* Add space for the icon */
+}
+
+.password-toggle-button {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: var(--color-text-secondary);
+  padding: 0;
+}
+
+.password-toggle-button:hover {
+  color: var(--color-text-primary);
+}
+
+.search-input-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.search-input-wrapper::before {
+  content: '🔍';
+  position: absolute;
+  left: 12px;
+  color: var(--color-text-secondary);
+  pointer-events: none; /* Para que el clic atraviese el ícono */
+}
+
+.search-input {
+  padding: 10px 10px 10px 35px; /* Espacio para el ícono */
+  width: 300px;
+  height: 40px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-size: 0.9rem;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+/* --- Mensajes de Feedback --- */
+.error-message,
+.success-message {
+  padding: 15px;
+  margin: 1rem 0;
+  border-radius: 6px;
+  border: 1px solid;
+  font-weight: 500;
+}
+
+.error-message {
+  background-color: #f8d7da; /* Rojo pálido */
+  color: #721c24; /* Rojo oscuro */
+  border-color: #f5c6cb; /* Borde rojo */
+}
+
+.success-message {
+  background-color: #d4edda; /* Verde pálido */
+  color: #155724; /* Verde oscuro */
+  border-color: #c3e6cb; /* Borde verde */
+}
+
+.field-error-message {
+  color: #d9534f; /* Un rojo suave */
+  font-size: 0.875rem;
+  margin-top: 5px;
+}
+
+/* --- Sección Desplegable --- */
+.collapsible-section {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  margin-top: 1.5rem;
+  overflow: hidden; /* Para que el borde redondeado funcione */
+}
+
+.collapsible-header {
+  background-color: var(--color-surface-accent);
+  padding: 12px 15px;
+  width: 100%;
+  text-align: left;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.collapsible-content {
+  padding: 15px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* --- Estilos para Modales --- */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  padding: 30px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+  border: 1px solid var(--color-border);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 25px;
+}
+
+/* Estilos para inputs dentro de modales */
+.modal-content input.form-control {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text-primary);
+  padding: 8px 12px;
+  font-size: 1rem;
+  width: calc(100% - 24px); /* Adjust for padding */
+  box-sizing: border-box;
+  margin-top: 10px; /* Add some space below the label */
+}
+
+.modal-content input.form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}

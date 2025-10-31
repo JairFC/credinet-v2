@@ -1,0 +1,603 @@
+"""
+Servicio de aplicación para préstamos (loans).
+
+Este servicio encapsula la lógica de negocio para:
+- Crear solicitudes de préstamo
+- Aprobar préstamos (con validaciones críticas)
+- Rechazar préstamos
+- Validaciones pre-aprobación
+
+⭐ CRÍTICO: Validaciones de negocio para garantizar integridad
+"""
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.loans.domain.entities import (
+    Loan,
+    LoanStatusEnum,
+    LoanApprovalRequest,
+    LoanRejectionRequest,
+)
+from app.modules.loans.domain.repositories import LoanRepository
+from app.modules.loans.infrastructure.repositories import PostgreSQLLoanRepository
+from app.modules.loans.application.logger import (
+    log_loan_created,
+    log_loan_approved,
+    log_loan_rejected,
+    log_loan_updated,
+    log_loan_cancelled,
+    log_validation_error,
+)
+
+
+class LoanService:
+    """
+    Servicio de aplicación para préstamos.
+    
+    Responsabilidades:
+    - Coordinar operaciones entre repositorio y entidades
+    - Aplicar reglas de negocio
+    - Validaciones pre-aprobación
+    - Gestión de transacciones
+    """
+    
+    def __init__(self, session: AsyncSession):
+        """
+        Constructor.
+        
+        Args:
+            session: Sesión asíncrona de SQLAlchemy
+        """
+        self.session = session
+        self.repository: LoanRepository = PostgreSQLLoanRepository(session)
+    
+    # =============================================================================
+    # CREAR SOLICITUD DE PRÉSTAMO
+    # =============================================================================
+    
+    async def create_loan_request(
+        self,
+        user_id: int,
+        associate_user_id: int,
+        amount: Decimal,
+        interest_rate: Decimal,
+        commission_rate: Decimal,
+        term_biweeks: int,
+        notes: Optional[str] = None
+    ) -> Loan:
+        """
+        Crea una nueva solicitud de préstamo.
+        
+        Validaciones iniciales:
+        1. El asociado tiene crédito disponible suficiente
+        2. El cliente no tiene otros préstamos PENDING
+        3. El cliente no es moroso
+        
+        Args:
+            user_id: ID del cliente solicitante
+            associate_user_id: ID del asociado que otorga el préstamo
+            amount: Monto solicitado
+            interest_rate: Tasa de interés (%)
+            commission_rate: Tasa de comisión (%)
+            term_biweeks: Plazo en quincenas
+            notes: Notas adicionales (opcional)
+            
+        Returns:
+            Loan creado con status PENDING
+            
+        Raises:
+            ValueError: Si alguna validación falla
+        """
+        # Validación 1: Crédito del asociado
+        has_credit = await self.repository.check_associate_credit_available(
+            associate_user_id, amount
+        )
+        if not has_credit:
+            raise ValueError(
+                f"El asociado {associate_user_id} no tiene crédito disponible "
+                f"suficiente para otorgar ${amount}"
+            )
+        
+        # Validación 2: Cliente no tiene préstamos PENDING
+        has_pending = await self.repository.has_pending_loans(user_id)
+        if has_pending:
+            raise ValueError(
+                f"El cliente {user_id} ya tiene préstamos pendientes de aprobación. "
+                f"Por favor, espere a que se procesen antes de solicitar otro."
+            )
+        
+        # Validación 3: Cliente no es moroso
+        is_defaulter = await self.repository.is_client_defaulter(user_id)
+        if is_defaulter:
+            raise ValueError(
+                f"El cliente {user_id} está marcado como moroso. "
+                f"No puede solicitar nuevos préstamos hasta regularizar su situación."
+            )
+        
+        # Crear entidad Loan (status PENDING por default)
+        loan = Loan(
+            id=None,  # Se asigna en BD
+            user_id=user_id,
+            associate_user_id=associate_user_id,
+            amount=amount,
+            interest_rate=interest_rate,
+            commission_rate=commission_rate,
+            term_biweeks=term_biweeks,
+            status_id=LoanStatusEnum.PENDING.value,
+            contract_id=None,  # Se asigna después si hay contrato
+            approved_at=None,
+            approved_by=None,
+            rejected_at=None,
+            rejected_by=None,
+            rejection_reason=None,
+            notes=notes,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        
+        # Guardar en BD
+        created_loan = await self.repository.create(loan)
+        
+        return created_loan
+    
+    # =============================================================================
+    # APROBAR PRÉSTAMO ⭐ CRÍTICO
+    # =============================================================================
+    
+    async def approve_loan(
+        self,
+        loan_id: int,
+        approved_by: int,
+        notes: Optional[str] = None
+    ) -> Loan:
+        """
+        Aprueba un préstamo.
+        
+        ⭐ CRÍTICO: Este método ejecuta las validaciones más importantes del sistema.
+        
+        Proceso:
+        1. Buscar préstamo por ID
+        2. Validar que esté en estado PENDING
+        3. Validar pre-aprobación (crédito, morosidad, documentos)
+        4. Calcular fecha del primer pago (función DB: calculate_first_payment_date)
+        5. Actualizar préstamo a APPROVED
+        6. Trigger genera cronograma de pagos automáticamente
+        7. Actualizar credit_used del asociado (transacción ACID)
+        
+        Args:
+            loan_id: ID del préstamo a aprobar
+            approved_by: ID del usuario que aprueba
+            notes: Notas adicionales (opcional)
+            
+        Returns:
+            Loan aprobado
+            
+        Raises:
+            ValueError: Si alguna validación falla
+        """
+        # 1. Buscar préstamo
+        loan = await self.repository.find_by_id(loan_id)
+        if not loan:
+            raise ValueError(f"Préstamo con ID {loan_id} no encontrado")
+        
+        # 2. Validar que esté PENDING
+        if not loan.is_pending():
+            raise ValueError(
+                f"El préstamo {loan_id} no está en estado PENDING. "
+                f"Estado actual: {loan.status_id}"
+            )
+        
+        # 3. Validar que puede ser aprobado (validaciones de entidad)
+        if not loan.can_be_approved():
+            raise ValueError(
+                f"El préstamo {loan_id} no puede ser aprobado. "
+                f"Verifique que no esté rechazado o cancelado."
+            )
+        
+        # 4. Validaciones pre-aprobación
+        await self._validate_pre_approval(loan)
+        
+        # 5. Calcular fecha del primer pago (⭐ FUNCIÓN DB - DOBLE CALENDARIO)
+        approval_date = datetime.utcnow().date()
+        first_payment_date = await self.repository.calculate_first_payment_date(
+            approval_date
+        )
+        
+        # 6. Actualizar préstamo a APPROVED
+        loan.status_id = LoanStatusEnum.APPROVED.value
+        loan.approved_at = datetime.utcnow()
+        loan.approved_by = approved_by
+        if notes:
+            loan.notes = f"{loan.notes}\n[APROBACIÓN] {notes}" if loan.notes else f"[APROBACIÓN] {notes}"
+        
+        # 7. Guardar (transacción ACID)
+        # NOTA: El trigger generate_payment_schedule() se ejecuta automáticamente
+        # cuando status_id cambia a APPROVED (2)
+        approved_loan = await self.repository.update(loan)
+        
+        # 8. Commit de la transacción (incluye trigger)
+        await self.session.commit()
+        
+        # Log de auditoría
+        log_loan_approved(
+            loan_id=loan_id,
+            user_id=loan.user_id,
+            associate_user_id=loan.associate_user_id,
+            amount=float(loan.amount),
+            first_payment_date=str(first_payment_date)
+        )
+        
+        return approved_loan
+    
+    async def _validate_pre_approval(self, loan: Loan) -> None:
+        """
+        Valida que el préstamo cumple con los requisitos para ser aprobado.
+        
+        Validaciones:
+        1. Crédito del asociado disponible (puede haber cambiado desde creación)
+        2. Cliente no es moroso
+        3. Cliente no tiene préstamos PENDING (además del actual)
+        
+        TODO Sprint 3: Agregar validación de documentos completos
+        
+        Args:
+            loan: Préstamo a validar
+            
+        Raises:
+            ValueError: Si alguna validación falla
+        """
+        # Validación 1: Crédito del asociado
+        has_credit = await self.repository.check_associate_credit_available(
+            loan.associate_user_id, loan.amount
+        )
+        if not has_credit:
+            raise ValueError(
+                f"El asociado {loan.associate_user_id} ya no tiene crédito disponible "
+                f"suficiente para otorgar ${loan.amount}. "
+                f"Es posible que haya otorgado otros préstamos mientras tanto."
+            )
+        
+        # Validación 2: Cliente no es moroso
+        is_defaulter = await self.repository.is_client_defaulter(loan.user_id)
+        if is_defaulter:
+            raise ValueError(
+                f"El cliente {loan.user_id} está marcado como moroso. "
+                f"No se puede aprobar el préstamo hasta que regularice su situación."
+            )
+        
+        # Validación 3: No tiene otros préstamos PENDING
+        # (Verificar que solo tenga este préstamo PENDING)
+        count_pending = await self._count_pending_loans_except(loan.user_id, loan.id)
+        if count_pending > 0:
+            raise ValueError(
+                f"El cliente {loan.user_id} tiene {count_pending} préstamos PENDING adicionales. "
+                f"Por favor, procese o cancele esos préstamos antes de aprobar este."
+            )
+        
+        # TODO Sprint 3: Validación 4 - Documentos completos
+        # has_documents = await self._check_required_documents(loan.user_id)
+        # if not has_documents:
+        #     raise ValueError(
+        #         f"El cliente {loan.user_id} no tiene los documentos requeridos completos"
+        #     )
+    
+    async def _count_pending_loans_except(self, user_id: int, exclude_loan_id: int) -> int:
+        """
+        Cuenta préstamos PENDING del cliente, excluyendo el préstamo actual.
+        
+        Args:
+            user_id: ID del cliente
+            exclude_loan_id: ID del préstamo a excluir
+            
+        Returns:
+            Cantidad de préstamos PENDING (sin contar el excluido)
+        """
+        total_count = await self.repository.count(
+            status_id=LoanStatusEnum.PENDING.value,
+            user_id=user_id
+        )
+        
+        # Si encontramos el préstamo actual, restar 1
+        loan = await self.repository.find_by_id(exclude_loan_id)
+        if loan and loan.is_pending():
+            return total_count - 1
+        
+        return total_count
+    
+    # =============================================================================
+    # RECHAZAR PRÉSTAMO
+    # =============================================================================
+    
+    async def reject_loan(
+        self,
+        loan_id: int,
+        rejected_by: int,
+        rejection_reason: str
+    ) -> Loan:
+        """
+        Rechaza un préstamo.
+        
+        Proceso:
+        1. Buscar préstamo por ID
+        2. Validar que esté en estado PENDING
+        3. Actualizar préstamo a REJECTED
+        4. Liberar crédito del asociado (no se consumió)
+        
+        Args:
+            loan_id: ID del préstamo a rechazar
+            rejected_by: ID del usuario que rechaza
+            rejection_reason: Razón del rechazo (obligatorio)
+            
+        Returns:
+            Loan rechazado
+            
+        Raises:
+            ValueError: Si alguna validación falla
+        """
+        # 1. Buscar préstamo
+        loan = await self.repository.find_by_id(loan_id)
+        if not loan:
+            raise ValueError(f"Préstamo con ID {loan_id} no encontrado")
+        
+        # 2. Validar que esté PENDING
+        if not loan.is_pending():
+            raise ValueError(
+                f"El préstamo {loan_id} no está en estado PENDING. "
+                f"Estado actual: {loan.status_id}. "
+                f"Solo se pueden rechazar préstamos PENDING."
+            )
+        
+        # 3. Validar que puede ser rechazado
+        if not loan.can_be_rejected():
+            raise ValueError(
+                f"El préstamo {loan_id} no puede ser rechazado. "
+                f"Verifique que no esté ya aprobado o cancelado."
+            )
+        
+        # 4. Validar razón de rechazo (obligatoria)
+        if not rejection_reason or not rejection_reason.strip():
+            raise ValueError(
+                "La razón del rechazo es obligatoria. "
+                "Por favor, proporcione una explicación clara."
+            )
+        
+        # 5. Actualizar préstamo a REJECTED
+        loan.status_id = LoanStatusEnum.REJECTED.value
+        loan.rejected_at = datetime.utcnow()
+        loan.rejected_by = rejected_by
+        loan.rejection_reason = rejection_reason.strip()
+        
+        # 6. Guardar
+        rejected_loan = await self.repository.update(loan)
+        
+        # 7. Commit
+        await self.session.commit()
+        
+        # Log de auditoría
+        log_loan_rejected(
+            loan_id=loan_id,
+            user_id=loan.user_id,
+            rejected_by=rejected_by,
+            reason=rejection_reason
+        )
+        
+        return rejected_loan
+    
+    # =============================================================================
+    # MÉTODOS AUXILIARES
+    # =============================================================================
+    
+    async def get_loan_by_id(self, loan_id: int) -> Optional[Loan]:
+        """
+        Obtiene un préstamo por su ID.
+        
+        Args:
+            loan_id: ID del préstamo
+            
+        Returns:
+            Loan si existe, None si no
+        """
+        return await self.repository.find_by_id(loan_id)
+    
+    async def list_loans(
+        self,
+        status_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+        associate_user_id: Optional[int] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> tuple[list[Loan], int]:
+        """
+        Lista préstamos con filtros.
+        
+        Args:
+            status_id: Filtrar por estado (opcional)
+            user_id: Filtrar por cliente (opcional)
+            associate_user_id: Filtrar por asociado (opcional)
+            limit: Máximo de registros
+            offset: Desplazamiento para paginación
+            
+        Returns:
+            Tupla (lista de préstamos, total de registros)
+        """
+        loans = await self.repository.find_all(
+            status_id=status_id,
+            user_id=user_id,
+            associate_user_id=associate_user_id,
+            limit=limit,
+            offset=offset
+        )
+        
+        total = await self.repository.count(
+            status_id=status_id,
+            user_id=user_id,
+            associate_user_id=associate_user_id
+        )
+        
+        return loans, total
+    
+    async def update_loan(
+        self,
+        loan_id: int,
+        amount: Optional[Decimal] = None,
+        interest_rate: Optional[Decimal] = None,
+        commission_rate: Optional[Decimal] = None,
+        term_biweeks: Optional[int] = None,
+        notes: Optional[str] = None
+    ) -> Loan:
+        """
+        Actualiza un préstamo que está en estado PENDING.
+        
+        Solo se pueden actualizar préstamos PENDING (solicitudes no procesadas aún).
+        Los campos permitidos son: amount, interest_rate, commission_rate, term_biweeks, notes.
+        
+        Validaciones:
+        - Préstamo existe
+        - Préstamo está en estado PENDING
+        - Si se actualiza el monto, verificar crédito del asociado
+        
+        Args:
+            loan_id: ID del préstamo a actualizar
+            amount: Nuevo monto (opcional)
+            interest_rate: Nueva tasa de interés (opcional)
+            commission_rate: Nueva tasa de comisión (opcional)
+            term_biweeks: Nuevo plazo en quincenas (opcional)
+            notes: Nuevas notas (opcional)
+            
+        Returns:
+            Préstamo actualizado
+            
+        Raises:
+            ValueError: Si el préstamo no existe, no está PENDING, o validaciones fallan
+        """
+        # 1. Buscar préstamo
+        loan = await self.repository.find_by_id(loan_id)
+        if not loan:
+            raise ValueError(f"Préstamo {loan_id} no encontrado")
+        
+        # 2. Validar estado PENDING
+        if not loan.is_pending():
+            raise ValueError(
+                f"Solo se pueden actualizar préstamos en estado PENDING. "
+                f"El préstamo {loan_id} está en estado {loan.status_id}"
+            )
+        
+        # 3. Validar cambio de monto (si aplica)
+        if amount is not None and amount != loan.amount:
+            has_credit = await self.repository.check_associate_credit_available(
+                loan.associate_user_id, amount
+            )
+            if not has_credit:
+                raise ValueError(
+                    f"El asociado {loan.associate_user_id} no tiene crédito disponible "
+                    f"para el nuevo monto de ${amount}"
+                )
+            loan.amount = amount
+        
+        # 4. Actualizar campos permitidos
+        if interest_rate is not None:
+            loan.interest_rate = interest_rate
+        if commission_rate is not None:
+            loan.commission_rate = commission_rate
+        if term_biweeks is not None:
+            loan.term_biweeks = term_biweeks
+        if notes is not None:
+            # Agregar nota de actualización
+            timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            update_note = f"[ACTUALIZACIÓN {timestamp}] {notes}"
+            loan.notes = f"{loan.notes}\n{update_note}" if loan.notes else update_note
+        
+        # 5. Guardar
+        updated_loan = await self.repository.update(loan)
+        await self.session.commit()
+        
+        # Log de auditoría
+        log_loan_updated(loan_id=loan_id, user_id=loan.user_id)
+        
+        return updated_loan
+    
+    async def cancel_loan(
+        self,
+        loan_id: int,
+        cancelled_by: int,
+        cancellation_reason: str
+    ) -> Loan:
+        """
+        Cancela un préstamo que está en estado ACTIVE.
+        
+        Al cancelar un préstamo ACTIVE:
+        - El préstamo pasa a estado CANCELLED
+        - Se libera el crédito del asociado (credit_used se reduce)
+        - Se guarda la razón de la cancelación
+        - Los pagos ya realizados no se revierten (se mantienen como histórico)
+        
+        Validaciones:
+        - Préstamo existe
+        - Préstamo está en estado ACTIVE
+        - Razón de cancelación obligatoria (mínimo 10 caracteres)
+        
+        TODO Sprint 4: Decidir si se requiere liquidación de pagos pendientes
+        
+        Args:
+            loan_id: ID del préstamo a cancelar
+            cancelled_by: ID del usuario que cancela
+            cancellation_reason: Razón de la cancelación (obligatoria)
+            
+        Returns:
+            Préstamo cancelado
+            
+        Raises:
+            ValueError: Si el préstamo no existe, no está ACTIVE, o razón inválida
+        """
+        # 1. Buscar préstamo
+        loan = await self.repository.find_by_id(loan_id)
+        if not loan:
+            raise ValueError(f"Préstamo {loan_id} no encontrado")
+        
+        # 2. Validar estado ACTIVE
+        if not loan.is_active():
+            raise ValueError(
+                f"Solo se pueden cancelar préstamos en estado ACTIVE. "
+                f"El préstamo {loan_id} está en estado {loan.status_id}"
+            )
+        
+        # 3. Validar razón obligatoria
+        if not cancellation_reason or not cancellation_reason.strip():
+            raise ValueError("La razón de cancelación es obligatoria")
+        
+        if len(cancellation_reason.strip()) < 10:
+            raise ValueError(
+                "La razón de cancelación debe tener al menos 10 caracteres"
+            )
+        
+        # 4. Actualizar a CANCELLED
+        loan.status_id = LoanStatusEnum.CANCELLED.value
+        loan.cancelled_at = datetime.utcnow()
+        loan.cancelled_by = cancelled_by
+        loan.cancellation_reason = cancellation_reason.strip()
+        
+        # 5. Guardar (transacción ACID)
+        # NOTA: El trigger update_credit_used_on_cancel() se ejecuta automáticamente
+        # cuando status_id cambia a CANCELLED (5), liberando el crédito del asociado
+        cancelled_loan = await self.repository.update(loan)
+        
+        # 6. Commit de la transacción (incluye trigger)
+        await self.session.commit()
+        
+        # Log de auditoría
+        log_loan_cancelled(
+            loan_id=loan_id,
+            user_id=loan.user_id,
+            associate_user_id=loan.associate_user_id,
+            amount=float(loan.amount),
+            reason=cancellation_reason
+        )
+        
+        return cancelled_loan
+
+
+__all__ = ['LoanService']
