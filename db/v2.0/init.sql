@@ -1,11 +1,3 @@
--- Function para actualizar timestamps automáticamente
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
 -- =============================================================================
 -- CREDINET DB v2.0 - ARCHIVO MONOLÍTICO
 -- =============================================================================
@@ -13,10 +5,10 @@ $$ language 'plpgsql';
 --   Base de datos completa consolidada en un solo archivo.
 --   Generado automáticamente desde arquitectura modular.
 --
--- Generación: $(date '+%Y-%m-%d %H:%M:%S')
--- Versión: 2.0.0
--- Módulos incluidos: 9 (01_catalog → 09_seeds)
--- Migraciones integradas: 6 (07-12)
+-- Generación: 2025-11-13 10:07:27
+-- Versión: 2.0.3
+-- Módulos incluidos: 10 (01_catalog → 10_rate_profiles)
+-- Migraciones integradas: Sprint 6 (associates + rate_profiles)
 --
 -- ADVERTENCIA:
 --   Este archivo es GENERADO AUTOMÁTICAMENTE.
@@ -263,6 +255,7 @@ COMMENT ON TABLE document_types IS 'Tipos de documentos requeridos para clientes
 -- =============================================================================
 -- FIN MÓDULO 01
 -- =============================================================================
+
 -- =============================================================================
 -- CREDINET DB v2.0 - MÓDULO 02: TABLAS CORE
 -- =============================================================================
@@ -294,7 +287,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) UNIQUE, -- NULL permitido: usuarios mayores pueden no tener email
+    email VARCHAR(150) UNIQUE NOT NULL,
     phone_number VARCHAR(20) UNIQUE NOT NULL,
     birth_date DATE,
     curp VARCHAR(18) UNIQUE,
@@ -307,7 +300,6 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 COMMENT ON TABLE users IS 'Usuarios del sistema (clientes, asociados, administradores).';
-COMMENT ON COLUMN users.email IS 'Email del usuario (OPCIONAL - algunos usuarios mayores pueden no tener correo electrónico).';
 COMMENT ON COLUMN users.curp IS 'Clave Única de Registro de Población (CURP) de México. Formato: 18 caracteres alfanuméricos.';
 COMMENT ON COLUMN users.password_hash IS 'Hash bcrypt de la contraseña del usuario. NUNCA almacenar contraseñas en texto plano.';
 
@@ -394,8 +386,18 @@ CREATE TABLE IF NOT EXISTS loans (
     interest_rate DECIMAL(5, 2) NOT NULL,
     commission_rate DECIMAL(5, 2) NOT NULL DEFAULT 0.0,
     term_biweeks INTEGER NOT NULL, -- Plazo en quincenas
+    profile_code VARCHAR(50), -- FK a rate_profiles (opcional, se agregará constraint después)
     status_id INTEGER NOT NULL REFERENCES loan_statuses(id),
     contract_id INTEGER, -- FK a contracts (se agregará después)
+    
+    -- ⭐ CAMPOS CALCULADOS (Sprint 6 - Migración 005) - Valores de calculate_loan_payment()
+    biweekly_payment DECIMAL(10,2), -- Pago quincenal calculado (con interés incluido)
+    total_payment DECIMAL(12,2), -- Pago total del préstamo (biweekly_payment * term_biweeks)
+    total_interest DECIMAL(12,2), -- Interés total a pagar
+    total_commission DECIMAL(12,2), -- Comisión total del asociado
+    commission_per_payment DECIMAL(10,2), -- Comisión por pago quincenal
+    associate_payment DECIMAL(10,2), -- Pago neto del cliente (biweekly_payment - commission_per_payment)
+    
     -- Campos críticos de aprobación
     approved_at TIMESTAMP WITH TIME ZONE,
     approved_by INTEGER REFERENCES users(id),
@@ -409,14 +411,27 @@ CREATE TABLE IF NOT EXISTS loans (
     CONSTRAINT check_loans_amount_positive CHECK (amount > 0),
     CONSTRAINT check_loans_interest_rate_valid CHECK (interest_rate >= 0 AND interest_rate <= 100),
     CONSTRAINT check_loans_commission_rate_valid CHECK (commission_rate >= 0 AND commission_rate <= 100),
-    CONSTRAINT check_loans_term_biweeks_valid CHECK (term_biweeks BETWEEN 1 AND 52),
+    CONSTRAINT check_loans_term_biweeks_valid CHECK (term_biweeks IN (6, 12, 18, 24)),
     CONSTRAINT check_loans_approved_after_created CHECK (approved_at IS NULL OR approved_at >= created_at),
-    CONSTRAINT check_loans_rejected_after_created CHECK (rejected_at IS NULL OR rejected_at >= created_at)
+    CONSTRAINT check_loans_rejected_after_created CHECK (rejected_at IS NULL OR rejected_at >= created_at),
+    -- ⭐ Validaciones campos calculados (Sprint 6 - Migración 005)
+    CONSTRAINT check_biweekly_payment_positive CHECK (biweekly_payment IS NULL OR biweekly_payment > 0),
+    CONSTRAINT check_total_payment_positive CHECK (total_payment IS NULL OR total_payment > 0),
+    CONSTRAINT check_total_interest_non_negative CHECK (total_interest IS NULL OR total_interest >= 0),
+    CONSTRAINT check_total_commission_non_negative CHECK (total_commission IS NULL OR total_commission >= 0),
+    CONSTRAINT check_commission_per_payment_non_negative CHECK (commission_per_payment IS NULL OR commission_per_payment >= 0),
+    CONSTRAINT check_associate_payment_non_negative CHECK (associate_payment IS NULL OR associate_payment >= 0)
 );
 
 COMMENT ON TABLE loans IS 'Tabla central del sistema. Registra todos los préstamos solicitados, aprobados, rechazados o completados.';
-COMMENT ON COLUMN loans.term_biweeks IS 'Plazo del préstamo en quincenas (1 quincena = 15 días). Ejemplo: 12 quincenas = 6 meses.';
+COMMENT ON COLUMN loans.term_biweeks IS '⭐ V2.0: Plazo del préstamo en quincenas. Valores permitidos: 6, 12, 18 o 24 quincenas (3, 6, 9 o 12 meses). Validado por check_loans_term_biweeks_valid.';
 COMMENT ON COLUMN loans.commission_rate IS 'Tasa de comisión del asociado en porcentaje. Ejemplo: 2.5 = 2.5%. Rango válido: 0-100.';
+COMMENT ON COLUMN loans.biweekly_payment IS '⭐ Sprint 6: Pago quincenal calculado con interés incluido (desde calculate_loan_payment). NULL si usa tasas manuales.';
+COMMENT ON COLUMN loans.total_payment IS '⭐ Sprint 6: Monto total a pagar incluyendo capital e interés (biweekly_payment * term_biweeks).';
+COMMENT ON COLUMN loans.total_interest IS '⭐ Sprint 6: Interés total a pagar (total_payment - amount).';
+COMMENT ON COLUMN loans.total_commission IS '⭐ Sprint 6: Comisión total del asociado durante todo el préstamo.';
+COMMENT ON COLUMN loans.commission_per_payment IS '⭐ Sprint 6: Comisión del asociado por cada pago quincenal.';
+COMMENT ON COLUMN loans.associate_payment IS '⭐ Sprint 6: Pago neto del cliente al asociado (biweekly_payment - commission_per_payment).';
 
 -- Índices para loans
 CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id);
@@ -424,6 +439,10 @@ CREATE INDEX IF NOT EXISTS idx_loans_associate_user_id ON loans(associate_user_i
 CREATE INDEX IF NOT EXISTS idx_loans_status_id ON loans(status_id);
 CREATE INDEX IF NOT EXISTS idx_loans_approved_at ON loans(approved_at) WHERE approved_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_loans_status_id_approved_at ON loans(status_id, approved_at);
+-- ⭐ Sprint 6: Índices para campos calculados
+CREATE INDEX IF NOT EXISTS idx_loans_profile_code ON loans(profile_code) WHERE profile_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_loans_biweekly_payment ON loans(biweekly_payment) WHERE biweekly_payment IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_loans_total_payment ON loans(total_payment) WHERE total_payment IS NOT NULL;
 
 -- =============================================================================
 -- 7. CONTRACTS - Contratos (Relación 1:1 con Loans)
@@ -492,6 +511,16 @@ CREATE TABLE IF NOT EXISTS payments (
     id SERIAL PRIMARY KEY,
     loan_id INTEGER NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
     amount_paid DECIMAL(12, 2) NOT NULL,
+    
+    -- ⭐ CAMPOS DE DESGLOSE FINANCIERO (Sprint 6 - Migración 006)
+    payment_number INTEGER, -- Número de pago en el cronograma (1, 2, 3, ..., term_biweeks)
+    expected_amount DECIMAL(12,2), -- Monto esperado del pago (biweekly_payment del préstamo)
+    interest_amount DECIMAL(10,2), -- Porción de interés en este pago
+    principal_amount DECIMAL(10,2), -- Porción de capital en este pago
+    commission_amount DECIMAL(10,2), -- Comisión del asociado en este pago
+    associate_payment DECIMAL(10,2), -- Pago neto del cliente (expected_amount - commission_amount)
+    balance_remaining DECIMAL(12,2), -- Saldo pendiente después de este pago
+    
     payment_date DATE NOT NULL,
     payment_due_date DATE NOT NULL, -- Fecha esperada (día 15 o último día)
     is_late BOOLEAN NOT NULL DEFAULT false,
@@ -505,13 +534,30 @@ CREATE TABLE IF NOT EXISTS payments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     -- Validaciones
     CONSTRAINT check_payments_amount_paid_non_negative CHECK (amount_paid >= 0),
-    CONSTRAINT check_payments_dates_logical CHECK (payment_date <= payment_due_date)
+    CONSTRAINT check_payments_dates_logical CHECK (payment_date <= payment_due_date),
+    -- ⭐ Validaciones campos de desglose (Sprint 6 - Migración 006)
+    CONSTRAINT check_payment_number_positive CHECK (payment_number IS NULL OR payment_number > 0),
+    CONSTRAINT check_expected_amount_positive CHECK (expected_amount IS NULL OR expected_amount > 0),
+    CONSTRAINT check_interest_amount_non_negative CHECK (interest_amount IS NULL OR interest_amount >= 0),
+    CONSTRAINT check_principal_amount_non_negative CHECK (principal_amount IS NULL OR principal_amount >= 0),
+    CONSTRAINT check_commission_amount_non_negative CHECK (commission_amount IS NULL OR commission_amount >= 0),
+    CONSTRAINT check_associate_payment_non_negative CHECK (associate_payment IS NULL OR associate_payment >= 0),
+    CONSTRAINT check_balance_remaining_non_negative CHECK (balance_remaining IS NULL OR balance_remaining >= 0),
+    -- ⭐ Unicidad: No puede haber 2 pagos con el mismo número para el mismo préstamo
+    CONSTRAINT payments_unique_loan_payment_number UNIQUE (loan_id, payment_number)
 );
 
 COMMENT ON TABLE payments IS 'Schedule de pagos generado automáticamente cuando un préstamo es aprobado. Un registro por cada quincena del plazo.';
 COMMENT ON COLUMN payments.payment_due_date IS 'Fecha de vencimiento del pago según reglas de negocio: día 15 o último día del mes. Generado por calculate_first_payment_date().';
 COMMENT ON COLUMN payments.is_late IS 'Indica si el pago está atrasado (TRUE si payment_due_date < CURRENT_DATE y no está pagado).';
 COMMENT ON COLUMN payments.marked_by IS '⭐ v2.0: Usuario que marcó manualmente el estado del pago (admin puede remarcar).';
+COMMENT ON COLUMN payments.payment_number IS '⭐ Sprint 6: Número secuencial del pago (1, 2, 3, ...). Permite ordenar el cronograma de amortización.';
+COMMENT ON COLUMN payments.expected_amount IS '⭐ Sprint 6: Monto esperado del pago quincenal (loans.biweekly_payment). Usado para validación de consistencia.';
+COMMENT ON COLUMN payments.interest_amount IS '⭐ Sprint 6: Porción de interés en este pago específico (varía por amortización).';
+COMMENT ON COLUMN payments.principal_amount IS '⭐ Sprint 6: Porción de capital/principal amortizado en este pago.';
+COMMENT ON COLUMN payments.commission_amount IS '⭐ Sprint 6: Comisión del asociado en este pago (normalmente fija = loans.commission_per_payment).';
+COMMENT ON COLUMN payments.associate_payment IS '⭐ Sprint 6: Pago neto del cliente al asociado (expected_amount - commission_amount).';
+COMMENT ON COLUMN payments.balance_remaining IS '⭐ Sprint 6: Saldo de capital pendiente después de aplicar este pago. Debe llegar a 0 en el último pago.';
 
 -- Índices para payments
 CREATE INDEX IF NOT EXISTS idx_payments_loan_id ON payments(loan_id);
@@ -520,6 +566,9 @@ CREATE INDEX IF NOT EXISTS idx_payments_is_late ON payments(is_late);
 CREATE INDEX IF NOT EXISTS idx_payments_cut_period_id ON payments(cut_period_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status_id ON payments(status_id); -- ⭐ NUEVO v2.0
 CREATE INDEX IF NOT EXISTS idx_payments_late_loan ON payments(loan_id, is_late, payment_due_date); -- Compuesto para consultas de mora
+-- ⭐ Sprint 6: Índices para campos de desglose
+CREATE INDEX IF NOT EXISTS idx_payments_loan_payment_number ON payments(loan_id, payment_number) WHERE payment_number IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_payments_balance_remaining ON payments(balance_remaining) WHERE balance_remaining IS NOT NULL;
 
 -- =============================================================================
 -- 10. CLIENT_DOCUMENTS - Documentos de Clientes
@@ -567,25 +616,28 @@ COMMENT ON TABLE system_configurations IS 'Configuraciones globales del sistema 
 -- =============================================================================
 -- FIN MÓDULO 02
 -- =============================================================================
+
 -- =============================================================================
--- CREDINET DB v2.0 - MÓDULO 03: TABLAS DE LÓGICA DE NEGOCIO
+-- CREDINET DB v2.0.1 - MÓDULO 03: TABLAS DE LÓGICA DE NEGOCIO
 -- =============================================================================
 -- Descripción:
 --   Tablas para lógica de negocio específica: asociados, convenios, renovaciones.
 --   Incluye las extensiones de la migración 07 (sistema de crédito del asociado).
 --
--- Tablas incluidas:
+-- Tablas incluidas (9 total):
 --   - associate_profiles (con credit tracking v2.0)
 --   - associate_payment_statements (con late_fee v2.0)
+--   - associate_statement_payments ⭐ NUEVO v2.0.1 (tracking de abonos)
 --   - associate_accumulated_balances
 --   - associate_level_history
+--   - associate_debt_breakdown
 --   - agreements (convenios de pago)
 --   - agreement_items (ítems de convenio)
 --   - agreement_payments (pagos de convenio)
 --   - loan_renewals (registro de renovaciones)
 --
--- Versión: 2.0.0
--- Fecha: 2025-10-30
+-- Versión: 2.0.1
+-- Fecha: 2025-10-31
 -- =============================================================================
 
 -- =============================================================================
@@ -632,10 +684,10 @@ CREATE TABLE IF NOT EXISTS associate_profiles (
 
 COMMENT ON TABLE associate_profiles IS 'Información extendida de usuarios que son asociados (gestores de cartera de préstamos). Incluye sistema de crédito v2.0.';
 COMMENT ON COLUMN associate_profiles.consecutive_full_credit_periods IS 'Contador de períodos consecutivos con 100% de cobro. Usado para evaluaciones de nivel.';
-COMMENT ON COLUMN associate_profiles.credit_used IS '⭐ v2.0: Crédito actualmente utilizado por el asociado (préstamos absorbidos no liquidados).';
-COMMENT ON COLUMN associate_profiles.credit_limit IS '⭐ v2.0: Límite máximo de crédito disponible para el asociado según su nivel.';
-COMMENT ON COLUMN associate_profiles.credit_available IS '⭐ v2.0: Crédito disponible restante (columna calculada: credit_limit - credit_used).';
-COMMENT ON COLUMN associate_profiles.debt_balance IS '⭐ v2.0: Deuda total del asociado (pagos no reportados + clientes morosos + mora).';
+COMMENT ON COLUMN associate_profiles.credit_used IS '⭐ v2.0: Crédito operativo actualmente utilizado (suma de saldos pendientes de préstamos activos).';
+COMMENT ON COLUMN associate_profiles.credit_limit IS '⭐ v2.0: Límite máximo de crédito operativo según nivel (Bronce: $50k, Plata: $100k, Oro: $250k, Platino: $600k, Diamante: $1M).';
+COMMENT ON COLUMN associate_profiles.credit_available IS '⭐ v2.0: Crédito operativo disponible (columna calculada: credit_limit - credit_used). NOTA: Validación real considera también debt_balance.';
+COMMENT ON COLUMN associate_profiles.debt_balance IS '⭐ v2.0: Deuda administrativa acumulada (pagos no reportados + clientes morosos + mora del 30%). Se gestiona por separado vía liquidaciones/convenios.';
 
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_associate_profiles_user_id ON associate_profiles(user_id);
@@ -683,6 +735,77 @@ CREATE TABLE IF NOT EXISTS associate_payment_statements (
 COMMENT ON TABLE associate_payment_statements IS 'Estados de cuenta generados para asociados por cada período de corte. Incluye sistema de mora v2.0.';
 COMMENT ON COLUMN associate_payment_statements.late_fee_amount IS '⭐ v2.0: Mora del 30% aplicada sobre comisión si NO reportó ningún pago (total_payments_count = 0).';
 COMMENT ON COLUMN associate_payment_statements.late_fee_applied IS '⭐ v2.0: Flag que indica si ya se aplicó la mora del 30%.';
+
+-- =============================================================================
+-- 2B. ASSOCIATE_STATEMENT_PAYMENTS - Tracking de Abonos Parciales ⭐ NUEVO
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS associate_statement_payments (
+    id SERIAL PRIMARY KEY,
+    statement_id INTEGER NOT NULL REFERENCES associate_payment_statements(id) ON DELETE CASCADE,
+    payment_amount DECIMAL(12, 2) NOT NULL,
+    payment_date DATE NOT NULL,
+    payment_method_id INTEGER NOT NULL REFERENCES payment_methods(id),
+    payment_reference VARCHAR(100),
+    registered_by INTEGER NOT NULL REFERENCES users(id),
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Validaciones
+    CONSTRAINT check_statement_payments_amount_positive CHECK (payment_amount > 0),
+    CONSTRAINT check_statement_payments_date_logical CHECK (payment_date <= CURRENT_DATE)
+);
+
+COMMENT ON TABLE associate_statement_payments IS '⭐ NUEVO v2.0: Registro detallado de abonos parciales del asociado para liquidar estados de cuenta. Permite múltiples pagos por statement con tracking completo.';
+COMMENT ON COLUMN associate_statement_payments.statement_id IS 'Referencia al estado de cuenta que se está liquidando.';
+COMMENT ON COLUMN associate_statement_payments.payment_amount IS 'Monto del abono (puede ser parcial). Múltiples abonos se suman para liquidar el statement.';
+COMMENT ON COLUMN associate_statement_payments.payment_reference IS 'Referencia bancaria (ej: SPEI-123456) o número de recibo para transferencias/depósitos.';
+COMMENT ON COLUMN associate_statement_payments.registered_by IS 'Usuario que registró el abono (normalmente admin o auxiliar administrativo).';
+COMMENT ON COLUMN associate_statement_payments.notes IS 'Notas adicionales sobre el abono (ej: "Abono parcial, liquidación completa pendiente").';
+
+-- Índices para associate_statement_payments
+CREATE INDEX IF NOT EXISTS idx_statement_payments_statement_id ON associate_statement_payments(statement_id);
+CREATE INDEX IF NOT EXISTS idx_statement_payments_payment_date ON associate_statement_payments(payment_date);
+CREATE INDEX IF NOT EXISTS idx_statement_payments_registered_by ON associate_statement_payments(registered_by);
+CREATE INDEX IF NOT EXISTS idx_statement_payments_method ON associate_statement_payments(payment_method_id);
+CREATE INDEX IF NOT EXISTS idx_statement_payments_statement_amount ON associate_statement_payments(statement_id, payment_amount);
+
+-- =============================================================================
+-- 2C. ASSOCIATE_DEBT_PAYMENTS - Tracking de Abonos a Deuda Acumulada ⭐ NUEVO v2.0.4
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS associate_debt_payments (
+    id SERIAL PRIMARY KEY,
+    associate_profile_id INTEGER NOT NULL REFERENCES associate_profiles(id) ON DELETE CASCADE,
+    payment_amount DECIMAL(12, 2) NOT NULL,
+    payment_date DATE NOT NULL,
+    payment_method_id INTEGER NOT NULL REFERENCES payment_methods(id),
+    payment_reference VARCHAR(100),
+    registered_by INTEGER NOT NULL REFERENCES users(id),
+    applied_breakdown_items JSONB NOT NULL DEFAULT '[]'::jsonb,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Validaciones
+    CONSTRAINT check_debt_payments_amount_positive CHECK (payment_amount > 0),
+    CONSTRAINT check_debt_payments_date_logical CHECK (payment_date <= CURRENT_DATE)
+);
+
+COMMENT ON TABLE associate_debt_payments IS '⭐ NUEVO v2.0.4: Registro de abonos directos a DEUDA ACUMULADA. Permite al asociado pagar deuda antigua sin tener que pagar saldo actual primero. Aplica FIFO automáticamente.';
+COMMENT ON COLUMN associate_debt_payments.associate_profile_id IS 'Asociado que realiza el abono a su deuda acumulada.';
+COMMENT ON COLUMN associate_debt_payments.payment_amount IS 'Monto del abono a deuda acumulada. Se distribuye automáticamente en FIFO.';
+COMMENT ON COLUMN associate_debt_payments.applied_breakdown_items IS 'JSON con detalle de items de deuda liquidados: [{"breakdown_id": 123, "amount_applied": 500.00, "liquidated": true}, ...]';
+COMMENT ON COLUMN associate_debt_payments.payment_reference IS 'Referencia bancaria o número de recibo del abono a deuda.';
+COMMENT ON COLUMN associate_debt_payments.registered_by IS 'Usuario que registró el abono a deuda.';
+COMMENT ON COLUMN associate_debt_payments.notes IS 'Notas adicionales (ej: "Abono voluntario a deuda acumulada").';
+
+-- Índices para associate_debt_payments
+CREATE INDEX IF NOT EXISTS idx_debt_payments_associate_id ON associate_debt_payments(associate_profile_id);
+CREATE INDEX IF NOT EXISTS idx_debt_payments_payment_date ON associate_debt_payments(payment_date);
+CREATE INDEX IF NOT EXISTS idx_debt_payments_registered_by ON associate_debt_payments(registered_by);
+CREATE INDEX IF NOT EXISTS idx_debt_payments_method ON associate_debt_payments(payment_method_id);
+CREATE INDEX IF NOT EXISTS idx_debt_payments_applied_items ON associate_debt_payments USING GIN (applied_breakdown_items);
+CREATE INDEX IF NOT EXISTS idx_debt_payments_associate_date ON associate_debt_payments(associate_profile_id, payment_date DESC);
 
 -- =============================================================================
 -- 3. ASSOCIATE_ACCUMULATED_BALANCES - Balances Acumulados
@@ -836,6 +959,7 @@ CREATE INDEX IF NOT EXISTS idx_loan_renewals_renewed_loan_id ON loan_renewals(re
 -- =============================================================================
 -- FIN MÓDULO 03
 -- =============================================================================
+
 -- =============================================================================
 -- CREDINET DB v2.0 - MÓDULO 04: TABLAS DE AUDITORÍA Y TRACKING
 -- =============================================================================
@@ -1036,6 +1160,7 @@ CREATE INDEX IF NOT EXISTS idx_session_log_is_active ON audit_session_log(is_act
 -- =============================================================================
 -- FIN MÓDULO 04
 -- =============================================================================
+
 -- =============================================================================
 -- CREDINET DB v2.0 - MÓDULO 05: FUNCIONES BASE (NIVEL 1)
 -- =============================================================================
@@ -1567,94 +1692,179 @@ COMMENT ON FUNCTION calculate_payment_preview(TIMESTAMP WITH TIME ZONE, INTEGER,
 -- =============================================================================
 -- FIN MÓDULO 05
 -- =============================================================================
+
 -- =============================================================================
--- CREDINET DB v2.0 - MÓDULO 06: FUNCIONES DE NEGOCIO (NIVEL 2-3)
+-- CREDINET DB v2.0.2 - MÓDULO 06: FUNCIONES DE NEGOCIO (NIVEL 2-3)
 -- =============================================================================
 -- Descripción:
 --   Funciones de lógica de negocio con dependencias complejas.
---   Incluye funciones críticas de migraciones 08 y 09.
+--   Incluye funciones críticas de migraciones 08 y 09 + mejoras v2.0.2.
 --
--- Funciones incluidas:
+-- Funciones incluidas (6 total):
 --   - generate_payment_schedule() ⭐ CRÍTICA (genera cronograma al aprobar)
 --   - close_period_and_accumulate_debt() ⭐ MIGRACIÓN 08 v3 (cierre de período)
 --   - report_defaulted_client() ⭐ MIGRACIÓN 09 (reportar moroso)
 --   - approve_defaulted_client_report() ⭐ MIGRACIÓN 09 (aprobar reporte)
 --   - renew_loan() (renovación de préstamos)
+--   - update_statement_on_payment() ⭐ v2.0.2 (actualización + liberación de crédito)
 --
--- Versión: 2.0.0
--- Fecha: 2025-10-30
+-- Versión: 2.0.2
+-- Fecha: 2025-11-01
 -- =============================================================================
 
 -- =============================================================================
 -- FUNCIÓN 1: generate_payment_schedule ⭐ TRIGGER CRÍTICO
 -- =============================================================================
+-- ✅ VERSIÓN ACTUALIZADA - Sprint 6 - Migración 007
+-- Genera cronograma completo con desglose financiero usando valores pre-calculados
 CREATE OR REPLACE FUNCTION generate_payment_schedule()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $function$
 DECLARE
     v_approval_date DATE;
     v_first_payment_date DATE;
-    v_current_payment_date DATE;
-    v_payment_amount DECIMAL(12,2);
-    v_payment_count INTEGER;
-    v_period_id INTEGER;
-    v_total_inserted INTEGER := 0;
-    v_start_time TIMESTAMP;
-    v_end_time TIMESTAMP;
     v_approved_status_id INTEGER;
     v_pending_status_id INTEGER;
+    v_amortization_row RECORD;
+    v_period_id INTEGER;
+    v_total_inserted INTEGER := 0;
+    v_sum_expected DECIMAL(12,2) := 0;
+    v_start_time TIMESTAMP;
+    v_end_time TIMESTAMP;
 BEGIN
+    -- ==========================================================================
+    -- VALIDACIÓN INICIAL: Verificar que este evento es una aprobación
+    -- ==========================================================================
+    
     -- Obtener IDs de estados
-    SELECT id INTO v_approved_status_id FROM loan_statuses WHERE name = 'APPROVED';
-    SELECT id INTO v_pending_status_id FROM payment_statuses WHERE name = 'PENDING';
+    SELECT id INTO v_approved_status_id 
+    FROM loan_statuses 
+    WHERE name = 'APPROVED';
+    
+    SELECT id INTO v_pending_status_id 
+    FROM payment_statuses 
+    WHERE name = 'PENDING';
+    
+    IF v_approved_status_id IS NULL THEN
+        RAISE EXCEPTION 'CRITICAL: loan_statuses.APPROVED no encontrado';
+    END IF;
+    
+    IF v_pending_status_id IS NULL THEN
+        RAISE EXCEPTION 'CRITICAL: payment_statuses.PENDING no encontrado';
+    END IF;
     
     -- Solo ejecutar si el préstamo acaba de ser aprobado
-    IF NEW.status_id = v_approved_status_id AND (OLD.status_id IS NULL OR OLD.status_id != v_approved_status_id) THEN
-        
+    IF NEW.status_id = v_approved_status_id 
+       AND (OLD.status_id IS NULL OR OLD.status_id != v_approved_status_id) 
+    THEN
         v_start_time := CLOCK_TIMESTAMP();
         
-        -- Validaciones
+        -- ======================================================================
+        -- VALIDACIONES DE NEGOCIO
+        -- ======================================================================
+        
+        -- Validar: approved_at debe existir
         IF NEW.approved_at IS NULL THEN
-            RAISE EXCEPTION 'CRITICAL: Préstamo % marcado como APPROVED pero approved_at es NULL', NEW.id;
+            RAISE EXCEPTION 'CRITICAL: Préstamo % marcado como APPROVED pero approved_at es NULL', 
+                NEW.id;
         END IF;
         
+        -- Validar: term_biweeks válido
         IF NEW.term_biweeks IS NULL OR NEW.term_biweeks <= 0 THEN
-            RAISE EXCEPTION 'CRITICAL: Préstamo % tiene term_biweeks inválido: %', NEW.id, NEW.term_biweeks;
+            RAISE EXCEPTION 'CRITICAL: Préstamo % tiene term_biweeks inválido: %', 
+                NEW.id, NEW.term_biweeks;
         END IF;
+        
+        -- ✅ CRÍTICO: Validar que los campos calculados existen
+        IF NEW.biweekly_payment IS NULL THEN
+            RAISE EXCEPTION 'CRITICAL: Préstamo % no tiene biweekly_payment calculado. El préstamo debe ser creado con profile_code o tener valores calculados manualmente.',
+                NEW.id;
+        END IF;
+        
+        IF NEW.total_payment IS NULL THEN
+            RAISE EXCEPTION 'CRITICAL: Préstamo % no tiene total_payment calculado.',
+                NEW.id;
+        END IF;
+        
+        IF NEW.commission_per_payment IS NULL THEN
+            RAISE WARNING 'Préstamo % no tiene commission_per_payment. Se usará 0 por defecto.',
+                NEW.id;
+        END IF;
+        
+        -- ======================================================================
+        -- CALCULAR PRIMERA FECHA DE PAGO USANDO EL ORÁCULO
+        -- ======================================================================
         
         v_approval_date := NEW.approved_at::DATE;
-        v_payment_amount := ROUND(NEW.amount / NEW.term_biweeks, 2);
         
-        RAISE NOTICE '🎯 Generando schedule para préstamo %: Monto=%, Plazo=% quincenas, Aprobado=%',
-            NEW.id, NEW.amount, NEW.term_biweeks, v_approval_date;
+        RAISE NOTICE '🎯 Generando schedule para préstamo %:', NEW.id;
+        RAISE NOTICE '   - Capital: $%', NEW.amount;
+        RAISE NOTICE '   - Plazo: % quincenas', NEW.term_biweeks;
+        RAISE NOTICE '   - Pago quincenal: $%', NEW.biweekly_payment;
+        RAISE NOTICE '   - Total a pagar: $%', NEW.total_payment;
+        RAISE NOTICE '   - Aprobado: %', v_approval_date;
         
-        -- Calcular primera fecha usando el oráculo
+        -- ✅ Usar el oráculo del doble calendario
         v_first_payment_date := calculate_first_payment_date(v_approval_date);
         
         RAISE NOTICE '📅 Primera fecha de pago: % (aprobado el %)', 
             v_first_payment_date, v_approval_date;
         
-        v_current_payment_date := v_first_payment_date;
+        -- ======================================================================
+        -- GENERAR CRONOGRAMA COMPLETO CON DESGLOSE
+        -- ======================================================================
         
-        -- Generar cronograma completo
-        FOR v_payment_count IN 1..NEW.term_biweeks LOOP
+        -- ✅ Llamar a generate_amortization_schedule() para obtener desglose completo
+        FOR v_amortization_row IN
+            SELECT 
+                periodo,              -- Número de pago (1, 2, 3, ...)
+                fecha_pago,           -- Fecha de vencimiento (15 o último día)
+                pago_cliente,         -- Monto esperado (capital + interés)
+                interes_cliente,      -- Interés del periodo
+                capital_cliente,      -- Abono a capital del periodo
+                saldo_pendiente,      -- Saldo restante después del pago
+                comision_socio,       -- Comisión del asociado
+                pago_socio            -- Pago neto al asociado
+            FROM generate_amortization_schedule(
+                NEW.amount,                           -- Capital del préstamo
+                NEW.biweekly_payment,                 -- ✅ Pago quincenal calculado
+                NEW.term_biweeks,                     -- Plazo en quincenas
+                COALESCE(NEW.commission_rate, 0),     -- ✅ Tasa de comisión en porcentaje
+                v_first_payment_date                  -- ✅ Primera fecha del oráculo
+            )
+        LOOP
+            -- ==================================================================
+            -- BUSCAR PERIODO ADMINISTRATIVO (cut_period)
+            -- ==================================================================
             
-            -- Buscar el período de corte apropiado
-            SELECT id INTO v_period_id 
-            FROM cut_periods 
-            WHERE period_start_date <= v_current_payment_date 
-              AND period_end_date >= v_current_payment_date 
+            -- Buscar el periodo administrativo que contiene esta fecha de vencimiento
+            SELECT id INTO v_period_id
+            FROM cut_periods
+            WHERE period_start_date <= v_amortization_row.fecha_pago
+              AND period_end_date >= v_amortization_row.fecha_pago
             ORDER BY period_start_date DESC
             LIMIT 1;
             
             IF v_period_id IS NULL THEN
-                RAISE WARNING 'No se encontró cut_period para fecha %. Insertando con period_id = NULL', 
-                    v_current_payment_date;
+                RAISE WARNING 'No se encontró cut_period para fecha %. Insertando pago con period_id = NULL. Verifique que cut_periods estén creados para todo el año.',
+                    v_amortization_row.fecha_pago;
             END IF;
             
-            -- Insertar pago
+            -- ==================================================================
+            -- INSERTAR PAGO CON TODOS LOS CAMPOS
+            -- ==================================================================
+            
             INSERT INTO payments (
-                loan_id, 
+                loan_id,
+                payment_number,
+                expected_amount,
                 amount_paid,
+                interest_amount,
+                principal_amount,
+                commission_amount,
+                associate_payment,
+                balance_remaining,
                 payment_date,
                 payment_due_date,
                 is_late,
@@ -1663,48 +1873,65 @@ BEGIN
                 created_at,
                 updated_at
             ) VALUES (
-                NEW.id,
-                0.00,
-                v_current_payment_date,
-                v_current_payment_date,
-                false,
-                v_pending_status_id, -- Estado inicial: PENDING
-                v_period_id,
-                CURRENT_TIMESTAMP,
-                CURRENT_TIMESTAMP
+                NEW.id,                                    -- FK al préstamo
+                v_amortization_row.periodo,                -- Número secuencial (1, 2, 3, ...)
+                v_amortization_row.pago_cliente,           -- ✅ Monto esperado (con interés)
+                0.00,                                      -- Aún no ha pagado nada
+                v_amortization_row.interes_cliente,        -- ✅ Interés del periodo
+                v_amortization_row.capital_cliente,        -- ✅ Abono a capital
+                v_amortization_row.comision_socio,         -- ✅ Comisión del asociado
+                v_amortization_row.pago_socio,             -- ✅ Pago neto al asociado
+                v_amortization_row.saldo_pendiente,        -- ✅ Saldo restante
+                v_amortization_row.fecha_pago,             -- payment_date inicial = due_date
+                v_amortization_row.fecha_pago,             -- ✅ Fecha de vencimiento
+                false,                                     -- No está atrasado (aún)
+                v_pending_status_id,                       -- Estado: PENDING
+                v_period_id,                               -- ✅ FK al periodo administrativo
+                CURRENT_TIMESTAMP,                         -- created_at
+                CURRENT_TIMESTAMP                          -- updated_at
             );
             
             v_total_inserted := v_total_inserted + 1;
+            v_sum_expected := v_sum_expected + v_amortization_row.pago_cliente;
             
-            -- Calcular siguiente fecha (alternancia día 15 ↔ último día)
-            IF EXTRACT(DAY FROM v_current_payment_date) = 15 THEN
-                v_current_payment_date := (
-                    DATE_TRUNC('month', v_current_payment_date) + INTERVAL '1 month' - INTERVAL '1 day'
-                )::DATE;
-            ELSE
-                v_current_payment_date := MAKE_DATE(
-                    EXTRACT(YEAR FROM v_current_payment_date + INTERVAL '1 month')::INTEGER,
-                    EXTRACT(MONTH FROM v_current_payment_date + INTERVAL '1 month')::INTEGER,
-                    15
-                );
+            -- Log de progreso cada 5 pagos
+            IF v_amortization_row.periodo % 5 = 0 THEN
+                RAISE DEBUG 'Progreso: % de % pagos insertados', 
+                    v_amortization_row.periodo, NEW.term_biweeks;
             END IF;
-            
-            IF v_payment_count % 5 = 0 THEN
-                RAISE DEBUG 'Progreso: % de % pagos insertados', v_payment_count, NEW.term_biweeks;
-            END IF;
-            
         END LOOP;
+        
+        -- ======================================================================
+        -- VALIDACIONES DE CONSISTENCIA FINAL
+        -- ======================================================================
         
         v_end_time := CLOCK_TIMESTAMP();
         
+        -- Validar: Se insertaron todos los pagos esperados
         IF v_total_inserted != NEW.term_biweeks THEN
-            RAISE WARNING 'INCONSISTENCIA: Se insertaron % pagos pero se esperaban %. Préstamo %',
+            RAISE EXCEPTION 'INCONSISTENCIA: Se insertaron % pagos pero se esperaban %. Préstamo %. Revisar generate_amortization_schedule().',
                 v_total_inserted, NEW.term_biweeks, NEW.id;
-        ELSE
-            RAISE NOTICE '✅ Schedule generado: % pagos en % ms',
-                v_total_inserted, 
-                EXTRACT(MILLISECONDS FROM (v_end_time - v_start_time));
         END IF;
+        
+        -- ✅ VALIDAR: SUM(expected_amount) debe ser igual a loans.total_payment
+        -- Tolerancia de $1.00 para errores de redondeo
+        IF ABS(v_sum_expected - NEW.total_payment) > 1.00 THEN
+            RAISE EXCEPTION 'INCONSISTENCIA MATEMÁTICA: SUM(expected_amount) = $% pero loans.total_payment = $%. Diferencia: $%. Préstamo %. Esto indica un error en los cálculos de generate_amortization_schedule().',
+                v_sum_expected, NEW.total_payment, 
+                (v_sum_expected - NEW.total_payment), NEW.id;
+        END IF;
+        
+        -- ======================================================================
+        -- LOG DE ÉXITO
+        -- ======================================================================
+        
+        RAISE NOTICE '✅ Schedule generado exitosamente:';
+        RAISE NOTICE '   - Pagos insertados: %', v_total_inserted;
+        RAISE NOTICE '   - Total esperado: $%', v_sum_expected;
+        RAISE NOTICE '   - Total préstamo: $%', NEW.total_payment;
+        RAISE NOTICE '   - Diferencia: $%', (v_sum_expected - NEW.total_payment);
+        RAISE NOTICE '   - Tiempo: % ms', 
+            EXTRACT(MILLISECONDS FROM (v_end_time - v_start_time));
         
     END IF;
     
@@ -1712,14 +1939,17 @@ BEGIN
     
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE EXCEPTION 'ERROR al generar payment schedule para préstamo %: % (%)', 
-            NEW.id, SQLERRM, SQLSTATE;
+        -- Log detallado del error
+        RAISE EXCEPTION 'ERROR CRÍTICO al generar payment schedule para préstamo %: % (%). SQLState: %, Context: %',
+            NEW.id, SQLERRM, SQLSTATE, SQLSTATE, 
+            coalesce(PG_EXCEPTION_CONTEXT, 'No context');
         RETURN NULL;
 END;
-$$ LANGUAGE plpgsql;
+$function$;
 
 COMMENT ON FUNCTION generate_payment_schedule() IS 
-'⭐ CRÍTICA: Trigger que genera automáticamente el cronograma completo de pagos quincenales cuando un préstamo es aprobado.';
+'⭐ CRÍTICA: Trigger que genera automáticamente el cronograma completo de pagos quincenales cuando un préstamo es aprobado. 
+✅ VERSIÓN ACTUALIZADA (Sprint 6): Usa valores pre-calculados (biweekly_payment, total_payment) y genera desglose financiero completo.';
 
 -- =============================================================================
 -- FUNCIÓN 2: close_period_and_accumulate_debt ⭐ MIGRACIÓN 08 v3
@@ -2072,8 +2302,124 @@ COMMENT ON FUNCTION renew_loan(INTEGER, DECIMAL, INTEGER, DECIMAL, DECIMAL, INTE
 'Renueva un préstamo existente creando uno nuevo. Calcula automáticamente el saldo pendiente y lo registra en loan_renewals.';
 
 -- =============================================================================
+-- FUNCIÓN 6: update_statement_on_payment ⭐ NUEVO v2.0 - Tracking de Abonos
+-- =============================================================================
+CREATE OR REPLACE FUNCTION update_statement_on_payment()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_total_paid DECIMAL(12,2);
+    v_total_owed DECIMAL(12,2);
+    v_remaining DECIMAL(12,2);
+    v_new_status_id INTEGER;
+    v_statement_status VARCHAR(50);
+    v_associate_profile_id INTEGER;
+    v_cut_period_id INTEGER;
+    v_amount_to_liquidate DECIMAL(12,2);
+BEGIN
+    -- Calcular total pagado hasta ahora (suma de todos los abonos)
+    SELECT COALESCE(SUM(payment_amount), 0)
+    INTO v_total_paid
+    FROM associate_statement_payments
+    WHERE statement_id = NEW.statement_id;
+    
+    -- Obtener total adeudado (comisión + mora) y datos del asociado
+    SELECT 
+        aps.total_commission_owed + aps.late_fee_amount,
+        ap.id,
+        aps.cut_period_id
+    INTO v_total_owed, v_associate_profile_id, v_cut_period_id
+    FROM associate_payment_statements aps
+    JOIN associate_profiles ap ON aps.user_id = ap.user_id
+    WHERE aps.id = NEW.statement_id;
+    
+    IF v_total_owed IS NULL THEN
+        RAISE EXCEPTION 'Statement % no encontrado', NEW.statement_id;
+    END IF;
+    
+    v_remaining := v_total_owed - v_total_paid;
+    
+    -- Determinar nuevo estado según saldo restante
+    IF v_remaining <= 0 THEN
+        -- Pagado completamente (puede haber sobrepago)
+        SELECT id INTO v_new_status_id FROM statement_statuses WHERE name = 'PAID';
+        v_statement_status := 'PAID';
+    ELSIF v_total_paid > 0 AND v_remaining > 0 THEN
+        -- Pago parcial
+        SELECT id INTO v_new_status_id FROM statement_statuses WHERE name = 'PARTIAL_PAID';
+        v_statement_status := 'PARTIAL_PAID';
+    ELSE
+        -- Sin pagos aún
+        v_new_status_id := NULL; -- Mantener estado actual
+        v_statement_status := 'NO_CHANGE';
+    END IF;
+    
+    -- Actualizar statement con totales acumulados
+    IF v_new_status_id IS NOT NULL THEN
+        UPDATE associate_payment_statements
+        SET paid_amount = v_total_paid,
+            paid_date = CASE 
+                WHEN v_remaining <= 0 THEN CURRENT_DATE
+                ELSE paid_date
+            END,
+            status_id = v_new_status_id,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = NEW.statement_id;
+    END IF;
+    
+    -- ⭐ v2.0.2: Liberar crédito automáticamente decrementando debt_balance
+    UPDATE associate_profiles
+    SET debt_balance = GREATEST(debt_balance - NEW.payment_amount, 0),
+        credit_last_updated = CURRENT_TIMESTAMP
+    WHERE id = v_associate_profile_id;
+    
+    -- ⭐ v2.0.2: Liquidar deuda en associate_debt_breakdown (estrategia FIFO)
+    -- Liquidamos registros de deuda hasta cubrir el monto del abono
+    v_amount_to_liquidate := NEW.payment_amount;
+    
+    WITH debt_fifo AS (
+        SELECT 
+            id,
+            amount,
+            SUM(amount) OVER (ORDER BY created_at, id) AS cumulative_amount
+        FROM associate_debt_breakdown
+        WHERE associate_profile_id = v_associate_profile_id
+          AND cut_period_id = v_cut_period_id
+          AND is_liquidated = FALSE
+        ORDER BY created_at, id
+    )
+    UPDATE associate_debt_breakdown
+    SET is_liquidated = TRUE,
+        liquidated_at = CURRENT_TIMESTAMP,
+        liquidation_reference = 'AUTO: Statement payment #' || NEW.id || ' on ' || NEW.payment_date
+    WHERE id IN (
+        SELECT id 
+        FROM debt_fifo
+        WHERE (cumulative_amount - amount) < v_amount_to_liquidate
+    );
+    
+    RAISE NOTICE '💰 Statement #% actualizado: pagado $% de $%, restante $%, estado: %', 
+        NEW.statement_id, v_total_paid, v_total_owed, v_remaining, v_statement_status;
+    
+    RAISE NOTICE '🔓 Crédito liberado: debt_balance -= $% para asociado #%', 
+        NEW.payment_amount, v_associate_profile_id;
+    
+    -- Si hay sobrepago, advertir
+    IF v_remaining < 0 THEN
+        RAISE NOTICE '⚠️  SOBREPAGO detectado en statement #%: $% extra. Considerar crédito a favor.', 
+            NEW.statement_id, ABS(v_remaining);
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION update_statement_on_payment() IS 
+'⭐ v2.0.2: Trigger que actualiza automáticamente el estado de cuenta cuando se registra un abono. Suma todos los abonos, calcula saldo restante, actualiza estado (PARTIAL_PAID o PAID), y LIBERA CRÉDITO automáticamente decrementando debt_balance y marcando associate_debt_breakdown.is_liquidated usando estrategia FIFO.';
+
+-- =============================================================================
 -- FIN MÓDULO 06
 -- =============================================================================
+
 -- =============================================================================
 -- CREDINET DB v2.0 - MÓDULO 07: TRIGGERS
 -- =============================================================================
@@ -2082,16 +2428,17 @@ COMMENT ON FUNCTION renew_loan(INTEGER, DECIMAL, INTEGER, DECIMAL, DECIMAL, INTE
 --   Incluye triggers de migraciones 07 y 12.
 --
 -- Categorías:
---   1. Triggers de updated_at (automáticos)
+--   1. Triggers de updated_at (automáticos) - 20 triggers
 --   2. Trigger de aprobación de préstamos
 --   3. Trigger de generación de schedule ⭐ CRÍTICO
 --   4. Trigger de historial de pagos ⭐ MIGRACIÓN 12
---   5. Triggers de crédito del asociado ⭐ MIGRACIÓN 07
---   6. Triggers de auditoría general
+--   5. Triggers de crédito del asociado ⭐ MIGRACIÓN 07 (4 triggers)
+--   6. Triggers de auditoría general (5 triggers)
+--   7. Trigger de actualización de statements ⭐ NUEVO v2.0.1
 --
--- Total: 28 triggers
--- Versión: 2.0.0
--- Fecha: 2025-10-30
+-- Total: 33 triggers
+-- Versión: 2.0.1
+-- Fecha: 2025-10-31
 -- =============================================================================
 
 -- =============================================================================
@@ -2440,16 +2787,29 @@ COMMENT ON TRIGGER audit_payments_trigger ON payments IS
 'Registra todos los cambios en la tabla payments en audit_log para trazabilidad completa.';
 
 -- =============================================================================
+-- CATEGORÍA 7: TRIGGER DE ABONOS DE ASOCIADO ⭐ NUEVO v2.0
+-- =============================================================================
+
+CREATE TRIGGER trigger_update_statement_on_payment
+    AFTER INSERT ON associate_statement_payments
+    FOR EACH ROW
+    EXECUTE FUNCTION update_statement_on_payment();
+
+COMMENT ON TRIGGER trigger_update_statement_on_payment ON associate_statement_payments IS
+'⭐ NUEVO v2.0: Actualiza automáticamente el estado de cuenta (associate_payment_statements) cuando se registra un abono. Suma todos los abonos y actualiza estado a PARTIAL_PAID o PAID según corresponda.';
+
+-- =============================================================================
 -- FIN MÓDULO 07
 -- =============================================================================
+
 -- =============================================================================
--- CREDINET DB v2.0 - MÓDULO 08: VISTAS
+-- CREDINET DB v2.0.2 - MÓDULO 08: VISTAS
 -- =============================================================================
 -- Descripción:
 --   Vistas especializadas para consultas comunes del sistema.
---   Todas las vistas provienen de las migraciones 07-12.
+--   Todas las vistas provienen de las migraciones 07-12 + nuevas v2.0.1/v2.0.2.
 --
--- Vistas incluidas:
+-- Vistas incluidas (12 total):
 --   - v_associate_credit_summary ⭐ MIGRACIÓN 07
 --   - v_period_closure_summary ⭐ MIGRACIÓN 08
 --   - v_associate_debt_detailed ⭐ MIGRACIÓN 09
@@ -2459,10 +2819,18 @@ COMMENT ON TRIGGER audit_payments_trigger ON payments IS
 --   - v_payment_changes_summary ⭐ MIGRACIÓN 12
 --   - v_recent_payment_changes ⭐ MIGRACIÓN 12
 --   - v_payments_multiple_changes ⭐ MIGRACIÓN 12
+--   - v_associate_credit_complete ⭐ NUEVO v2.0.1 (crédito real con deuda)
+--   - v_statement_payment_history ⭐ NUEVO v2.0.1 (tracking de abonos)
+--   - v_all_associate_payments ⭐ NUEVO v2.0.2 (unificación tipos de pago)
 --
--- Total: 9 vistas
+-- Total: 12 vistas
+-- Versión: 2.0.2
+-- Fecha: 2025-11-01
+-- =============================================================================
+--
+-- Total: 11 vistas
 -- Versión: 2.0.0
--- Fecha: 2025-10-30
+-- Fecha: 2025-10-31
 -- =============================================================================
 
 -- =============================================================================
@@ -2759,8 +3127,196 @@ COMMENT ON VIEW v_payments_multiple_changes IS
 '⭐ MIGRACIÓN 12: Pagos con 3 o más cambios de estado (posibles errores, fraude o correcciones múltiples). Prioridad CRÍTICA para revisión forense.';
 
 -- =============================================================================
+-- VISTA 10: v_associate_credit_complete ⭐ NUEVO v2.0 - Vista Completa de Crédito
+-- =============================================================================
+CREATE OR REPLACE VIEW v_associate_credit_complete AS
+SELECT 
+    ap.id AS associate_profile_id,
+    u.id AS user_id,
+    CONCAT(u.first_name, ' ', u.last_name) AS associate_name,
+    u.email,
+    u.phone_number,
+    al.name AS level,
+    
+    -- Crédito operativo
+    ap.credit_limit,
+    ap.credit_used,
+    ap.credit_available,
+    
+    -- Deuda administrativa
+    ap.debt_balance,
+    
+    -- Crédito REAL disponible (considerando deuda)
+    (ap.credit_available - ap.debt_balance) AS real_available_credit,
+    
+    -- Porcentajes
+    ROUND((ap.credit_used::DECIMAL / NULLIF(ap.credit_limit, 0)) * 100, 2) AS usage_percentage,
+    ROUND((ap.debt_balance::DECIMAL / NULLIF(ap.credit_limit, 0)) * 100, 2) AS debt_percentage,
+    ROUND(((ap.credit_available - ap.debt_balance)::DECIMAL / NULLIF(ap.credit_limit, 0)) * 100, 2) AS real_available_percentage,
+    
+    -- Estados de salud crediticia
+    CASE 
+        WHEN (ap.credit_available - ap.debt_balance) <= 0 THEN 'SIN_CREDITO'
+        WHEN (ap.credit_available - ap.debt_balance) < (ap.credit_limit * 0.25) THEN 'CRITICO'
+        WHEN (ap.credit_available - ap.debt_balance) < (ap.credit_limit * 0.50) THEN 'MEDIO'
+        ELSE 'ALTO'
+    END AS credit_health_status,
+    
+    CASE 
+        WHEN ap.debt_balance = 0 THEN 'SIN_DEUDA'
+        WHEN ap.debt_balance < (ap.credit_limit * 0.10) THEN 'DEUDA_BAJA'
+        WHEN ap.debt_balance < (ap.credit_limit * 0.25) THEN 'DEUDA_MEDIA'
+        ELSE 'DEUDA_ALTA'
+    END AS debt_status,
+    
+    -- Métricas de rendimiento
+    ap.consecutive_full_credit_periods,
+    ap.consecutive_on_time_payments,
+    ap.clients_in_agreement,
+    
+    -- Metadata
+    ap.active,
+    ap.credit_last_updated,
+    ap.last_level_evaluation_date
+    
+FROM associate_profiles ap
+JOIN users u ON ap.user_id = u.id
+JOIN associate_levels al ON ap.level_id = al.id
+ORDER BY (ap.credit_available - ap.debt_balance) DESC;
+
+COMMENT ON VIEW v_associate_credit_complete IS 
+'⭐ NUEVO v2.0: Vista completa del estado crediticio del asociado. Incluye crédito operativo (credit_available) y crédito REAL disponible (descontando debt_balance). Útil para dashboards y análisis financiero.';
+
+-- =============================================================================
+-- VISTA 11: v_statement_payment_history ⭐ NUEVO v2.0 - Historial de Abonos
+-- =============================================================================
+CREATE OR REPLACE VIEW v_statement_payment_history AS
+SELECT 
+    asp.id AS payment_id,
+    asp.statement_id,
+    aps.statement_number,
+    CONCAT(u_assoc.first_name, ' ', u_assoc.last_name) AS associate_name,
+    cp.cut_number,
+    cp.period_start_date,
+    cp.period_end_date,
+    
+    -- Datos del abono
+    asp.payment_amount,
+    asp.payment_date,
+    pm.name AS payment_method,
+    asp.payment_reference,
+    asp.notes,
+    
+    -- Totales del statement
+    aps.total_commission_owed,
+    aps.late_fee_amount,
+    (aps.total_commission_owed + aps.late_fee_amount) AS total_owed,
+    aps.paid_amount AS total_paid_to_date,
+    ((aps.total_commission_owed + aps.late_fee_amount) - aps.paid_amount) AS remaining_balance,
+    ss.name AS statement_status,
+    
+    -- Metadata
+    CONCAT(u_reg.first_name, ' ', u_reg.last_name) AS registered_by_name,
+    asp.created_at AS payment_registered_at
+    
+FROM associate_statement_payments asp
+JOIN associate_payment_statements aps ON asp.statement_id = aps.id
+JOIN users u_assoc ON aps.user_id = u_assoc.id
+JOIN cut_periods cp ON aps.cut_period_id = cp.id
+JOIN payment_methods pm ON asp.payment_method_id = pm.id
+JOIN statement_statuses ss ON aps.status_id = ss.id
+JOIN users u_reg ON asp.registered_by = u_reg.id
+ORDER BY asp.payment_date DESC, asp.id DESC;
+
+COMMENT ON VIEW v_statement_payment_history IS 
+'⭐ NUEVO v2.0: Historial completo de abonos parciales a estados de cuenta. Muestra cada abono individual con sus detalles, totales acumulados y saldo restante. Útil para tracking de liquidaciones.';
+
+-- =============================================================================
+-- VISTA 12: v_all_associate_payments ⭐ NUEVA v2.0.2
+-- =============================================================================
+-- Vista unificada que distingue CLARAMENTE entre:
+--   - Pagos de período actual (quincenales de clientes)
+--   - Abonos a deuda acumulada (liquidación de statements)
+-- Útil para reportes, auditoría y análisis de flujo de efectivo
+
+CREATE OR REPLACE VIEW v_all_associate_payments AS
+-- TIPO A: Pagos de clientes (cronograma quincenal)
+SELECT 
+    'PERIOD_PAYMENT' AS payment_type,
+    ap.id AS associate_profile_id,
+    ap.user_id AS associate_user_id,
+    u.first_name || ' ' || u.last_name AS associate_name,
+    p.cut_period_id,
+    cp.period_start_date,
+    cp.period_end_date,
+    cp.name AS period_name,
+    p.loan_id,
+    l.user_id AS client_user_id,
+    u_client.first_name || ' ' || u_client.last_name AS client_name,
+    p.id AS payment_id,
+    NULL::INTEGER AS statement_payment_id,
+    NULL::INTEGER AS statement_id,
+    p.amount_paid AS payment_amount,
+    p.payment_date,
+    ps.name AS payment_status,
+    '💳 Pago quincenal de cliente' AS payment_description,
+    TRUE AS affects_credit_used,
+    FALSE AS affects_debt_balance,
+    p.created_at AS record_created_at
+FROM payments p
+JOIN loans l ON p.loan_id = l.id
+JOIN users u_client ON l.user_id = u_client.id
+JOIN associate_profiles ap ON l.associate_user_id = ap.user_id
+JOIN users u ON ap.user_id = u.id
+LEFT JOIN payment_statuses ps ON p.status_id = ps.id
+LEFT JOIN cut_periods cp ON p.cut_period_id = cp.id
+
+UNION ALL
+
+-- TIPO B: Abonos del asociado (liquidación de statements)
+SELECT 
+    'DEBT_PAYMENT' AS payment_type,
+    ap.id AS associate_profile_id,
+    ap.user_id AS associate_user_id,
+    u.first_name || ' ' || u.last_name AS associate_name,
+    aps.cut_period_id,
+    cp.period_start_date,
+    cp.period_end_date,
+    cp.name AS period_name,
+    NULL AS loan_id,
+    NULL AS client_user_id,
+    NULL AS client_name,
+    NULL AS payment_id,
+    asp.id AS statement_payment_id,
+    aps.id AS statement_id,
+    asp.payment_amount,
+    asp.payment_date,
+    ss.name AS payment_status,
+    '🧾 Abono a deuda del período ' || aps.statement_number AS payment_description,
+    FALSE AS affects_credit_used,
+    TRUE AS affects_debt_balance,
+    asp.created_at AS record_created_at
+FROM associate_statement_payments asp
+JOIN associate_payment_statements aps ON asp.statement_id = aps.id
+JOIN associate_profiles ap ON aps.user_id = ap.user_id
+JOIN users u ON ap.user_id = u.id
+LEFT JOIN statement_statuses ss ON aps.status_id = ss.id
+LEFT JOIN cut_periods cp ON aps.cut_period_id = cp.id
+
+ORDER BY payment_date DESC, record_created_at DESC;
+
+COMMENT ON VIEW v_all_associate_payments IS 
+'⭐ NUEVA v2.0.2: Vista unificada que distingue CLARAMENTE entre pagos de período actual (clientes) y abonos a deuda acumulada (asociados). 
+Columnas clave:
+- payment_type: PERIOD_PAYMENT (cliente) o DEBT_PAYMENT (asociado)
+- affects_credit_used: TRUE si afecta credit_used
+- affects_debt_balance: TRUE si afecta debt_balance
+Útil para reportes consolidados, análisis de flujo de efectivo y auditoría de liberación de crédito.';
+
+-- =============================================================================
 -- FIN MÓDULO 08
 -- =============================================================================
+
 -- =============================================================================
 -- CREDINET DB v2.0 - MÓDULO 09: SEEDS (DATOS INICIALES)
 -- =============================================================================
@@ -2969,28 +3525,34 @@ INSERT INTO associate_profiles (user_id, level_id, contact_person, contact_email
 ON CONFLICT (user_id) DO NOTHING;
 
 -- =============================================================================
--- PRÉSTAMOS DE EJEMPLO (4 préstamos críticos)
+-- PRÉSTAMOS DE EJEMPLO (5 préstamos con diferentes plazos)
 -- =============================================================================
+-- ⭐ V2.0: Ejemplos con plazos flexibles: 6, 12, 18 y 24 quincenas
 INSERT INTO loans (id, user_id, associate_user_id, amount, interest_rate, commission_rate, term_biweeks, status_id, created_at, updated_at) VALUES
--- Préstamo 1: Aprobado 7 enero → Primer pago 15 enero
+-- Préstamo 1: Plazo 12 quincenas (6 meses) - Caso más común
 (1, 4, 3, 100000.00, 2.5, 2.5, 12, 1, '2025-01-07 00:00:00+00', '2025-01-07 00:00:00+00'),
--- Préstamo 2: Aprobado 8 febrero → Primer pago último día febrero
-(2, 5, 8, 75000.00, 3.0, 3.0, 8, 1, '2025-02-08 00:00:00+00', '2025-02-08 00:00:00+00'),
--- Préstamo 3: Aprobado 23 febrero → Primer pago 15 marzo
-(3, 6, 3, 50000.00, 2.0, 2.0, 6, 1, '2025-02-23 00:00:00+00', '2025-02-23 00:00:00+00'),
--- Préstamo 4: Completado (ejemplo histórico)
-(4, 1000, NULL, 25000.00, 1.5, 0.0, 4, 4, '2024-12-07 00:00:00+00', '2024-12-07 00:00:00+00')
+-- Préstamo 2: Plazo 6 quincenas (3 meses) - Plazo corto
+(2, 5, 8, 50000.00, 3.0, 3.0, 6, 1, '2025-02-08 00:00:00+00', '2025-02-08 00:00:00+00'),
+-- Préstamo 3: Plazo 18 quincenas (9 meses) - Plazo medio
+(3, 6, 3, 150000.00, 2.0, 2.0, 18, 1, '2025-02-23 00:00:00+00', '2025-02-23 00:00:00+00'),
+-- Préstamo 4: Plazo 24 quincenas (12 meses) - Plazo largo
+(4, 1000, 3, 200000.00, 2.5, 2.5, 24, 1, '2025-03-10 00:00:00+00', '2025-03-10 00:00:00+00'),
+-- Préstamo 5: Completado (ejemplo histórico)
+(5, 1000, NULL, 25000.00, 1.5, 0.0, 12, 4, '2024-12-07 00:00:00+00', '2024-12-07 00:00:00+00')
 ON CONFLICT (id) DO NOTHING;
 
 -- Aprobar préstamos (esto dispara generate_payment_schedule)
 UPDATE loans SET status_id = 2, approved_at = '2025-01-07 00:00:00+00', approved_by = 2 WHERE id = 1;
 UPDATE loans SET status_id = 2, approved_at = '2025-02-08 00:00:00+00', approved_by = 2 WHERE id = 2;
 UPDATE loans SET status_id = 2, approved_at = '2025-02-23 00:00:00+00', approved_by = 2 WHERE id = 3;
+UPDATE loans SET status_id = 2, approved_at = '2025-03-10 00:00:00+00', approved_by = 2 WHERE id = 4;
 
 -- Contratos
 INSERT INTO contracts (id, loan_id, start_date, document_number, status_id) VALUES
 (1, 1, '2025-01-07', 'CONT-2025-001', 3),
 (2, 2, '2025-02-08', 'CONT-2025-002', 3),
+(3, 3, '2025-02-23', 'CONT-2025-003', 3),
+(4, 4, '2025-03-10', 'CONT-2025-004', 3)
 (3, 3, '2025-02-23', 'CONT-2025-003', 3),
 (4, 4, '2024-12-07', 'CONT-2024-012', 5)
 ON CONFLICT (id) DO NOTHING;
@@ -3073,3 +3635,574 @@ SELECT setval('beneficiaries_id_seq', COALESCE((SELECT MAX(id) FROM beneficiarie
 -- =============================================================================
 -- FIN MÓDULO 09
 -- =============================================================================
+
+-- =============================================================================
+-- CREDINET DB v2.0.3 - MÓDULO 10: SISTEMA DE PERFILES DE TASA
+-- =============================================================================
+-- Descripción:
+--   Sistema flexible de perfiles de tasa con soporte para múltiples métodos
+--   de cálculo. Permite administración completa de tabla legacy y cálculos
+--   basados en fórmulas matemáticas.
+--
+-- Componentes:
+--   - rate_profiles: Perfiles configurables (legacy, standard, premium, custom)
+--   - legacy_payment_table: Tabla histórica EDITABLE con 28+ montos
+--   - calculate_loan_payment(): Función unificada de cálculo
+--   - generate_loan_summary(): Genera tabla resumen para preview
+--   - generate_amortization_schedule(): Genera tabla de amortización
+--
+-- Versión: 2.0.3
+-- Fecha: 2025-11-04
+-- =============================================================================
+
+-- =============================================================================
+-- TABLA 1: PERFILES DE TASA (Dos Tasas Independientes)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS rate_profiles (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    
+    -- Tipo de cálculo: 'table_lookup' (busca en legacy_payment_table) o 'formula' (usa las dos tasas)
+    calculation_type VARCHAR(20) NOT NULL CHECK (calculation_type IN ('table_lookup', 'formula')),
+    
+    -- ⭐ LAS DOS TASAS INDEPENDIENTES
+    -- Tasa de INTERÉS al CLIENTE (lo que paga sobre el capital)
+    interest_rate_percent DECIMAL(5,3),  -- Ejemplo: 4.250 = 4.25% quincenal
+    
+    -- Tasa de COMISIÓN al ASOCIADO (lo que cobra la empresa)
+    commission_rate_percent DECIMAL(5,3),  -- Ejemplo: 2.500 = 2.5% sobre cada pago
+    
+    -- Configuración UI
+    enabled BOOLEAN DEFAULT true,
+    is_recommended BOOLEAN DEFAULT false,  -- Destacar en interfaz
+    display_order INTEGER DEFAULT 0,  -- Orden de aparición
+    
+    -- Límites opcionales
+    min_amount DECIMAL(12,2),
+    max_amount DECIMAL(12,2),
+    valid_terms INT[],  -- Array de plazos permitidos: [6, 12, 18, 24] o NULL = todos
+    
+    -- Auditoría
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER REFERENCES users(id),
+    updated_by INTEGER REFERENCES users(id)
+);
+
+COMMENT ON TABLE rate_profiles IS 'Perfiles de tasa configurables con DOS TASAS independientes. Admin puede crear, editar, habilitar/deshabilitar perfiles.';
+COMMENT ON COLUMN rate_profiles.code IS 'Código único interno. Ejemplos: legacy, standard, premium, custom_vip.';
+COMMENT ON COLUMN rate_profiles.calculation_type IS 'Método de cálculo: table_lookup (busca en legacy_payment_table) o formula (usa las dos tasas fijas).';
+COMMENT ON COLUMN rate_profiles.interest_rate_percent IS 'Tasa de INTERÉS quincenal que paga el CLIENTE sobre el capital. Ejemplo: 4.250 = 4.25%. NULL para perfil legacy (usa tabla).';
+COMMENT ON COLUMN rate_profiles.commission_rate_percent IS 'Tasa de COMISIÓN que cobra la empresa al ASOCIADO sobre cada pago del cliente. Ejemplo: 2.500 = 2.5%. NULL para perfil legacy o usa default 2.5%.';
+COMMENT ON COLUMN rate_profiles.is_recommended IS 'Si TRUE, este perfil aparece destacado como "Recomendado" en UI.';
+COMMENT ON COLUMN rate_profiles.valid_terms IS 'Array de plazos permitidos en quincenas. NULL = permite cualquier plazo.';
+
+CREATE INDEX idx_rate_profiles_code ON rate_profiles(code);
+CREATE INDEX idx_rate_profiles_enabled ON rate_profiles(enabled) WHERE enabled = true;
+CREATE INDEX idx_rate_profiles_display ON rate_profiles(display_order);
+
+-- Foreign Key desde loans hacia rate_profiles
+ALTER TABLE loans ADD CONSTRAINT fk_loans_profile_code 
+    FOREIGN KEY (profile_code) REFERENCES rate_profiles(code) 
+    ON DELETE SET NULL;
+
+COMMENT ON COLUMN loans.profile_code IS 'Código del perfil de tasa usado para este préstamo. NULL si se usaron tasas manuales.';
+
+-- =============================================================================
+-- TABLA 2: TABLA LEGACY DE PAGOS (EDITABLE)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS legacy_payment_table (
+    id SERIAL PRIMARY KEY,
+    amount DECIMAL(12,2) NOT NULL,
+    biweekly_payment DECIMAL(10,2) NOT NULL,
+    term_biweeks INTEGER NOT NULL DEFAULT 12,
+    
+    -- Campos calculados automáticamente
+    total_payment DECIMAL(12,2) GENERATED ALWAYS AS (biweekly_payment * term_biweeks) STORED,
+    total_interest DECIMAL(12,2) GENERATED ALWAYS AS ((biweekly_payment * term_biweeks) - amount) STORED,
+    effective_rate_percent DECIMAL(5,2) GENERATED ALWAYS AS (
+        ROUND((((biweekly_payment * term_biweeks) - amount) / amount * 100)::NUMERIC, 2)
+    ) STORED,
+    biweekly_rate_percent DECIMAL(5,3) GENERATED ALWAYS AS (
+        ROUND((((biweekly_payment * term_biweeks) - amount) / amount / term_biweeks * 100)::NUMERIC, 3)
+    ) STORED,
+    
+    -- Auditoría
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by INTEGER REFERENCES users(id),
+    updated_by INTEGER REFERENCES users(id),
+    
+    -- Constraints
+    CONSTRAINT uq_legacy_amount_term UNIQUE (amount, term_biweeks),
+    CONSTRAINT check_legacy_amount_positive CHECK (amount > 0),
+    CONSTRAINT check_legacy_payment_positive CHECK (biweekly_payment > 0),
+    CONSTRAINT check_legacy_term_valid CHECK (term_biweeks BETWEEN 1 AND 52)
+);
+
+COMMENT ON TABLE legacy_payment_table IS 'Tabla histórica de pagos quincenales. TOTALMENTE EDITABLE por admin. Permite agregar montos como $7,500, $12,350, etc.';
+COMMENT ON COLUMN legacy_payment_table.amount IS 'Monto del préstamo (capital). Debe ser único para cada plazo.';
+COMMENT ON COLUMN legacy_payment_table.biweekly_payment IS 'Pago quincenal fijo para este monto. Admin puede editarlo.';
+COMMENT ON COLUMN legacy_payment_table.effective_rate_percent IS 'Tasa efectiva total calculada automáticamente.';
+COMMENT ON COLUMN legacy_payment_table.biweekly_rate_percent IS 'Tasa quincenal promedio calculada automáticamente.';
+
+CREATE INDEX idx_legacy_amount ON legacy_payment_table(amount);
+CREATE INDEX idx_legacy_term ON legacy_payment_table(term_biweeks);
+CREATE UNIQUE INDEX idx_legacy_amount_term_unique ON legacy_payment_table(amount, term_biweeks);
+
+-- =============================================================================
+-- TRIGGER: Actualizar updated_at en legacy_payment_table
+-- =============================================================================
+CREATE OR REPLACE FUNCTION update_legacy_payment_table_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_legacy_payment_table_updated_at
+BEFORE UPDATE ON legacy_payment_table
+FOR EACH ROW
+EXECUTE FUNCTION update_legacy_payment_table_timestamp();
+
+-- =============================================================================
+-- FUNCIÓN 1: calculate_loan_payment - Cálculo Unificado
+-- =============================================================================
+-- =============================================================================
+-- FUNCIÓN 1: calculate_loan_payment - Calcula con las DOS TASAS
+-- =============================================================================
+CREATE OR REPLACE FUNCTION calculate_loan_payment(
+    p_amount DECIMAL(12,2),
+    p_term_biweeks INT,
+    p_profile_code VARCHAR(50)
+) RETURNS TABLE (
+    profile_code VARCHAR(50),
+    profile_name VARCHAR(100),
+    calculation_method VARCHAR(20),
+    
+    -- ⭐ LAS DOS TASAS del perfil
+    interest_rate_percent DECIMAL(5,3),
+    commission_rate_percent DECIMAL(5,3),
+    
+    -- Cálculos CLIENTE
+    biweekly_payment DECIMAL(10,2),
+    total_payment DECIMAL(12,2),
+    total_interest DECIMAL(12,2),
+    effective_rate_percent DECIMAL(5,2),
+    
+    -- Cálculos ASOCIADO
+    commission_per_payment DECIMAL(10,2),
+    total_commission DECIMAL(12,2),
+    associate_payment DECIMAL(10,2),
+    associate_total DECIMAL(12,2)
+) AS $$
+DECLARE
+    v_profile RECORD;
+    v_legacy_entry RECORD;
+    v_factor DECIMAL(10,6);
+    v_total DECIMAL(12,2);
+    v_payment DECIMAL(10,2);
+    v_commission_per_payment DECIMAL(10,2);
+BEGIN
+    -- Obtener perfil con LAS DOS TASAS
+    SELECT * INTO v_profile
+    FROM rate_profiles
+    WHERE code = p_profile_code AND enabled = true;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Perfil de tasa no encontrado o deshabilitado: %', p_profile_code;
+    END IF;
+    
+    -- MÉTODO 1: Table Lookup (perfil legacy)
+    IF v_profile.calculation_type = 'table_lookup' THEN
+        SELECT * INTO v_legacy_entry
+        FROM legacy_payment_table
+        WHERE amount = p_amount AND term_biweeks = p_term_biweeks;
+        
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Monto % no encontrado en tabla legacy para plazo %Q', p_amount, p_term_biweeks;
+        END IF;
+        
+        v_payment := v_legacy_entry.biweekly_payment;
+        v_total := v_legacy_entry.total_payment;
+        
+        -- Para legacy, usar comisión del perfil o default 2.5%
+        v_commission_per_payment := v_payment * (COALESCE(v_profile.commission_rate_percent, 2.5) / 100);
+        
+        RETURN QUERY SELECT
+            v_profile.code,
+            v_profile.name,
+            v_profile.calculation_type,
+            
+            v_legacy_entry.biweekly_rate_percent AS interest_rate,
+            COALESCE(v_profile.commission_rate_percent, 2.5) AS commission_rate,
+            
+            v_payment,
+            v_total,
+            v_legacy_entry.total_interest,
+            v_legacy_entry.effective_rate_percent,
+            
+            ROUND(v_commission_per_payment, 2),
+            ROUND(v_commission_per_payment * p_term_biweeks, 2),
+            ROUND(v_payment - v_commission_per_payment, 2),
+            ROUND((v_payment - v_commission_per_payment) * p_term_biweeks, 2);
+        
+        RETURN;
+    END IF;
+    
+    -- MÉTODO 2: Formula (perfiles transition, standard, premium, custom)
+    IF v_profile.calculation_type = 'formula' THEN
+        IF v_profile.interest_rate_percent IS NULL THEN
+            RAISE EXCEPTION 'Perfil % tipo formula requiere interest_rate_percent configurado', p_profile_code;
+        END IF;
+        
+        IF v_profile.commission_rate_percent IS NULL THEN
+            RAISE EXCEPTION 'Perfil % tipo formula requiere commission_rate_percent configurado', p_profile_code;
+        END IF;
+        
+        -- Calcular CLIENTE (interés simple)
+        v_factor := 1 + (v_profile.interest_rate_percent / 100) * p_term_biweeks;
+        v_total := p_amount * v_factor;
+        v_payment := v_total / p_term_biweeks;
+        
+        -- Calcular ASOCIADO (comisión sobre pago)
+        v_commission_per_payment := v_payment * (v_profile.commission_rate_percent / 100);
+        
+        RETURN QUERY SELECT
+            v_profile.code,
+            v_profile.name,
+            v_profile.calculation_type,
+            
+            v_profile.interest_rate_percent,
+            v_profile.commission_rate_percent,
+            
+            ROUND(v_payment, 2) AS biweekly_payment,
+            ROUND(v_total, 2) AS total_payment,
+            ROUND(v_total - p_amount, 2) AS total_interest,
+            ROUND(((v_total - p_amount) / p_amount * 100)::NUMERIC, 2) AS effective_rate,
+            
+            ROUND(v_commission_per_payment, 2),
+            ROUND(v_commission_per_payment * p_term_biweeks, 2),
+            ROUND(v_payment - v_commission_per_payment, 2),
+            ROUND((v_payment - v_commission_per_payment) * p_term_biweeks, 2);
+        
+        RETURN;
+    END IF;
+    
+    RAISE EXCEPTION 'Tipo de cálculo no soportado: %', v_profile.calculation_type;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+COMMENT ON FUNCTION calculate_loan_payment IS 
+'Calcula pago quincenal según perfil. Devuelve LAS DOS TASAS (interest + commission) y todos los cálculos para cliente y asociado. Soporta table_lookup (busca en legacy_payment_table) y formula (interés simple).';
+
+-- =============================================================================
+-- FUNCIÓN 2: generate_loan_summary - Tabla Resumen (Como en foto)
+-- =============================================================================
+CREATE OR REPLACE FUNCTION generate_loan_summary(
+    p_amount DECIMAL(12,2),
+    p_term_biweeks INT,
+    p_interest_rate DECIMAL(5,3),
+    p_commission_rate DECIMAL(5,2)
+) RETURNS TABLE (
+    -- Datos básicos
+    capital DECIMAL(12,2),
+    plazo_quincenas INTEGER,
+    
+    -- Tasas
+    tasa_interes_quincenal DECIMAL(5,3),
+    tasa_comision DECIMAL(5,2),
+    
+    -- Cálculos CLIENTE (quien pide el préstamo)
+    pago_quincenal_cliente DECIMAL(10,2),
+    pago_total_cliente DECIMAL(12,2),
+    interes_total_cliente DECIMAL(12,2),
+    tasa_efectiva_cliente DECIMAL(5,2),
+    
+    -- Cálculos SOCIO (Asociado que gestiona)
+    comision_por_pago DECIMAL(10,2),
+    comision_total_socio DECIMAL(12,2),
+    pago_quincenal_socio DECIMAL(10,2),
+    pago_total_socio DECIMAL(12,2)
+) AS $$
+DECLARE
+    v_factor DECIMAL(10,6);
+    v_total_cliente DECIMAL(12,2);
+    v_pago_q_cliente DECIMAL(10,2);
+    v_interes_cliente DECIMAL(12,2);
+    v_comision_por_pago DECIMAL(10,2);
+    v_comision_total DECIMAL(12,2);
+    v_pago_q_socio DECIMAL(10,2);
+BEGIN
+    -- Calcular CLIENTE (Interés Simple)
+    v_factor := 1 + (p_interest_rate / 100) * p_term_biweeks;
+    v_total_cliente := p_amount * v_factor;
+    v_pago_q_cliente := v_total_cliente / p_term_biweeks;
+    v_interes_cliente := v_total_cliente - p_amount;
+    
+    -- Calcular SOCIO (Comisión sobre pago del cliente)
+    v_comision_por_pago := v_pago_q_cliente * (p_commission_rate / 100);
+    v_comision_total := v_comision_por_pago * p_term_biweeks;
+    v_pago_q_socio := v_pago_q_cliente - v_comision_por_pago;
+    
+    RETURN QUERY SELECT
+        p_amount AS capital,
+        p_term_biweeks AS plazo_quincenas,
+        
+        p_interest_rate AS tasa_interes_quincenal,
+        p_commission_rate AS tasa_comision,
+        
+        ROUND(v_pago_q_cliente, 2) AS pago_quincenal_cliente,
+        ROUND(v_total_cliente, 2) AS pago_total_cliente,
+        ROUND(v_interes_cliente, 2) AS interes_total_cliente,
+        ROUND(((v_interes_cliente / p_amount * 100)::NUMERIC), 2) AS tasa_efectiva_cliente,
+        
+        ROUND(v_comision_por_pago, 2) AS comision_por_pago,
+        ROUND(v_comision_total, 2) AS comision_total_socio,
+        ROUND(v_pago_q_socio, 2) AS pago_quincenal_socio,
+        ROUND(v_pago_q_socio * p_term_biweeks, 2) AS pago_total_socio;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+COMMENT ON FUNCTION generate_loan_summary IS 'Genera tabla resumen completa con cálculos de CLIENTE y SOCIO (asociado). Muestra: pagos quincenales, totales, intereses, comisiones. Similar a tabla "Importe de prestamos" de la UI.';
+
+-- =============================================================================
+-- FUNCIÓN 3: generate_amortization_schedule - Tabla de Amortización
+-- =============================================================================
+CREATE OR REPLACE FUNCTION generate_amortization_schedule(
+    p_amount DECIMAL(12,2),
+    p_biweekly_payment DECIMAL(10,2),
+    p_term_biweeks INT,
+    p_commission_rate DECIMAL(5,2),
+    p_start_date DATE DEFAULT CURRENT_DATE
+) RETURNS TABLE (
+    periodo INTEGER,
+    fecha_pago DATE,
+    pago_cliente DECIMAL(10,2),
+    interes_cliente DECIMAL(10,2),
+    capital_cliente DECIMAL(10,2),
+    saldo_pendiente DECIMAL(12,2),
+    comision_socio DECIMAL(10,2),
+    pago_socio DECIMAL(10,2)
+) AS $$
+DECLARE
+    v_current_date DATE;
+    v_balance DECIMAL(12,2);
+    v_total_interest DECIMAL(12,2);
+    v_period_interest DECIMAL(10,2);
+    v_period_principal DECIMAL(10,2);
+    v_commission DECIMAL(10,2);
+    v_payment_to_associate DECIMAL(10,2);
+    v_is_day_15 BOOLEAN;
+BEGIN
+    -- Inicializar
+    v_balance := p_amount;
+    v_total_interest := (p_biweekly_payment * p_term_biweeks) - p_amount;
+    v_current_date := p_start_date;
+    
+    -- Generar cronograma completo
+    FOR v_period IN 1..p_term_biweeks LOOP
+        -- Calcular interés y capital del período (distribución proporcional)
+        v_period_interest := v_total_interest / p_term_biweeks;
+        v_period_principal := p_biweekly_payment - v_period_interest;
+        
+        -- Actualizar saldo
+        v_balance := v_balance - v_period_principal;
+        
+        -- Evitar saldo negativo por redondeo
+        IF v_balance < 0.01 THEN
+            v_balance := 0;
+        END IF;
+        
+        -- Calcular comisión del asociado
+        v_commission := p_biweekly_payment * (p_commission_rate / 100);
+        v_payment_to_associate := p_biweekly_payment - v_commission;
+        
+        -- Retornar fila
+        RETURN QUERY SELECT
+            v_period,
+            v_current_date,
+            p_biweekly_payment,
+            ROUND(v_period_interest, 2),
+            ROUND(v_period_principal, 2),
+            ROUND(v_balance, 2),
+            ROUND(v_commission, 2),
+            ROUND(v_payment_to_associate, 2);
+        
+        -- Calcular siguiente fecha (alternancia día 15 ↔ último día del mes)
+        v_is_day_15 := EXTRACT(DAY FROM v_current_date) = 15;
+        
+        IF v_is_day_15 THEN
+            -- Si es día 15 → siguiente es último día del mes actual
+            v_current_date := (DATE_TRUNC('month', v_current_date) + INTERVAL '1 month' - INTERVAL '1 day')::DATE;
+        ELSE
+            -- Si es último día → siguiente es día 15 del mes siguiente
+            v_current_date := MAKE_DATE(
+                EXTRACT(YEAR FROM v_current_date + INTERVAL '1 month')::INTEGER,
+                EXTRACT(MONTH FROM v_current_date + INTERVAL '1 month')::INTEGER,
+                15
+            );
+        END IF;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+COMMENT ON FUNCTION generate_amortization_schedule IS 'Genera tabla de amortización completa con fechas, pagos del cliente, interés, capital, saldo pendiente, comisión del asociado y pago al asociado. Usa lógica de doble calendario (día 15 y último día del mes).';
+
+-- =============================================================================
+-- INSERTAR PERFILES INICIALES (Con las DOS TASAS)
+-- =============================================================================
+INSERT INTO rate_profiles (
+    code, 
+    name, 
+    description, 
+    calculation_type, 
+    interest_rate_percent,      -- ⭐ Tasa al CLIENTE
+    commission_rate_percent,    -- ⭐ Tasa de COMISIÓN
+    enabled, 
+    is_recommended, 
+    display_order, 
+    valid_terms
+)
+VALUES
+-- Perfil 1: Tabla Legacy (editable)
+('legacy', 
+ 'Tabla Histórica v2.0', 
+ 'Sistema actual con montos predefinidos en tabla. Totalmente editable por admin. Permite agregar nuevos montos como $7,500, $12,350, etc.',
+ 'table_lookup', 
+ NULL,    -- No usa tasa fija, consulta tabla
+ 2.500,   -- Comisión default 2.5%
+ true, 
+ false, 
+ 1,
+ ARRAY[12]),  -- Solo 12 quincenas por ahora
+
+-- Perfil 2: Transición Suave (3.75% + 2.5%)
+('transition', 
+ 'Transición Suave 3.75%', 
+ 'Tasa reducida para facilitar adopción gradual. Cliente ahorra vs tabla actual. Ideal para primeros 6 meses de migración.',
+ 'formula', 
+ 3.750,   -- Interés al cliente
+ 2.500,   -- Comisión al asociado
+ true, 
+ false, 
+ 2,
+ ARRAY[6,12,18,24]),
+
+-- Perfil 3: Estándar (4.25% + 2.5%) - RECOMENDADO
+('standard', 
+ 'Estándar 4.25% - Recomendado', 
+ 'Balance óptimo entre competitividad y rentabilidad. Tasa ~51% total (12Q), similar al promedio actual. Recomendado para mayoría de casos.',
+ 'formula', 
+ 4.250,   -- Interés al cliente
+ 2.500,   -- Comisión al asociado
+ true, 
+ true,    -- ⭐ RECOMENDADO
+ 3,
+ ARRAY[3,6,9,12,15,18,21,24,30,36]),
+
+-- Perfil 4: Premium (4.5% + 2.5%)
+('premium', 
+ 'Premium 4.5%', 
+ 'Tasa objetivo con máxima rentabilidad (54% total en 12Q). Mantiene competitividad vs mercado (60-80%). Activar desde mes 7+ de migración.',
+ 'formula', 
+ 4.500,   -- Interés al cliente
+ 2.500,   -- Comisión al asociado
+ false,   -- Deshabilitado inicialmente
+ false, 
+ 4,
+ ARRAY[3,6,9,12,15,18,21,24,30,36]),
+
+-- Perfil 5: Personalizado (tasa variable + 2.5%)
+('custom', 
+ 'Personalizado', 
+ 'Tasa ajustable manualmente para casos especiales. Requiere aprobación de gerente/admin. Rango permitido: 2.0% - 6.0% quincenal.',
+ 'formula', 
+ NULL,    -- Se define al momento
+ 2.500,   -- Comisión estándar
+ true, 
+ false, 
+ 5,
+ NULL);   -- Permite cualquier plazo
+
+-- =============================================================================
+-- INSERTAR DATOS LEGACY (28 montos históricos @ 12 quincenas)
+-- =============================================================================
+INSERT INTO legacy_payment_table (amount, biweekly_payment, term_biweeks) VALUES
+(3000, 392, 12),
+(4000, 510, 12),
+(5000, 633, 12),
+(6000, 752, 12),
+(7000, 882, 12),
+(8000, 1006, 12),
+(9000, 1131, 12),
+(10000, 1255, 12),
+(11000, 1385, 12),
+(12000, 1504, 12),
+(13000, 1634, 12),
+(14000, 1765, 12),
+(15000, 1888, 12),
+(16000, 2012, 12),
+(17000, 2137, 12),
+(18000, 2262, 12),
+(19000, 2386, 12),
+(20000, 2510, 12),
+(21000, 2640, 12),
+(22000, 2759, 12),
+(23000, 2889, 12),
+(24000, 3020, 12),
+(25000, 3143, 12),
+(26000, 3267, 12),
+(27000, 3392, 12),
+(28000, 3517, 12),
+(29000, 3641, 12),
+(30000, 3765, 12);
+
+-- =============================================================================
+-- EJEMPLOS DE USO
+-- =============================================================================
+
+-- Ejemplo 1: Calcular con perfil legacy (busca en tabla)
+-- SELECT * FROM calculate_loan_payment(22000, 12, 'legacy');
+
+-- Ejemplo 2: Calcular con perfil standard (fórmula 4.25%)
+-- SELECT * FROM calculate_loan_payment(22000, 12, 'standard');
+
+-- Ejemplo 3: Calcular con tasa personalizada
+-- SELECT * FROM calculate_loan_payment(22000, 12, 'custom', 3.85);
+
+-- Ejemplo 4: Generar tabla resumen completa (como en foto)
+-- SELECT * FROM generate_loan_summary(
+--     22000,           -- capital
+--     12,              -- plazo
+--     4.25,            -- tasa interés cliente (quincenal)
+--     2.5              -- tasa comisión socio
+-- );
+
+-- Ejemplo 5: Generar tabla de amortización
+-- SELECT * FROM generate_amortization_schedule(
+--     22000,           -- capital
+--     2765,            -- pago quincenal
+--     12,              -- plazo
+--     2.5,             -- tasa comisión
+--     '2025-11-15'     -- fecha inicio
+-- );
+
+-- Ejemplo 6: Comparar múltiples perfiles
+-- SELECT 
+--     'Legacy' as perfil, * FROM calculate_loan_payment(22000, 12, 'legacy')
+-- UNION ALL
+-- SELECT 
+--     'Transición' as perfil, * FROM calculate_loan_payment(22000, 12, 'transition')
+-- UNION ALL
+-- SELECT 
+--     'Estándar' as perfil, * FROM calculate_loan_payment(22000, 12, 'standard')
+-- UNION ALL
+-- SELECT 
+--     'Premium' as perfil, * FROM calculate_loan_payment(22000, 12, 'premium');
+
+COMMENT ON SCHEMA public IS 'Schema público de CrediCuenta v2.0.3 con sistema de perfiles de tasa flexible.';
+

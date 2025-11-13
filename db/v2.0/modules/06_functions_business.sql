@@ -1,91 +1,175 @@
 -- =============================================================================
--- CREDINET DB v2.0 - MÓDULO 06: FUNCIONES DE NEGOCIO (NIVEL 2-3)
+-- CREDINET DB v2.0.2 - MÓDULO 06: FUNCIONES DE NEGOCIO (NIVEL 2-3)
 -- =============================================================================
 -- Descripción:
 --   Funciones de lógica de negocio con dependencias complejas.
---   Incluye funciones críticas de migraciones 08 y 09.
+--   Incluye funciones críticas de migraciones 08 y 09 + mejoras v2.0.2.
 --
--- Funciones incluidas:
+-- Funciones incluidas (6 total):
 --   - generate_payment_schedule() ⭐ CRÍTICA (genera cronograma al aprobar)
 --   - close_period_and_accumulate_debt() ⭐ MIGRACIÓN 08 v3 (cierre de período)
 --   - report_defaulted_client() ⭐ MIGRACIÓN 09 (reportar moroso)
 --   - approve_defaulted_client_report() ⭐ MIGRACIÓN 09 (aprobar reporte)
 --   - renew_loan() (renovación de préstamos)
+--   - update_statement_on_payment() ⭐ v2.0.2 (actualización + liberación de crédito)
 --
--- Versión: 2.0.0
--- Fecha: 2025-10-30
+-- Versión: 2.0.2
+-- Fecha: 2025-11-01
 -- =============================================================================
 
 -- =============================================================================
 -- FUNCIÓN 1: generate_payment_schedule ⭐ TRIGGER CRÍTICO
 -- =============================================================================
+-- ✅ VERSIÓN ACTUALIZADA - Sprint 6 - Migración 007
+-- Genera cronograma completo con desglose financiero usando valores pre-calculados
 CREATE OR REPLACE FUNCTION generate_payment_schedule()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $function$
 DECLARE
     v_approval_date DATE;
     v_first_payment_date DATE;
-    v_current_payment_date DATE;
-    v_payment_amount DECIMAL(12,2);
-    v_payment_count INTEGER;
-    v_period_id INTEGER;
-    v_total_inserted INTEGER := 0;
-    v_start_time TIMESTAMP;
-    v_end_time TIMESTAMP;
     v_approved_status_id INTEGER;
     v_pending_status_id INTEGER;
+    v_amortization_row RECORD;
+    v_period_id INTEGER;
+    v_total_inserted INTEGER := 0;
+    v_sum_expected DECIMAL(12,2) := 0;
+    v_start_time TIMESTAMP;
+    v_end_time TIMESTAMP;
 BEGIN
+    -- ==========================================================================
+    -- VALIDACIÓN INICIAL: Verificar que este evento es una aprobación
+    -- ==========================================================================
+    
     -- Obtener IDs de estados
-    SELECT id INTO v_approved_status_id FROM loan_statuses WHERE name = 'APPROVED';
-    SELECT id INTO v_pending_status_id FROM payment_statuses WHERE name = 'PENDING';
+    SELECT id INTO v_approved_status_id 
+    FROM loan_statuses 
+    WHERE name = 'APPROVED';
+    
+    SELECT id INTO v_pending_status_id 
+    FROM payment_statuses 
+    WHERE name = 'PENDING';
+    
+    IF v_approved_status_id IS NULL THEN
+        RAISE EXCEPTION 'CRITICAL: loan_statuses.APPROVED no encontrado';
+    END IF;
+    
+    IF v_pending_status_id IS NULL THEN
+        RAISE EXCEPTION 'CRITICAL: payment_statuses.PENDING no encontrado';
+    END IF;
     
     -- Solo ejecutar si el préstamo acaba de ser aprobado
-    IF NEW.status_id = v_approved_status_id AND (OLD.status_id IS NULL OR OLD.status_id != v_approved_status_id) THEN
-        
+    IF NEW.status_id = v_approved_status_id 
+       AND (OLD.status_id IS NULL OR OLD.status_id != v_approved_status_id) 
+    THEN
         v_start_time := CLOCK_TIMESTAMP();
         
-        -- Validaciones
+        -- ======================================================================
+        -- VALIDACIONES DE NEGOCIO
+        -- ======================================================================
+        
+        -- Validar: approved_at debe existir
         IF NEW.approved_at IS NULL THEN
-            RAISE EXCEPTION 'CRITICAL: Préstamo % marcado como APPROVED pero approved_at es NULL', NEW.id;
+            RAISE EXCEPTION 'CRITICAL: Préstamo % marcado como APPROVED pero approved_at es NULL', 
+                NEW.id;
         END IF;
         
+        -- Validar: term_biweeks válido
         IF NEW.term_biweeks IS NULL OR NEW.term_biweeks <= 0 THEN
-            RAISE EXCEPTION 'CRITICAL: Préstamo % tiene term_biweeks inválido: %', NEW.id, NEW.term_biweeks;
+            RAISE EXCEPTION 'CRITICAL: Préstamo % tiene term_biweeks inválido: %', 
+                NEW.id, NEW.term_biweeks;
         END IF;
+        
+        -- ✅ CRÍTICO: Validar que los campos calculados existen
+        IF NEW.biweekly_payment IS NULL THEN
+            RAISE EXCEPTION 'CRITICAL: Préstamo % no tiene biweekly_payment calculado. El préstamo debe ser creado con profile_code o tener valores calculados manualmente.',
+                NEW.id;
+        END IF;
+        
+        IF NEW.total_payment IS NULL THEN
+            RAISE EXCEPTION 'CRITICAL: Préstamo % no tiene total_payment calculado.',
+                NEW.id;
+        END IF;
+        
+        IF NEW.commission_per_payment IS NULL THEN
+            RAISE WARNING 'Préstamo % no tiene commission_per_payment. Se usará 0 por defecto.',
+                NEW.id;
+        END IF;
+        
+        -- ======================================================================
+        -- CALCULAR PRIMERA FECHA DE PAGO USANDO EL ORÁCULO
+        -- ======================================================================
         
         v_approval_date := NEW.approved_at::DATE;
-        v_payment_amount := ROUND(NEW.amount / NEW.term_biweeks, 2);
         
-        RAISE NOTICE '🎯 Generando schedule para préstamo %: Monto=%, Plazo=% quincenas, Aprobado=%',
-            NEW.id, NEW.amount, NEW.term_biweeks, v_approval_date;
+        RAISE NOTICE '🎯 Generando schedule para préstamo %:', NEW.id;
+        RAISE NOTICE '   - Capital: $%', NEW.amount;
+        RAISE NOTICE '   - Plazo: % quincenas', NEW.term_biweeks;
+        RAISE NOTICE '   - Pago quincenal: $%', NEW.biweekly_payment;
+        RAISE NOTICE '   - Total a pagar: $%', NEW.total_payment;
+        RAISE NOTICE '   - Aprobado: %', v_approval_date;
         
-        -- Calcular primera fecha usando el oráculo
+        -- ✅ Usar el oráculo del doble calendario
         v_first_payment_date := calculate_first_payment_date(v_approval_date);
         
         RAISE NOTICE '📅 Primera fecha de pago: % (aprobado el %)', 
             v_first_payment_date, v_approval_date;
         
-        v_current_payment_date := v_first_payment_date;
+        -- ======================================================================
+        -- GENERAR CRONOGRAMA COMPLETO CON DESGLOSE
+        -- ======================================================================
         
-        -- Generar cronograma completo
-        FOR v_payment_count IN 1..NEW.term_biweeks LOOP
+        -- ✅ Llamar a generate_amortization_schedule() para obtener desglose completo
+        FOR v_amortization_row IN
+            SELECT 
+                periodo,              -- Número de pago (1, 2, 3, ...)
+                fecha_pago,           -- Fecha de vencimiento (15 o último día)
+                pago_cliente,         -- Monto esperado (capital + interés)
+                interes_cliente,      -- Interés del periodo
+                capital_cliente,      -- Abono a capital del periodo
+                saldo_pendiente,      -- Saldo restante después del pago
+                comision_socio,       -- Comisión del asociado
+                pago_socio            -- Pago neto al asociado
+            FROM generate_amortization_schedule(
+                NEW.amount,                           -- Capital del préstamo
+                NEW.biweekly_payment,                 -- ✅ Pago quincenal calculado
+                NEW.term_biweeks,                     -- Plazo en quincenas
+                COALESCE(NEW.commission_rate, 0),     -- ✅ Tasa de comisión en porcentaje
+                v_first_payment_date                  -- ✅ Primera fecha del oráculo
+            )
+        LOOP
+            -- ==================================================================
+            -- BUSCAR PERIODO ADMINISTRATIVO (cut_period)
+            -- ==================================================================
             
-            -- Buscar el período de corte apropiado
-            SELECT id INTO v_period_id 
-            FROM cut_periods 
-            WHERE period_start_date <= v_current_payment_date 
-              AND period_end_date >= v_current_payment_date 
+            -- Buscar el periodo administrativo que contiene esta fecha de vencimiento
+            SELECT id INTO v_period_id
+            FROM cut_periods
+            WHERE period_start_date <= v_amortization_row.fecha_pago
+              AND period_end_date >= v_amortization_row.fecha_pago
             ORDER BY period_start_date DESC
             LIMIT 1;
             
             IF v_period_id IS NULL THEN
-                RAISE WARNING 'No se encontró cut_period para fecha %. Insertando con period_id = NULL', 
-                    v_current_payment_date;
+                RAISE WARNING 'No se encontró cut_period para fecha %. Insertando pago con period_id = NULL. Verifique que cut_periods estén creados para todo el año.',
+                    v_amortization_row.fecha_pago;
             END IF;
             
-            -- Insertar pago
+            -- ==================================================================
+            -- INSERTAR PAGO CON TODOS LOS CAMPOS
+            -- ==================================================================
+            
             INSERT INTO payments (
-                loan_id, 
+                loan_id,
+                payment_number,
+                expected_amount,
                 amount_paid,
+                interest_amount,
+                principal_amount,
+                commission_amount,
+                associate_payment,
+                balance_remaining,
                 payment_date,
                 payment_due_date,
                 is_late,
@@ -94,48 +178,65 @@ BEGIN
                 created_at,
                 updated_at
             ) VALUES (
-                NEW.id,
-                0.00,
-                v_current_payment_date,
-                v_current_payment_date,
-                false,
-                v_pending_status_id, -- Estado inicial: PENDING
-                v_period_id,
-                CURRENT_TIMESTAMP,
-                CURRENT_TIMESTAMP
+                NEW.id,                                    -- FK al préstamo
+                v_amortization_row.periodo,                -- Número secuencial (1, 2, 3, ...)
+                v_amortization_row.pago_cliente,           -- ✅ Monto esperado (con interés)
+                0.00,                                      -- Aún no ha pagado nada
+                v_amortization_row.interes_cliente,        -- ✅ Interés del periodo
+                v_amortization_row.capital_cliente,        -- ✅ Abono a capital
+                v_amortization_row.comision_socio,         -- ✅ Comisión del asociado
+                v_amortization_row.pago_socio,             -- ✅ Pago neto al asociado
+                v_amortization_row.saldo_pendiente,        -- ✅ Saldo restante
+                v_amortization_row.fecha_pago,             -- payment_date inicial = due_date
+                v_amortization_row.fecha_pago,             -- ✅ Fecha de vencimiento
+                false,                                     -- No está atrasado (aún)
+                v_pending_status_id,                       -- Estado: PENDING
+                v_period_id,                               -- ✅ FK al periodo administrativo
+                CURRENT_TIMESTAMP,                         -- created_at
+                CURRENT_TIMESTAMP                          -- updated_at
             );
             
             v_total_inserted := v_total_inserted + 1;
+            v_sum_expected := v_sum_expected + v_amortization_row.pago_cliente;
             
-            -- Calcular siguiente fecha (alternancia día 15 ↔ último día)
-            IF EXTRACT(DAY FROM v_current_payment_date) = 15 THEN
-                v_current_payment_date := (
-                    DATE_TRUNC('month', v_current_payment_date) + INTERVAL '1 month' - INTERVAL '1 day'
-                )::DATE;
-            ELSE
-                v_current_payment_date := MAKE_DATE(
-                    EXTRACT(YEAR FROM v_current_payment_date + INTERVAL '1 month')::INTEGER,
-                    EXTRACT(MONTH FROM v_current_payment_date + INTERVAL '1 month')::INTEGER,
-                    15
-                );
+            -- Log de progreso cada 5 pagos
+            IF v_amortization_row.periodo % 5 = 0 THEN
+                RAISE DEBUG 'Progreso: % de % pagos insertados', 
+                    v_amortization_row.periodo, NEW.term_biweeks;
             END IF;
-            
-            IF v_payment_count % 5 = 0 THEN
-                RAISE DEBUG 'Progreso: % de % pagos insertados', v_payment_count, NEW.term_biweeks;
-            END IF;
-            
         END LOOP;
+        
+        -- ======================================================================
+        -- VALIDACIONES DE CONSISTENCIA FINAL
+        -- ======================================================================
         
         v_end_time := CLOCK_TIMESTAMP();
         
+        -- Validar: Se insertaron todos los pagos esperados
         IF v_total_inserted != NEW.term_biweeks THEN
-            RAISE WARNING 'INCONSISTENCIA: Se insertaron % pagos pero se esperaban %. Préstamo %',
+            RAISE EXCEPTION 'INCONSISTENCIA: Se insertaron % pagos pero se esperaban %. Préstamo %. Revisar generate_amortization_schedule().',
                 v_total_inserted, NEW.term_biweeks, NEW.id;
-        ELSE
-            RAISE NOTICE '✅ Schedule generado: % pagos en % ms',
-                v_total_inserted, 
-                EXTRACT(MILLISECONDS FROM (v_end_time - v_start_time));
         END IF;
+        
+        -- ✅ VALIDAR: SUM(expected_amount) debe ser igual a loans.total_payment
+        -- Tolerancia de $1.00 para errores de redondeo
+        IF ABS(v_sum_expected - NEW.total_payment) > 1.00 THEN
+            RAISE EXCEPTION 'INCONSISTENCIA MATEMÁTICA: SUM(expected_amount) = $% pero loans.total_payment = $%. Diferencia: $%. Préstamo %. Esto indica un error en los cálculos de generate_amortization_schedule().',
+                v_sum_expected, NEW.total_payment, 
+                (v_sum_expected - NEW.total_payment), NEW.id;
+        END IF;
+        
+        -- ======================================================================
+        -- LOG DE ÉXITO
+        -- ======================================================================
+        
+        RAISE NOTICE '✅ Schedule generado exitosamente:';
+        RAISE NOTICE '   - Pagos insertados: %', v_total_inserted;
+        RAISE NOTICE '   - Total esperado: $%', v_sum_expected;
+        RAISE NOTICE '   - Total préstamo: $%', NEW.total_payment;
+        RAISE NOTICE '   - Diferencia: $%', (v_sum_expected - NEW.total_payment);
+        RAISE NOTICE '   - Tiempo: % ms', 
+            EXTRACT(MILLISECONDS FROM (v_end_time - v_start_time));
         
     END IF;
     
@@ -143,14 +244,17 @@ BEGIN
     
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE EXCEPTION 'ERROR al generar payment schedule para préstamo %: % (%)', 
-            NEW.id, SQLERRM, SQLSTATE;
+        -- Log detallado del error
+        RAISE EXCEPTION 'ERROR CRÍTICO al generar payment schedule para préstamo %: % (%). SQLState: %, Context: %',
+            NEW.id, SQLERRM, SQLSTATE, SQLSTATE, 
+            coalesce(PG_EXCEPTION_CONTEXT, 'No context');
         RETURN NULL;
 END;
-$$ LANGUAGE plpgsql;
+$function$;
 
 COMMENT ON FUNCTION generate_payment_schedule() IS 
-'⭐ CRÍTICA: Trigger que genera automáticamente el cronograma completo de pagos quincenales cuando un préstamo es aprobado.';
+'⭐ CRÍTICA: Trigger que genera automáticamente el cronograma completo de pagos quincenales cuando un préstamo es aprobado. 
+✅ VERSIÓN ACTUALIZADA (Sprint 6): Usa valores pre-calculados (biweekly_payment, total_payment) y genera desglose financiero completo.';
 
 -- =============================================================================
 -- FUNCIÓN 2: close_period_and_accumulate_debt ⭐ MIGRACIÓN 08 v3
@@ -501,6 +605,121 @@ $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION renew_loan(INTEGER, DECIMAL, INTEGER, DECIMAL, DECIMAL, INTEGER) IS 
 'Renueva un préstamo existente creando uno nuevo. Calcula automáticamente el saldo pendiente y lo registra en loan_renewals.';
+
+-- =============================================================================
+-- FUNCIÓN 6: update_statement_on_payment ⭐ NUEVO v2.0 - Tracking de Abonos
+-- =============================================================================
+CREATE OR REPLACE FUNCTION update_statement_on_payment()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_total_paid DECIMAL(12,2);
+    v_total_owed DECIMAL(12,2);
+    v_remaining DECIMAL(12,2);
+    v_new_status_id INTEGER;
+    v_statement_status VARCHAR(50);
+    v_associate_profile_id INTEGER;
+    v_cut_period_id INTEGER;
+    v_amount_to_liquidate DECIMAL(12,2);
+BEGIN
+    -- Calcular total pagado hasta ahora (suma de todos los abonos)
+    SELECT COALESCE(SUM(payment_amount), 0)
+    INTO v_total_paid
+    FROM associate_statement_payments
+    WHERE statement_id = NEW.statement_id;
+    
+    -- Obtener total adeudado (comisión + mora) y datos del asociado
+    SELECT 
+        aps.total_commission_owed + aps.late_fee_amount,
+        ap.id,
+        aps.cut_period_id
+    INTO v_total_owed, v_associate_profile_id, v_cut_period_id
+    FROM associate_payment_statements aps
+    JOIN associate_profiles ap ON aps.user_id = ap.user_id
+    WHERE aps.id = NEW.statement_id;
+    
+    IF v_total_owed IS NULL THEN
+        RAISE EXCEPTION 'Statement % no encontrado', NEW.statement_id;
+    END IF;
+    
+    v_remaining := v_total_owed - v_total_paid;
+    
+    -- Determinar nuevo estado según saldo restante
+    IF v_remaining <= 0 THEN
+        -- Pagado completamente (puede haber sobrepago)
+        SELECT id INTO v_new_status_id FROM statement_statuses WHERE name = 'PAID';
+        v_statement_status := 'PAID';
+    ELSIF v_total_paid > 0 AND v_remaining > 0 THEN
+        -- Pago parcial
+        SELECT id INTO v_new_status_id FROM statement_statuses WHERE name = 'PARTIAL_PAID';
+        v_statement_status := 'PARTIAL_PAID';
+    ELSE
+        -- Sin pagos aún
+        v_new_status_id := NULL; -- Mantener estado actual
+        v_statement_status := 'NO_CHANGE';
+    END IF;
+    
+    -- Actualizar statement con totales acumulados
+    IF v_new_status_id IS NOT NULL THEN
+        UPDATE associate_payment_statements
+        SET paid_amount = v_total_paid,
+            paid_date = CASE 
+                WHEN v_remaining <= 0 THEN CURRENT_DATE
+                ELSE paid_date
+            END,
+            status_id = v_new_status_id,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = NEW.statement_id;
+    END IF;
+    
+    -- ⭐ v2.0.2: Liberar crédito automáticamente decrementando debt_balance
+    UPDATE associate_profiles
+    SET debt_balance = GREATEST(debt_balance - NEW.payment_amount, 0),
+        credit_last_updated = CURRENT_TIMESTAMP
+    WHERE id = v_associate_profile_id;
+    
+    -- ⭐ v2.0.2: Liquidar deuda en associate_debt_breakdown (estrategia FIFO)
+    -- Liquidamos registros de deuda hasta cubrir el monto del abono
+    v_amount_to_liquidate := NEW.payment_amount;
+    
+    WITH debt_fifo AS (
+        SELECT 
+            id,
+            amount,
+            SUM(amount) OVER (ORDER BY created_at, id) AS cumulative_amount
+        FROM associate_debt_breakdown
+        WHERE associate_profile_id = v_associate_profile_id
+          AND cut_period_id = v_cut_period_id
+          AND is_liquidated = FALSE
+        ORDER BY created_at, id
+    )
+    UPDATE associate_debt_breakdown
+    SET is_liquidated = TRUE,
+        liquidated_at = CURRENT_TIMESTAMP,
+        liquidation_reference = 'AUTO: Statement payment #' || NEW.id || ' on ' || NEW.payment_date
+    WHERE id IN (
+        SELECT id 
+        FROM debt_fifo
+        WHERE (cumulative_amount - amount) < v_amount_to_liquidate
+    );
+    
+    RAISE NOTICE '💰 Statement #% actualizado: pagado $% de $%, restante $%, estado: %', 
+        NEW.statement_id, v_total_paid, v_total_owed, v_remaining, v_statement_status;
+    
+    RAISE NOTICE '🔓 Crédito liberado: debt_balance -= $% para asociado #%', 
+        NEW.payment_amount, v_associate_profile_id;
+    
+    -- Si hay sobrepago, advertir
+    IF v_remaining < 0 THEN
+        RAISE NOTICE '⚠️  SOBREPAGO detectado en statement #%: $% extra. Considerar crédito a favor.', 
+            NEW.statement_id, ABS(v_remaining);
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION update_statement_on_payment() IS 
+'⭐ v2.0.2: Trigger que actualiza automáticamente el estado de cuenta cuando se registra un abono. Suma todos los abonos, calcula saldo restante, actualiza estado (PARTIAL_PAID o PAID), y LIBERA CRÉDITO automáticamente decrementando debt_balance y marcando associate_debt_breakdown.is_liquidated usando estrategia FIFO.';
 
 -- =============================================================================
 -- FIN MÓDULO 06

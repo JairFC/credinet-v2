@@ -1,0 +1,56 @@
+/* =============================================================================
+   MAIN LAYOUT - PROFESSIONAL DESKTOP DESIGN
+   ============================================================================= */
+
+.main-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0f4f8 0%, #e9ecef 100%);
+}
+
+.main-content {
+  flex: 1;
+  max-width: 1800px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 3.5rem 4.5rem;
+}
+
+.main-footer {
+  background: linear-gradient(to right, #ffffff 0%, #f8f9fa 100%);
+  border-top: 2px solid #e8eef5;
+  padding: 2.5rem 4.5rem;
+  text-align: center;
+  color: #6b7c93;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.main-footer p {
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+/* Tablets */
+@media (max-width: 1024px) {
+  .main-content {
+    padding: 2rem 2rem;
+  }
+
+  .main-footer {
+    padding: 1.75rem 2rem;
+  }
+}
+
+/* Móviles */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1.5rem 1rem;
+  }
+
+  .main-footer {
+    padding: 1.5rem 1rem;
+    font-size: 0.85rem;
+  }
+}

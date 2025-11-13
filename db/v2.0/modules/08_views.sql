@@ -1,11 +1,11 @@
 -- =============================================================================
--- CREDINET DB v2.0 - MÓDULO 08: VISTAS
+-- CREDINET DB v2.0.2 - MÓDULO 08: VISTAS
 -- =============================================================================
 -- Descripción:
 --   Vistas especializadas para consultas comunes del sistema.
---   Todas las vistas provienen de las migraciones 07-12.
+--   Todas las vistas provienen de las migraciones 07-12 + nuevas v2.0.1/v2.0.2.
 --
--- Vistas incluidas:
+-- Vistas incluidas (12 total):
 --   - v_associate_credit_summary ⭐ MIGRACIÓN 07
 --   - v_period_closure_summary ⭐ MIGRACIÓN 08
 --   - v_associate_debt_detailed ⭐ MIGRACIÓN 09
@@ -15,10 +15,18 @@
 --   - v_payment_changes_summary ⭐ MIGRACIÓN 12
 --   - v_recent_payment_changes ⭐ MIGRACIÓN 12
 --   - v_payments_multiple_changes ⭐ MIGRACIÓN 12
+--   - v_associate_credit_complete ⭐ NUEVO v2.0.1 (crédito real con deuda)
+--   - v_statement_payment_history ⭐ NUEVO v2.0.1 (tracking de abonos)
+--   - v_all_associate_payments ⭐ NUEVO v2.0.2 (unificación tipos de pago)
 --
--- Total: 9 vistas
+-- Total: 12 vistas
+-- Versión: 2.0.2
+-- Fecha: 2025-11-01
+-- =============================================================================
+--
+-- Total: 11 vistas
 -- Versión: 2.0.0
--- Fecha: 2025-10-30
+-- Fecha: 2025-10-31
 -- =============================================================================
 
 -- =============================================================================
@@ -313,6 +321,193 @@ ORDER BY COUNT(psh.id) DESC, MAX(psh.changed_at) DESC;
 
 COMMENT ON VIEW v_payments_multiple_changes IS 
 '⭐ MIGRACIÓN 12: Pagos con 3 o más cambios de estado (posibles errores, fraude o correcciones múltiples). Prioridad CRÍTICA para revisión forense.';
+
+-- =============================================================================
+-- VISTA 10: v_associate_credit_complete ⭐ NUEVO v2.0 - Vista Completa de Crédito
+-- =============================================================================
+CREATE OR REPLACE VIEW v_associate_credit_complete AS
+SELECT 
+    ap.id AS associate_profile_id,
+    u.id AS user_id,
+    CONCAT(u.first_name, ' ', u.last_name) AS associate_name,
+    u.email,
+    u.phone_number,
+    al.name AS level,
+    
+    -- Crédito operativo
+    ap.credit_limit,
+    ap.credit_used,
+    ap.credit_available,
+    
+    -- Deuda administrativa
+    ap.debt_balance,
+    
+    -- Crédito REAL disponible (considerando deuda)
+    (ap.credit_available - ap.debt_balance) AS real_available_credit,
+    
+    -- Porcentajes
+    ROUND((ap.credit_used::DECIMAL / NULLIF(ap.credit_limit, 0)) * 100, 2) AS usage_percentage,
+    ROUND((ap.debt_balance::DECIMAL / NULLIF(ap.credit_limit, 0)) * 100, 2) AS debt_percentage,
+    ROUND(((ap.credit_available - ap.debt_balance)::DECIMAL / NULLIF(ap.credit_limit, 0)) * 100, 2) AS real_available_percentage,
+    
+    -- Estados de salud crediticia
+    CASE 
+        WHEN (ap.credit_available - ap.debt_balance) <= 0 THEN 'SIN_CREDITO'
+        WHEN (ap.credit_available - ap.debt_balance) < (ap.credit_limit * 0.25) THEN 'CRITICO'
+        WHEN (ap.credit_available - ap.debt_balance) < (ap.credit_limit * 0.50) THEN 'MEDIO'
+        ELSE 'ALTO'
+    END AS credit_health_status,
+    
+    CASE 
+        WHEN ap.debt_balance = 0 THEN 'SIN_DEUDA'
+        WHEN ap.debt_balance < (ap.credit_limit * 0.10) THEN 'DEUDA_BAJA'
+        WHEN ap.debt_balance < (ap.credit_limit * 0.25) THEN 'DEUDA_MEDIA'
+        ELSE 'DEUDA_ALTA'
+    END AS debt_status,
+    
+    -- Métricas de rendimiento
+    ap.consecutive_full_credit_periods,
+    ap.consecutive_on_time_payments,
+    ap.clients_in_agreement,
+    
+    -- Metadata
+    ap.active,
+    ap.credit_last_updated,
+    ap.last_level_evaluation_date
+    
+FROM associate_profiles ap
+JOIN users u ON ap.user_id = u.id
+JOIN associate_levels al ON ap.level_id = al.id
+ORDER BY (ap.credit_available - ap.debt_balance) DESC;
+
+COMMENT ON VIEW v_associate_credit_complete IS 
+'⭐ NUEVO v2.0: Vista completa del estado crediticio del asociado. Incluye crédito operativo (credit_available) y crédito REAL disponible (descontando debt_balance). Útil para dashboards y análisis financiero.';
+
+-- =============================================================================
+-- VISTA 11: v_statement_payment_history ⭐ NUEVO v2.0 - Historial de Abonos
+-- =============================================================================
+CREATE OR REPLACE VIEW v_statement_payment_history AS
+SELECT 
+    asp.id AS payment_id,
+    asp.statement_id,
+    aps.statement_number,
+    CONCAT(u_assoc.first_name, ' ', u_assoc.last_name) AS associate_name,
+    cp.cut_number,
+    cp.period_start_date,
+    cp.period_end_date,
+    
+    -- Datos del abono
+    asp.payment_amount,
+    asp.payment_date,
+    pm.name AS payment_method,
+    asp.payment_reference,
+    asp.notes,
+    
+    -- Totales del statement
+    aps.total_commission_owed,
+    aps.late_fee_amount,
+    (aps.total_commission_owed + aps.late_fee_amount) AS total_owed,
+    aps.paid_amount AS total_paid_to_date,
+    ((aps.total_commission_owed + aps.late_fee_amount) - aps.paid_amount) AS remaining_balance,
+    ss.name AS statement_status,
+    
+    -- Metadata
+    CONCAT(u_reg.first_name, ' ', u_reg.last_name) AS registered_by_name,
+    asp.created_at AS payment_registered_at
+    
+FROM associate_statement_payments asp
+JOIN associate_payment_statements aps ON asp.statement_id = aps.id
+JOIN users u_assoc ON aps.user_id = u_assoc.id
+JOIN cut_periods cp ON aps.cut_period_id = cp.id
+JOIN payment_methods pm ON asp.payment_method_id = pm.id
+JOIN statement_statuses ss ON aps.status_id = ss.id
+JOIN users u_reg ON asp.registered_by = u_reg.id
+ORDER BY asp.payment_date DESC, asp.id DESC;
+
+COMMENT ON VIEW v_statement_payment_history IS 
+'⭐ NUEVO v2.0: Historial completo de abonos parciales a estados de cuenta. Muestra cada abono individual con sus detalles, totales acumulados y saldo restante. Útil para tracking de liquidaciones.';
+
+-- =============================================================================
+-- VISTA 12: v_all_associate_payments ⭐ NUEVA v2.0.2
+-- =============================================================================
+-- Vista unificada que distingue CLARAMENTE entre:
+--   - Pagos de período actual (quincenales de clientes)
+--   - Abonos a deuda acumulada (liquidación de statements)
+-- Útil para reportes, auditoría y análisis de flujo de efectivo
+
+CREATE OR REPLACE VIEW v_all_associate_payments AS
+-- TIPO A: Pagos de clientes (cronograma quincenal)
+SELECT 
+    'PERIOD_PAYMENT' AS payment_type,
+    ap.id AS associate_profile_id,
+    ap.user_id AS associate_user_id,
+    u.first_name || ' ' || u.last_name AS associate_name,
+    p.cut_period_id,
+    cp.period_start_date,
+    cp.period_end_date,
+    cp.name AS period_name,
+    p.loan_id,
+    l.user_id AS client_user_id,
+    u_client.first_name || ' ' || u_client.last_name AS client_name,
+    p.id AS payment_id,
+    NULL::INTEGER AS statement_payment_id,
+    NULL::INTEGER AS statement_id,
+    p.amount_paid AS payment_amount,
+    p.payment_date,
+    ps.name AS payment_status,
+    '💳 Pago quincenal de cliente' AS payment_description,
+    TRUE AS affects_credit_used,
+    FALSE AS affects_debt_balance,
+    p.created_at AS record_created_at
+FROM payments p
+JOIN loans l ON p.loan_id = l.id
+JOIN users u_client ON l.user_id = u_client.id
+JOIN associate_profiles ap ON l.associate_user_id = ap.user_id
+JOIN users u ON ap.user_id = u.id
+LEFT JOIN payment_statuses ps ON p.status_id = ps.id
+LEFT JOIN cut_periods cp ON p.cut_period_id = cp.id
+
+UNION ALL
+
+-- TIPO B: Abonos del asociado (liquidación de statements)
+SELECT 
+    'DEBT_PAYMENT' AS payment_type,
+    ap.id AS associate_profile_id,
+    ap.user_id AS associate_user_id,
+    u.first_name || ' ' || u.last_name AS associate_name,
+    aps.cut_period_id,
+    cp.period_start_date,
+    cp.period_end_date,
+    cp.name AS period_name,
+    NULL AS loan_id,
+    NULL AS client_user_id,
+    NULL AS client_name,
+    NULL AS payment_id,
+    asp.id AS statement_payment_id,
+    aps.id AS statement_id,
+    asp.payment_amount,
+    asp.payment_date,
+    ss.name AS payment_status,
+    '🧾 Abono a deuda del período ' || aps.statement_number AS payment_description,
+    FALSE AS affects_credit_used,
+    TRUE AS affects_debt_balance,
+    asp.created_at AS record_created_at
+FROM associate_statement_payments asp
+JOIN associate_payment_statements aps ON asp.statement_id = aps.id
+JOIN associate_profiles ap ON aps.user_id = ap.user_id
+JOIN users u ON ap.user_id = u.id
+LEFT JOIN statement_statuses ss ON aps.status_id = ss.id
+LEFT JOIN cut_periods cp ON aps.cut_period_id = cp.id
+
+ORDER BY payment_date DESC, record_created_at DESC;
+
+COMMENT ON VIEW v_all_associate_payments IS 
+'⭐ NUEVA v2.0.2: Vista unificada que distingue CLARAMENTE entre pagos de período actual (clientes) y abonos a deuda acumulada (asociados). 
+Columnas clave:
+- payment_type: PERIOD_PAYMENT (cliente) o DEBT_PAYMENT (asociado)
+- affects_credit_used: TRUE si afecta credit_used
+- affects_debt_balance: TRUE si afecta debt_balance
+Útil para reportes consolidados, análisis de flujo de efectivo y auditoría de liberación de crédito.';
 
 -- =============================================================================
 -- FIN MÓDULO 08

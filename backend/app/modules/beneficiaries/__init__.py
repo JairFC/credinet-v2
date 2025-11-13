@@ -1,0 +1,1 @@
+"""Beneficiaries Module - Clean Architecture"""

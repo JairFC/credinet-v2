@@ -61,7 +61,7 @@ class PostgresUserRepository(UserRepository):
             .options(selectinload(UserModel.roles))
             .where(UserModel.id == user_id)
         )
-        model = result.scalar_one_or_none()
+        model = result.unique().scalar_one_or_none()
         return self._model_to_entity(model) if model else None
     
     async def get_by_username(self, username: str) -> Optional[User]:
@@ -71,7 +71,7 @@ class PostgresUserRepository(UserRepository):
             .options(selectinload(UserModel.roles))
             .where(UserModel.username == username)
         )
-        model = result.scalar_one_or_none()
+        model = result.unique().scalar_one_or_none()
         return self._model_to_entity(model) if model else None
     
     async def get_by_email(self, email: str) -> Optional[User]:
@@ -81,7 +81,7 @@ class PostgresUserRepository(UserRepository):
             .options(selectinload(UserModel.roles))
             .where(UserModel.email == email)
         )
-        model = result.scalar_one_or_none()
+        model = result.unique().scalar_one_or_none()
         return self._model_to_entity(model) if model else None
     
     async def get_by_curp(self, curp: str) -> Optional[User]:
@@ -91,7 +91,7 @@ class PostgresUserRepository(UserRepository):
             .options(selectinload(UserModel.roles))
             .where(UserModel.curp == curp)
         )
-        model = result.scalar_one_or_none()
+        model = result.unique().scalar_one_or_none()
         return self._model_to_entity(model) if model else None
     
     async def list_all(self, skip: int = 0, limit: int = 100) -> List[User]:
@@ -151,7 +151,7 @@ class PostgresUserRepository(UserRepository):
         result = await self.session.execute(
             select(UserModel).where(UserModel.id == user.id)
         )
-        model = result.scalar_one_or_none()
+        model = result.unique().scalar_one_or_none()
         
         if not model:
             raise ValueError(f"User with ID {user.id} not found")
@@ -180,7 +180,7 @@ class PostgresUserRepository(UserRepository):
         result = await self.session.execute(
             select(UserModel).where(UserModel.id == user_id)
         )
-        model = result.scalar_one_or_none()
+        model = result.unique().scalar_one_or_none()
         
         if not model:
             return False
@@ -227,7 +227,7 @@ class PostgresUserRepository(UserRepository):
         user_result = await self.session.execute(
             select(UserModel).where(UserModel.id == user_id)
         )
-        user_model = user_result.scalar_one_or_none()
+        user_model = user_result.unique().scalar_one_or_none()
         
         if not user_model:
             raise ValueError(f"User with ID {user_id} not found")
@@ -236,7 +236,7 @@ class PostgresUserRepository(UserRepository):
         role_result = await self.session.execute(
             select(RoleModel).where(RoleModel.id == role_id)
         )
-        role_model = role_result.scalar_one_or_none()
+        role_model = role_result.unique().scalar_one_or_none()
         
         if not role_model:
             raise ValueError(f"Role with ID {role_id} not found")
@@ -265,7 +265,7 @@ class PostgresUserRepository(UserRepository):
             .options(selectinload(UserModel.roles))
             .where(UserModel.id == user_id)
         )
-        user_model = user_result.scalar_one_or_none()
+        user_model = user_result.unique().scalar_one_or_none()
         
         if not user_model:
             raise ValueError(f"User with ID {user_id} not found")
@@ -297,4 +297,4 @@ class PostgresUserRepository(UserRepository):
         result = await self.session.execute(
             select(RoleModel).where(RoleModel.name == role_name)
         )
-        return result.scalar_one_or_none()
+        return result.unique().scalar_one_or_none()

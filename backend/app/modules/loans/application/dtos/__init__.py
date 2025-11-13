@@ -38,9 +38,18 @@ class LoanCreateDTO(BaseModel):
     user_id: int = Field(..., gt=0, description="ID del cliente solicitante")
     associate_user_id: int = Field(..., gt=0, description="ID del asociado que otorga el préstamo")
     amount: Decimal = Field(..., gt=0, description="Monto solicitado")
-    interest_rate: Decimal = Field(..., ge=0, le=100, description="Tasa de interés (%)")
-    commission_rate: Decimal = Field(0, ge=0, le=100, description="Tasa de comisión (%)")
     term_biweeks: int = Field(..., ge=1, le=52, description="Plazo en quincenas (1-52)")
+    
+    # Perfil de tasa (opcional - calcula tasas automáticamente)
+    profile_code: Optional[str] = Field(
+        None, 
+        description="Código del perfil de tasa (legacy, transition, standard, premium, custom). Si se proporciona, interest_rate y commission_rate se calculan automáticamente."
+    )
+    
+    # Tasas manuales (opcional - solo si profile_code es None o 'custom')
+    interest_rate: Optional[Decimal] = Field(None, ge=0, le=100, description="Tasa de interés (%). Requerida si no se usa profile_code.")
+    commission_rate: Optional[Decimal] = Field(None, ge=0, le=100, description="Tasa de comisión (%). Requerida si no se usa profile_code.")
+    
     notes: Optional[str] = Field(None, max_length=1000, description="Notas adicionales")
     
     model_config = ConfigDict(from_attributes=True)
@@ -120,6 +129,7 @@ class LoanSummaryDTO(BaseModel):
     # Campos calculados (opcionales, agregar con joins si es necesario)
     status_name: Optional[str] = Field(None, description="Nombre del estado")
     client_name: Optional[str] = Field(None, description="Nombre del cliente")
+    associate_name: Optional[str] = Field(None, description="Nombre del asociado")
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -137,6 +147,7 @@ class LoanResponseDTO(BaseModel):
     interest_rate: Decimal = Field(..., description="Tasa de interés (%)")
     commission_rate: Decimal = Field(..., description="Tasa de comisión (%)")
     term_biweeks: int = Field(..., description="Plazo en quincenas")
+    profile_code: Optional[str] = Field(None, description="Código del perfil de tasa usado")
     status_id: int = Field(..., description="ID del estado")
     contract_id: Optional[int] = Field(None, description="ID del contrato asociado")
     

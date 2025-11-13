@@ -7,6 +7,7 @@ from sqlalchemy import (
     Column,
     Integer,
     Numeric,
+    String,
     Text,
     DateTime,
     ForeignKey,
@@ -75,6 +76,44 @@ class LoanModel(Base):
         nullable=False,
         comment='Plazo en quincenas (1 quincena = 15 días, rango: 1-52)'
     )
+    profile_code = Column(
+        String(50),
+        ForeignKey('rate_profiles.code', ondelete='SET NULL'),
+        nullable=True,
+        comment='Código del perfil de tasa usado para calcular el préstamo'
+    )
+    
+    # Campos calculados (generados por calculate_loan_payment())
+    biweekly_payment = Column(
+        Numeric(12, 2),
+        nullable=True,
+        comment='Pago quincenal calculado (capital + interés)'
+    )
+    total_payment = Column(
+        Numeric(12, 2),
+        nullable=True,
+        comment='Monto total que pagará el cliente (biweekly_payment * term_biweeks)'
+    )
+    total_interest = Column(
+        Numeric(12, 2),
+        nullable=True,
+        comment='Interés total del préstamo (total_payment - amount)'
+    )
+    total_commission = Column(
+        Numeric(12, 2),
+        nullable=True,
+        comment='Comisión total acumulada (commission_per_payment * term_biweeks)'
+    )
+    commission_per_payment = Column(
+        Numeric(10, 2),
+        nullable=True,
+        comment='Comisión por pago quincenal'
+    )
+    associate_payment = Column(
+        Numeric(10, 2),
+        nullable=True,
+        comment='Pago neto al asociado por periodo (biweekly_payment - commission_per_payment)'
+    )
     
     # Estado y relaciones
     status_id = Column(
@@ -85,9 +124,8 @@ class LoanModel(Base):
     )
     contract_id = Column(
         Integer,
-        ForeignKey('contracts.id'),
         nullable=True,
-        comment='Contrato generado (se crea al aprobar)'
+        comment='Contrato generado (se crea al aprobar). FK exists in DB but not in ORM until ContractModel is implemented'
     )
     
     # Tracking de aprobación

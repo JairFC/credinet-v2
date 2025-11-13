@@ -152,9 +152,20 @@ class Loan:
     commission_rate: Decimal                  # Comisión del asociado (%)
     term_biweeks: int                         # Plazo en quincenas (1 quincena = 15 días)
     
-    # Estado y relaciones
+    # Estado y relaciones (campos requeridos deben ir antes de los opcionales)
     status_id: int                            # FK a loan_statuses
+    
+    # Campos opcionales
     contract_id: Optional[int] = None         # FK a contracts (se crea al aprobar)
+    profile_code: Optional[str] = None        # Perfil de tasa usado (legacy, standard, etc.)
+    
+    # Campos calculados (generados por calculate_loan_payment())
+    biweekly_payment: Optional[Decimal] = None        # Pago quincenal (capital + interés)
+    total_payment: Optional[Decimal] = None           # Monto total a pagar
+    total_interest: Optional[Decimal] = None          # Interés total del préstamo
+    total_commission: Optional[Decimal] = None        # Comisión total acumulada
+    commission_per_payment: Optional[Decimal] = None  # Comisión por pago
+    associate_payment: Optional[Decimal] = None       # Pago neto al asociado por periodo
     
     # Tracking de aprobación
     approved_at: Optional[datetime] = None
@@ -237,9 +248,18 @@ class Loan:
         """
         Calcula el monto total a pagar (capital + intereses).
         
-        Fórmula simplificada: amount * (1 + interest_rate/100)
+        Fórmula correcta: amount * (1 + (interest_rate/100 * term_biweeks))
+        
+        Ejemplo:
+            $22,000 @ 4.25% × 12 quincenas
+            = $22,000 × (1 + (4.25/100 × 12))
+            = $22,000 × (1 + 0.51)
+            = $22,000 × 1.51
+            = $33,220
         """
-        return self.amount * (Decimal('1') + self.interest_rate / Decimal('100'))
+        interest_factor = self.interest_rate / Decimal('100') * self.term_biweeks
+        total_factor = Decimal('1') + interest_factor
+        return self.amount * total_factor
     
     def calculate_payment_amount(self) -> Decimal:
         """

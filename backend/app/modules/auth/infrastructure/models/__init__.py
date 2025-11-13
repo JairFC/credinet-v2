@@ -2,7 +2,7 @@
 SQLAlchemy models for auth module.
 Maps database tables to Python classes.
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey, Table, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -64,6 +64,7 @@ class RoleModel(Base):
     SQLAlchemy model for roles table.
     
     Represents a role that can be assigned to users.
+    Fuente de verdad: db/v2.0/modules/01_catalog_tables.sql
     """
     __tablename__ = "roles"
     
@@ -72,14 +73,10 @@ class RoleModel(Base):
     
     # Role information
     name = Column(String(50), unique=True, nullable=False, index=True)
-    description = Column(String(255), nullable=True)
-    
-    # Hierarchy level (lower number = higher priority)
-    # 1: Desarrollador, 2: Administrador, 3: Auxiliar, 4: Asociado, 5: Cliente
-    hierarchy_level = Column(Integer, nullable=False, default=5)
+    description = Column(Text, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=True)
     
     # Relationships
     users = relationship(
@@ -89,4 +86,4 @@ class RoleModel(Base):
     )
     
     def __repr__(self):
-        return f"<Role(id={self.id}, name='{self.name}', level={self.hierarchy_level})>"
+        return f"<Role(id={self.id}, name='{self.name}')>"

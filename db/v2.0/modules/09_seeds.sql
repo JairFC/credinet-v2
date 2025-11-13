@@ -206,28 +206,34 @@ INSERT INTO associate_profiles (user_id, level_id, contact_person, contact_email
 ON CONFLICT (user_id) DO NOTHING;
 
 -- =============================================================================
--- PRÉSTAMOS DE EJEMPLO (4 préstamos críticos)
+-- PRÉSTAMOS DE EJEMPLO (5 préstamos con diferentes plazos)
 -- =============================================================================
+-- ⭐ V2.0: Ejemplos con plazos flexibles: 6, 12, 18 y 24 quincenas
 INSERT INTO loans (id, user_id, associate_user_id, amount, interest_rate, commission_rate, term_biweeks, status_id, created_at, updated_at) VALUES
--- Préstamo 1: Aprobado 7 enero → Primer pago 15 enero
+-- Préstamo 1: Plazo 12 quincenas (6 meses) - Caso más común
 (1, 4, 3, 100000.00, 2.5, 2.5, 12, 1, '2025-01-07 00:00:00+00', '2025-01-07 00:00:00+00'),
--- Préstamo 2: Aprobado 8 febrero → Primer pago último día febrero
-(2, 5, 8, 75000.00, 3.0, 3.0, 8, 1, '2025-02-08 00:00:00+00', '2025-02-08 00:00:00+00'),
--- Préstamo 3: Aprobado 23 febrero → Primer pago 15 marzo
-(3, 6, 3, 50000.00, 2.0, 2.0, 6, 1, '2025-02-23 00:00:00+00', '2025-02-23 00:00:00+00'),
--- Préstamo 4: Completado (ejemplo histórico)
-(4, 1000, NULL, 25000.00, 1.5, 0.0, 4, 4, '2024-12-07 00:00:00+00', '2024-12-07 00:00:00+00')
+-- Préstamo 2: Plazo 6 quincenas (3 meses) - Plazo corto
+(2, 5, 8, 50000.00, 3.0, 3.0, 6, 1, '2025-02-08 00:00:00+00', '2025-02-08 00:00:00+00'),
+-- Préstamo 3: Plazo 18 quincenas (9 meses) - Plazo medio
+(3, 6, 3, 150000.00, 2.0, 2.0, 18, 1, '2025-02-23 00:00:00+00', '2025-02-23 00:00:00+00'),
+-- Préstamo 4: Plazo 24 quincenas (12 meses) - Plazo largo
+(4, 1000, 3, 200000.00, 2.5, 2.5, 24, 1, '2025-03-10 00:00:00+00', '2025-03-10 00:00:00+00'),
+-- Préstamo 5: Completado (ejemplo histórico)
+(5, 1000, NULL, 25000.00, 1.5, 0.0, 12, 4, '2024-12-07 00:00:00+00', '2024-12-07 00:00:00+00')
 ON CONFLICT (id) DO NOTHING;
 
 -- Aprobar préstamos (esto dispara generate_payment_schedule)
 UPDATE loans SET status_id = 2, approved_at = '2025-01-07 00:00:00+00', approved_by = 2 WHERE id = 1;
 UPDATE loans SET status_id = 2, approved_at = '2025-02-08 00:00:00+00', approved_by = 2 WHERE id = 2;
 UPDATE loans SET status_id = 2, approved_at = '2025-02-23 00:00:00+00', approved_by = 2 WHERE id = 3;
+UPDATE loans SET status_id = 2, approved_at = '2025-03-10 00:00:00+00', approved_by = 2 WHERE id = 4;
 
 -- Contratos
 INSERT INTO contracts (id, loan_id, start_date, document_number, status_id) VALUES
 (1, 1, '2025-01-07', 'CONT-2025-001', 3),
 (2, 2, '2025-02-08', 'CONT-2025-002', 3),
+(3, 3, '2025-02-23', 'CONT-2025-003', 3),
+(4, 4, '2025-03-10', 'CONT-2025-004', 3)
 (3, 3, '2025-02-23', 'CONT-2025-003', 3),
 (4, 4, '2024-12-07', 'CONT-2024-012', 5)
 ON CONFLICT (id) DO NOTHING;

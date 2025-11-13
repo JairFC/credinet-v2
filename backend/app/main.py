@@ -63,10 +63,40 @@ def health_check():
 from app.modules.auth.routes import router as auth_router
 from app.modules.catalogs import router as catalogs_router
 from app.modules.loans.routes import router as loans_router
+from app.modules.rate_profiles.routes import router as rate_profiles_router
+from app.modules.payments.routes import router as payments_router
+from app.modules.clients.routes import router as clients_router
+from app.modules.associates.routes import router as associates_router
+from app.modules.cut_periods.routes import router as cut_periods_router
+from app.modules.guarantors.routes import router as guarantors_router
+from app.modules.beneficiaries.routes import router as beneficiaries_router
+from app.modules.addresses.routes import router as addresses_router
+from app.modules.audit.routes import router as audit_router
+from app.modules.contracts.routes import router as contracts_router
+from app.modules.agreements.routes import router as agreements_router
+from app.modules.documents.routes import router as documents_router
+from app.modules.dashboard.routes import router as dashboard_router
+from app.modules.statements import router as statements_router
+from app.modules.shared.routes import router as shared_router
 
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(catalogs_router, prefix=settings.api_v1_prefix)
 app.include_router(loans_router, prefix=settings.api_v1_prefix)
+app.include_router(rate_profiles_router, prefix=settings.api_v1_prefix, tags=["Rate Profiles"])
+app.include_router(payments_router, prefix=settings.api_v1_prefix)
+app.include_router(clients_router, prefix=settings.api_v1_prefix)
+app.include_router(associates_router, prefix=settings.api_v1_prefix)
+app.include_router(cut_periods_router, prefix=settings.api_v1_prefix)
+app.include_router(guarantors_router, prefix=settings.api_v1_prefix)
+app.include_router(beneficiaries_router, prefix=settings.api_v1_prefix)
+app.include_router(addresses_router, prefix=settings.api_v1_prefix)
+app.include_router(audit_router, prefix=settings.api_v1_prefix)
+app.include_router(contracts_router, prefix=settings.api_v1_prefix)
+app.include_router(agreements_router, prefix=settings.api_v1_prefix)
+app.include_router(documents_router, prefix=settings.api_v1_prefix)
+app.include_router(dashboard_router, prefix=settings.api_v1_prefix)
+app.include_router(statements_router, prefix=settings.api_v1_prefix)
+app.include_router(shared_router, prefix=settings.api_v1_prefix)
 
 
 if __name__ == "__main__":

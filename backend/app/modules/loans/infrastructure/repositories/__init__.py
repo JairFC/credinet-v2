@@ -8,7 +8,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.loans.domain.entities import Loan, LoanBalance
@@ -38,6 +38,15 @@ def _map_loan_model_to_entity(model: LoanModel) -> Loan:
         interest_rate=Decimal(str(model.interest_rate)),
         commission_rate=Decimal(str(model.commission_rate)),
         term_biweeks=model.term_biweeks,
+        profile_code=model.profile_code,
+        # Campos calculados (pueden ser None si no se han calculado)
+        biweekly_payment=Decimal(str(model.biweekly_payment)) if model.biweekly_payment is not None else None,
+        total_payment=Decimal(str(model.total_payment)) if model.total_payment is not None else None,
+        total_interest=Decimal(str(model.total_interest)) if model.total_interest is not None else None,
+        total_commission=Decimal(str(model.total_commission)) if model.total_commission is not None else None,
+        commission_per_payment=Decimal(str(model.commission_per_payment)) if model.commission_per_payment is not None else None,
+        associate_payment=Decimal(str(model.associate_payment)) if model.associate_payment is not None else None,
+        # Resto de campos
         status_id=model.status_id,
         contract_id=model.contract_id,
         approved_at=model.approved_at,
@@ -75,6 +84,22 @@ def _map_loan_entity_to_model(entity: Loan, model: Optional[LoanModel] = None) -
     model.interest_rate = entity.interest_rate
     model.commission_rate = entity.commission_rate
     model.term_biweeks = entity.term_biweeks
+    model.profile_code = entity.profile_code
+    
+    # Campos calculados (solo setear si no son None)
+    if entity.biweekly_payment is not None:
+        model.biweekly_payment = entity.biweekly_payment
+    if entity.total_payment is not None:
+        model.total_payment = entity.total_payment
+    if entity.total_interest is not None:
+        model.total_interest = entity.total_interest
+    if entity.total_commission is not None:
+        model.total_commission = entity.total_commission
+    if entity.commission_per_payment is not None:
+        model.commission_per_payment = entity.commission_per_payment
+    if entity.associate_payment is not None:
+        model.associate_payment = entity.associate_payment
+    
     model.status_id = entity.status_id
     model.contract_id = entity.contract_id
     model.approved_at = entity.approved_at
@@ -356,16 +381,33 @@ class PostgreSQLLoanRepository(LoanRepository):
         Usa la función DB: check_associate_credit_available()
         
         Args:
-            associate_user_id: ID del asociado
+            associate_user_id: ID del usuario asociado
             amount: Monto del préstamo solicitado
             
         Returns:
             True si tiene crédito suficiente, False si no
         """
-        # Llamar función DB
+        # Primero obtener el associate_profile_id del user_id usando query nativa
+        profile_query = text(
+            "SELECT id FROM associate_profiles WHERE user_id = :user_id"
+        )
+        
+        profile_result = await self.session.execute(
+            profile_query,
+            {"user_id": associate_user_id}
+        )
+        profile_row = profile_result.fetchone()
+        
+        if not profile_row:
+            # Si no tiene perfil de asociado, no puede otorgar préstamos
+            return False
+        
+        associate_profile_id = profile_row[0]
+        
+        # Llamar función DB con el associate_profile_id correcto
         query = select(
             func.check_associate_credit_available(
-                associate_user_id,
+                associate_profile_id,
                 amount
             )
         )

@@ -128,8 +128,18 @@ CREATE TABLE IF NOT EXISTS loans (
     interest_rate DECIMAL(5, 2) NOT NULL,
     commission_rate DECIMAL(5, 2) NOT NULL DEFAULT 0.0,
     term_biweeks INTEGER NOT NULL, -- Plazo en quincenas
+    profile_code VARCHAR(50), -- FK a rate_profiles (opcional, se agregará constraint después)
     status_id INTEGER NOT NULL REFERENCES loan_statuses(id),
     contract_id INTEGER, -- FK a contracts (se agregará después)
+    
+    -- ⭐ CAMPOS CALCULADOS (Sprint 6 - Migración 005) - Valores de calculate_loan_payment()
+    biweekly_payment DECIMAL(10,2), -- Pago quincenal calculado (con interés incluido)
+    total_payment DECIMAL(12,2), -- Pago total del préstamo (biweekly_payment * term_biweeks)
+    total_interest DECIMAL(12,2), -- Interés total a pagar
+    total_commission DECIMAL(12,2), -- Comisión total del asociado
+    commission_per_payment DECIMAL(10,2), -- Comisión por pago quincenal
+    associate_payment DECIMAL(10,2), -- Pago neto del cliente (biweekly_payment - commission_per_payment)
+    
     -- Campos críticos de aprobación
     approved_at TIMESTAMP WITH TIME ZONE,
     approved_by INTEGER REFERENCES users(id),
@@ -143,14 +153,27 @@ CREATE TABLE IF NOT EXISTS loans (
     CONSTRAINT check_loans_amount_positive CHECK (amount > 0),
     CONSTRAINT check_loans_interest_rate_valid CHECK (interest_rate >= 0 AND interest_rate <= 100),
     CONSTRAINT check_loans_commission_rate_valid CHECK (commission_rate >= 0 AND commission_rate <= 100),
-    CONSTRAINT check_loans_term_biweeks_valid CHECK (term_biweeks BETWEEN 1 AND 52),
+    CONSTRAINT check_loans_term_biweeks_valid CHECK (term_biweeks IN (6, 12, 18, 24)),
     CONSTRAINT check_loans_approved_after_created CHECK (approved_at IS NULL OR approved_at >= created_at),
-    CONSTRAINT check_loans_rejected_after_created CHECK (rejected_at IS NULL OR rejected_at >= created_at)
+    CONSTRAINT check_loans_rejected_after_created CHECK (rejected_at IS NULL OR rejected_at >= created_at),
+    -- ⭐ Validaciones campos calculados (Sprint 6 - Migración 005)
+    CONSTRAINT check_biweekly_payment_positive CHECK (biweekly_payment IS NULL OR biweekly_payment > 0),
+    CONSTRAINT check_total_payment_positive CHECK (total_payment IS NULL OR total_payment > 0),
+    CONSTRAINT check_total_interest_non_negative CHECK (total_interest IS NULL OR total_interest >= 0),
+    CONSTRAINT check_total_commission_non_negative CHECK (total_commission IS NULL OR total_commission >= 0),
+    CONSTRAINT check_commission_per_payment_non_negative CHECK (commission_per_payment IS NULL OR commission_per_payment >= 0),
+    CONSTRAINT check_associate_payment_non_negative CHECK (associate_payment IS NULL OR associate_payment >= 0)
 );
 
 COMMENT ON TABLE loans IS 'Tabla central del sistema. Registra todos los préstamos solicitados, aprobados, rechazados o completados.';
-COMMENT ON COLUMN loans.term_biweeks IS 'Plazo del préstamo en quincenas (1 quincena = 15 días). Ejemplo: 12 quincenas = 6 meses.';
+COMMENT ON COLUMN loans.term_biweeks IS '⭐ V2.0: Plazo del préstamo en quincenas. Valores permitidos: 6, 12, 18 o 24 quincenas (3, 6, 9 o 12 meses). Validado por check_loans_term_biweeks_valid.';
 COMMENT ON COLUMN loans.commission_rate IS 'Tasa de comisión del asociado en porcentaje. Ejemplo: 2.5 = 2.5%. Rango válido: 0-100.';
+COMMENT ON COLUMN loans.biweekly_payment IS '⭐ Sprint 6: Pago quincenal calculado con interés incluido (desde calculate_loan_payment). NULL si usa tasas manuales.';
+COMMENT ON COLUMN loans.total_payment IS '⭐ Sprint 6: Monto total a pagar incluyendo capital e interés (biweekly_payment * term_biweeks).';
+COMMENT ON COLUMN loans.total_interest IS '⭐ Sprint 6: Interés total a pagar (total_payment - amount).';
+COMMENT ON COLUMN loans.total_commission IS '⭐ Sprint 6: Comisión total del asociado durante todo el préstamo.';
+COMMENT ON COLUMN loans.commission_per_payment IS '⭐ Sprint 6: Comisión del asociado por cada pago quincenal.';
+COMMENT ON COLUMN loans.associate_payment IS '⭐ Sprint 6: Pago neto del cliente al asociado (biweekly_payment - commission_per_payment).';
 
 -- Índices para loans
 CREATE INDEX IF NOT EXISTS idx_loans_user_id ON loans(user_id);
@@ -158,6 +181,10 @@ CREATE INDEX IF NOT EXISTS idx_loans_associate_user_id ON loans(associate_user_i
 CREATE INDEX IF NOT EXISTS idx_loans_status_id ON loans(status_id);
 CREATE INDEX IF NOT EXISTS idx_loans_approved_at ON loans(approved_at) WHERE approved_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_loans_status_id_approved_at ON loans(status_id, approved_at);
+-- ⭐ Sprint 6: Índices para campos calculados
+CREATE INDEX IF NOT EXISTS idx_loans_profile_code ON loans(profile_code) WHERE profile_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_loans_biweekly_payment ON loans(biweekly_payment) WHERE biweekly_payment IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_loans_total_payment ON loans(total_payment) WHERE total_payment IS NOT NULL;
 
 -- =============================================================================
 -- 7. CONTRACTS - Contratos (Relación 1:1 con Loans)
@@ -226,6 +253,16 @@ CREATE TABLE IF NOT EXISTS payments (
     id SERIAL PRIMARY KEY,
     loan_id INTEGER NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
     amount_paid DECIMAL(12, 2) NOT NULL,
+    
+    -- ⭐ CAMPOS DE DESGLOSE FINANCIERO (Sprint 6 - Migración 006)
+    payment_number INTEGER, -- Número de pago en el cronograma (1, 2, 3, ..., term_biweeks)
+    expected_amount DECIMAL(12,2), -- Monto esperado del pago (biweekly_payment del préstamo)
+    interest_amount DECIMAL(10,2), -- Porción de interés en este pago
+    principal_amount DECIMAL(10,2), -- Porción de capital en este pago
+    commission_amount DECIMAL(10,2), -- Comisión del asociado en este pago
+    associate_payment DECIMAL(10,2), -- Pago neto del cliente (expected_amount - commission_amount)
+    balance_remaining DECIMAL(12,2), -- Saldo pendiente después de este pago
+    
     payment_date DATE NOT NULL,
     payment_due_date DATE NOT NULL, -- Fecha esperada (día 15 o último día)
     is_late BOOLEAN NOT NULL DEFAULT false,
@@ -239,13 +276,30 @@ CREATE TABLE IF NOT EXISTS payments (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     -- Validaciones
     CONSTRAINT check_payments_amount_paid_non_negative CHECK (amount_paid >= 0),
-    CONSTRAINT check_payments_dates_logical CHECK (payment_date <= payment_due_date)
+    CONSTRAINT check_payments_dates_logical CHECK (payment_date <= payment_due_date),
+    -- ⭐ Validaciones campos de desglose (Sprint 6 - Migración 006)
+    CONSTRAINT check_payment_number_positive CHECK (payment_number IS NULL OR payment_number > 0),
+    CONSTRAINT check_expected_amount_positive CHECK (expected_amount IS NULL OR expected_amount > 0),
+    CONSTRAINT check_interest_amount_non_negative CHECK (interest_amount IS NULL OR interest_amount >= 0),
+    CONSTRAINT check_principal_amount_non_negative CHECK (principal_amount IS NULL OR principal_amount >= 0),
+    CONSTRAINT check_commission_amount_non_negative CHECK (commission_amount IS NULL OR commission_amount >= 0),
+    CONSTRAINT check_associate_payment_non_negative CHECK (associate_payment IS NULL OR associate_payment >= 0),
+    CONSTRAINT check_balance_remaining_non_negative CHECK (balance_remaining IS NULL OR balance_remaining >= 0),
+    -- ⭐ Unicidad: No puede haber 2 pagos con el mismo número para el mismo préstamo
+    CONSTRAINT payments_unique_loan_payment_number UNIQUE (loan_id, payment_number)
 );
 
 COMMENT ON TABLE payments IS 'Schedule de pagos generado automáticamente cuando un préstamo es aprobado. Un registro por cada quincena del plazo.';
 COMMENT ON COLUMN payments.payment_due_date IS 'Fecha de vencimiento del pago según reglas de negocio: día 15 o último día del mes. Generado por calculate_first_payment_date().';
 COMMENT ON COLUMN payments.is_late IS 'Indica si el pago está atrasado (TRUE si payment_due_date < CURRENT_DATE y no está pagado).';
 COMMENT ON COLUMN payments.marked_by IS '⭐ v2.0: Usuario que marcó manualmente el estado del pago (admin puede remarcar).';
+COMMENT ON COLUMN payments.payment_number IS '⭐ Sprint 6: Número secuencial del pago (1, 2, 3, ...). Permite ordenar el cronograma de amortización.';
+COMMENT ON COLUMN payments.expected_amount IS '⭐ Sprint 6: Monto esperado del pago quincenal (loans.biweekly_payment). Usado para validación de consistencia.';
+COMMENT ON COLUMN payments.interest_amount IS '⭐ Sprint 6: Porción de interés en este pago específico (varía por amortización).';
+COMMENT ON COLUMN payments.principal_amount IS '⭐ Sprint 6: Porción de capital/principal amortizado en este pago.';
+COMMENT ON COLUMN payments.commission_amount IS '⭐ Sprint 6: Comisión del asociado en este pago (normalmente fija = loans.commission_per_payment).';
+COMMENT ON COLUMN payments.associate_payment IS '⭐ Sprint 6: Pago neto del cliente al asociado (expected_amount - commission_amount).';
+COMMENT ON COLUMN payments.balance_remaining IS '⭐ Sprint 6: Saldo de capital pendiente después de aplicar este pago. Debe llegar a 0 en el último pago.';
 
 -- Índices para payments
 CREATE INDEX IF NOT EXISTS idx_payments_loan_id ON payments(loan_id);
@@ -254,6 +308,9 @@ CREATE INDEX IF NOT EXISTS idx_payments_is_late ON payments(is_late);
 CREATE INDEX IF NOT EXISTS idx_payments_cut_period_id ON payments(cut_period_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status_id ON payments(status_id); -- ⭐ NUEVO v2.0
 CREATE INDEX IF NOT EXISTS idx_payments_late_loan ON payments(loan_id, is_late, payment_due_date); -- Compuesto para consultas de mora
+-- ⭐ Sprint 6: Índices para campos de desglose
+CREATE INDEX IF NOT EXISTS idx_payments_loan_payment_number ON payments(loan_id, payment_number) WHERE payment_number IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_payments_balance_remaining ON payments(balance_remaining) WHERE balance_remaining IS NOT NULL;
 
 -- =============================================================================
 -- 10. CLIENT_DOCUMENTS - Documentos de Clientes

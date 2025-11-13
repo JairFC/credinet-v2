@@ -1,0 +1,273 @@
+# AI Context Configuration - Credinet v2.0 Database
+# Este archivo guía a las IAs sobre qué archivos analizar y en qué orden
+
+name: "Credinet v2.0 Database Schema"
+version: "2.0.1"
+last_updated: "2025-11-05"
+sprint: "Sprint 6 - Rate Profiles Integration"
+
+# ========================================
+# PRIORIDADES DE ANÁLISIS
+# ========================================
+
+primary_sources:
+  - path: "modules/*.sql"
+    priority: HIGH
+    size: "165K (10 archivos)"
+    description: |
+      ÚNICA FUENTE DE VERDAD - Siempre actualizado y sincronizado con BD.
+      Estos archivos son la fuente autoritativa del schema.
+      EDITAR AQUÍ para cualquier cambio.
+    files:
+      - "01_catalog_tables.sql"      # Catálogos (roles, statuses)
+      - "02_core_tables.sql"         # Core (loans, payments) ⭐ Sprint 6
+      - "03_business_tables.sql"     # Business (agreements, associates)
+      - "04_audit_tables.sql"        # Auditoría
+      - "05_functions_base.sql"      # Funciones cálculo ⭐ Sprint 6
+      - "06_functions_business.sql"  # Funciones negocio ⭐ Sprint 6
+      - "07_triggers.sql"            # Triggers
+      - "08_views.sql"               # Vistas reporting
+      - "09_seeds.sql"               # Datos iniciales
+      - "10_rate_profiles.sql"       # Rate profiles ⭐ Sprint 6
+
+  - path: "init.sql"
+    priority: MEDIUM
+    size: "185K (generado)"
+    description: |
+      Archivo GENERADO automáticamente desde modules/*.sql
+      NO EDITAR DIRECTAMENTE - será sobrescrito.
+      Usar solo para referencia o consulta rápida.
+      Regenerar con: ./generate_monolithic.sh
+    
+  - path: "INDEX.md"
+    priority: MEDIUM
+    size: "~15K"
+    description: |
+      Mapa rápido de ubicaciones (tablas, funciones, triggers).
+      Consultar PRIMERO antes de buscar en archivos SQL.
+      Actualizado manualmente cada Sprint.
+
+archive:
+  - path: "archive/migrations/**"
+    priority: LOW
+    size: "54K (histórico)"
+    description: |
+      Migraciones YA APLICADAS y CONSOLIDADAS en modules/*.sql
+      NO EJECUTAR directamente - causará errores "already exists".
+      Solo para auditoría, rollback, y onboarding.
+    warning: |
+      ⚠️ NUNCA sugerir editar o ejecutar archivos en archive/
+      ⚠️ NUNCA sugerir aplicar estas migraciones
+      ⚠️ Solo referenciar para entender histórico de cambios
+    subdirectories:
+      - "v2.0.0_to_v2.0.1/"          # Sprint 6: Rate Profiles
+        - "CHANGELOG.md"             # Resumen consolidado
+        - "005_add_calculated_fields_to_loans.sql"
+        - "006_add_breakdown_fields_to_payments.sql"
+        - "007_fix_generate_payment_schedule_trigger.sql"
+
+  - path: "archive/schemas/"
+    priority: LOW
+    description: "Snapshots de schemas (backups pre-migración)"
+
+documentation:
+  external:
+    - path: "../../docs/ARQUITECTURA_DOBLE_CALENDARIO.md"
+      priority: HIGH
+      description: "Diseño técnico del calendario dual (cliente + admin)"
+      
+    - path: "../../docs/DASHBOARD_VALIDACION_SPRINT6.md"
+      priority: HIGH
+      description: "Resultados validación E2E Sprint 6"
+      
+    - path: "../../docs/AUDITORIA_FUENTES_VERDAD.md"
+      priority: MEDIUM
+      description: "Análisis de duplicaciones (Sprint 6)"
+      
+    - path: "../../docs/REPORTE_SINCRONIZACION_MODULOS.md"
+      priority: MEDIUM
+      description: "Cambios aplicados Sprint 6"
+      
+    - path: "../../docs/ESTRATEGIA_MIGRACION_LIMPIA.md"
+      priority: MEDIUM
+      description: "Plan de consolidación (Single Source of Truth)"
+
+# ========================================
+# REGLAS DE ANÁLISIS PARA IA
+# ========================================
+
+analysis_rules:
+  - rule: "Siempre buscar en INDEX.md primero"
+    reason: "Localiza rápidamente tablas, funciones, triggers sin leer 165K"
+    
+  - rule: "Priorizar modules/*.sql sobre init.sql"
+    reason: "Módulos son fuente de verdad, init.sql es generado"
+    
+  - rule: "NUNCA sugerir editar archive/migrations/"
+    reason: "Son histórico, ya consolidados en modules/"
+    
+  - rule: "NUNCA sugerir ejecutar migraciones en archive/"
+    reason: "Causaría errores 'column already exists'"
+    
+  - rule: "Siempre mencionar ./generate_monolithic.sh después de editar"
+    reason: "init.sql debe regenerarse para sincronizar cambios"
+    
+  - rule: "Consultar CHANGELOG.md en archive/ para entender decisiones históricas"
+    reason: "Contexto de por qué se hicieron cambios en Sprints anteriores"
+
+# ========================================
+# FLUJOS DE TRABAJO RECOMENDADOS
+# ========================================
+
+workflows:
+  query_schema:
+    description: "Usuario pregunta sobre estructura de tabla/función"
+    steps:
+      1. "Consultar INDEX.md para ubicación exacta"
+      2. "Leer líneas específicas en módulo correspondiente"
+      3. "NO leer init.sql completo (185K)"
+      4. "Referenciar documentación en /docs/ si necesario"
+      
+  suggest_change:
+    description: "Usuario quiere agregar/modificar campo o función"
+    steps:
+      1. "Identificar módulo correcto en INDEX.md"
+      2. "Leer sección específica del módulo"
+      3. "Sugerir edición en modules/XX_module.sql"
+      4. "ADVERTIR: Ejecutar ./generate_monolithic.sh después"
+      5. "ADVERTIR: Aplicar cambios en BD"
+      6. "NO sugerir crear migración en archive/"
+      
+  understand_history:
+    description: "Usuario pregunta sobre cambios pasados (Sprint 6, etc)"
+    steps:
+      1. "Consultar archive/migrations/v2.0.X/CHANGELOG.md"
+      2. "Referenciar documentos en /docs/ (AUDITORIA, DASHBOARD)"
+      3. "Aclarar que cambios YA están en modules/"
+      4. "NO sugerir ejecutar migraciones antiguas"
+
+# ========================================
+# CAMBIOS RECIENTES (Sprint 6)
+# ========================================
+
+recent_changes:
+  sprint_6:
+    date: "2025-11-05"
+    branch: "feature/sprint-6-associates"
+    status: "✅ COMPLETADO Y CONSOLIDADO"
+    
+    added_fields:
+      loans:
+        - "biweekly_payment NUMERIC(12,2)"
+        - "total_payment NUMERIC(12,2)"
+        - "total_interest NUMERIC(12,2)"
+        - "total_commission NUMERIC(12,2)"
+        - "commission_per_payment NUMERIC(12,2)"
+        - "associate_payment NUMERIC(12,2)"
+        
+      payments:
+        - "payment_number INTEGER"
+        - "expected_amount NUMERIC(12,2)"
+        - "interest_amount NUMERIC(12,2)"
+        - "principal_amount NUMERIC(12,2)"
+        - "commission_amount NUMERIC(12,2)"
+        - "associate_payment NUMERIC(12,2)"
+        - "balance_remaining NUMERIC(12,2)"
+    
+    modified_functions:
+      - name: "generate_payment_schedule()"
+        file: "06_functions_business.sql"
+        change: "Reescritura completa (138→251 líneas)"
+        bug_fixed: "Ahora usa biweekly_payment (con interés) vs amount/term (sin interés)"
+        
+    validation:
+      test: "Préstamo id=6 ($25k, 12 quincenas, standard)"
+      result: "✅ PASS - Diferencia $0.04 (0.01%)"
+      performance: "8.93ms para generar 12 payments"
+      
+    consolidated:
+      from: "modules/migrations/*.sql (54K)"
+      to: "archive/migrations/v2.0.0_to_v2.0.1/ (histórico)"
+      modules_updated:
+        - "02_core_tables.sql (+13 campos, +8 indexes)"
+        - "06_functions_business.sql (trigger reescrito)"
+      init_regenerated: true
+
+# ========================================
+# KEYWORDS PARA BÚSQUEDA
+# ========================================
+
+keywords:
+  loans: "02_core_tables.sql líneas 150-280"
+  payments: "02_core_tables.sql líneas 281-410"
+  rate_profiles: "10_rate_profiles.sql líneas 1-80"
+  calculate_loan_payment: "05_functions_base.sql líneas 45-120"
+  generate_payment_schedule: "06_functions_business.sql líneas 1-251"
+  calculate_first_payment_date: "05_functions_base.sql líneas 260-320"
+  generate_amortization_schedule: "05_functions_base.sql líneas 121-250"
+  audit_log: "04_audit_tables.sql líneas 10-80"
+  cut_periods: "02_core_tables.sql líneas 510-580"
+  associate_profiles: "03_business_tables.sql líneas 10-120"
+
+# ========================================
+# ADVERTENCIAS IMPORTANTES
+# ========================================
+
+warnings:
+  - "⚠️ NO ejecutar migraciones en archive/ - ya aplicadas"
+  - "⚠️ NO editar init.sql - es generado automáticamente"
+  - "⚠️ SIEMPRE regenerar init.sql después de cambios en modules/"
+  - "⚠️ Consultar INDEX.md ANTES de leer archivos completos"
+  - "⚠️ Cut periods para 2025-2026 pendientes (ver DASHBOARD)"
+
+# ========================================
+# MÉTRICAS Y ESTADÍSTICAS
+# ========================================
+
+metrics:
+  total_tables: 38
+  total_functions: 23
+  total_triggers: 34
+  total_views: 12
+  total_indexes: 80
+  code_lines: 4164
+  total_size: "185K (init.sql), 165K (modules/)"
+  
+  modules_breakdown:
+    "01_catalog_tables.sql": "11K"
+    "02_core_tables.sql": "21K"      # ⭐ Modificado Sprint 6
+    "03_business_tables.sql": "17K"
+    "04_audit_tables.sql": "12K"
+    "05_functions_base.sql": "19K"
+    "06_functions_business.sql": "29K"  # ⭐ Modificado Sprint 6
+    "07_triggers.sql": "15K"
+    "08_views.sql": "22K"
+    "09_seeds.sql": "19K"
+    "10_rate_profiles.sql": "23K"    # ⭐ Nuevo Sprint 6
+
+# ========================================
+# MANTENIMIENTO
+# ========================================
+
+maintenance:
+  update_frequency: "Cada Sprint (quincenal)"
+  last_consolidation: "Sprint 6 (2025-11-05)"
+  next_consolidation: "Sprint 7+ (si hay migraciones nuevas)"
+  
+  update_checklist:
+    - "Aplicar cambios en modules/"
+    - "Regenerar init.sql"
+    - "Validar en BD"
+    - "Actualizar INDEX.md si agregaste tablas/funciones"
+    - "Actualizar .aicontext si cambió estructura"
+    - "Mover migraciones obsoletas a archive/"
+    - "Crear CHANGELOG en archive/ si es Sprint completo"
+
+# ========================================
+# CONTACTO Y SOPORTE
+# ========================================
+
+support:
+  documentation: "/docs/"
+  issues: "Consultar DASHBOARD_VALIDACION_SPRINT6.md para estado actual"
+  questions: "Revisar INDEX.md y CHANGELOG.md primero"

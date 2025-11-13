@@ -55,7 +55,7 @@ async def list_loans(
     - offset: Desplazamiento para paginación (default 0)
     
     Retorna:
-    - items: Lista de préstamos resumidos
+    - items: Lista de préstamos resumidos CON nombres de cliente y asociado
     - total: Total de registros que coinciden con filtros
     - limit: Límite aplicado
     - offset: Desplazamiento aplicado
@@ -66,39 +66,84 @@ async def list_loans(
     - GET /loans?user_id=5&limit=20 → Préstamos del cliente 5 (max 20)
     - GET /loans?offset=50&limit=50 → Página 2
     """
-    repo = PostgreSQLLoanRepository(db)
+    from sqlalchemy import select, and_, func as sql_func, case
+    from sqlalchemy.orm import aliased
+    from app.modules.loans.infrastructure.models import LoanModel
+    from app.modules.auth.infrastructure.models import UserModel
     
-    # Obtener préstamos con filtros
-    loans = await repo.find_all(
-        status_id=status_id,
-        user_id=user_id,
-        associate_user_id=associate_user_id,
-        limit=limit,
-        offset=offset
+    # Crear aliases para las tablas de usuarios
+    ClientUser = aliased(UserModel)
+    AssociateUser = aliased(UserModel)
+    
+    # Construir query con JOINs para obtener nombres
+    query = select(
+        LoanModel.id,
+        LoanModel.user_id,
+        LoanModel.associate_user_id,
+        LoanModel.amount,
+        LoanModel.interest_rate,
+        LoanModel.term_biweeks,
+        LoanModel.status_id,
+        LoanModel.created_at,
+        (ClientUser.first_name + ' ' + ClientUser.last_name).label('client_name'),
+        case(
+            (LoanModel.associate_user_id.isnot(None), AssociateUser.first_name + ' ' + AssociateUser.last_name),
+            else_=None
+        ).label('associate_name')
+    ).select_from(LoanModel).join(
+        ClientUser,
+        LoanModel.user_id == ClientUser.id,
+        isouter=False
+    ).join(
+        AssociateUser,
+        LoanModel.associate_user_id == AssociateUser.id,
+        isouter=True  # LEFT JOIN porque associate puede ser NULL
     )
     
-    # Contar total
-    total = await repo.count(
-        status_id=status_id,
-        user_id=user_id,
-        associate_user_id=associate_user_id
-    )
+    # Aplicar filtros dinámicos
+    conditions = []
+    if status_id is not None:
+        conditions.append(LoanModel.status_id == status_id)
+    if user_id is not None:
+        conditions.append(LoanModel.user_id == user_id)
+    if associate_user_id is not None:
+        conditions.append(LoanModel.associate_user_id == associate_user_id)
+    
+    if conditions:
+        query = query.where(and_(*conditions))
+    
+    # Ordenar por más reciente primero
+    query = query.order_by(LoanModel.created_at.desc())
+    
+    # Contar total (antes de paginación)
+    count_query = select(sql_func.count()).select_from(LoanModel)
+    if conditions:
+        count_query = count_query.where(and_(*conditions))
+    count_result = await db.execute(count_query)
+    total = count_result.scalar()
+    
+    # Paginación
+    query = query.limit(limit).offset(offset)
+    
+    # Ejecutar
+    result = await db.execute(query)
+    rows = result.all()
     
     # Convertir a DTOs
     items = [
         LoanSummaryDTO(
-            id=loan.id,
-            user_id=loan.user_id,
-            amount=loan.amount,
-            interest_rate=loan.interest_rate,
-            term_biweeks=loan.term_biweeks,
-            status_id=loan.status_id,
-            created_at=loan.created_at,
-            # TODO: Agregar nombres con joins en Sprint 2
-            status_name=None,
-            client_name=None,
+            id=row.id,
+            user_id=row.user_id,
+            amount=row.amount,
+            interest_rate=row.interest_rate,
+            term_biweeks=row.term_biweeks,
+            status_id=row.status_id,
+            created_at=row.created_at,
+            status_name=None,  # TODO: Agregar con JOIN a loan_statuses si es necesario
+            client_name=row.client_name,
+            associate_name=row.associate_name,
         )
-        for loan in loans
+        for row in rows
     ]
     
     return PaginatedLoansDTO(
@@ -149,6 +194,7 @@ async def get_loan_detail(
         interest_rate=loan.interest_rate,
         commission_rate=loan.commission_rate,
         term_biweeks=loan.term_biweeks,
+        profile_code=loan.profile_code,
         status_id=loan.status_id,
         contract_id=loan.contract_id,
         approved_at=loan.approved_at,
@@ -226,21 +272,37 @@ async def create_loan(
     """
     Crea una nueva solicitud de préstamo.
     
+    Opciones de tasas:
+    1. Con profile_code: Las tasas se calculan automáticamente
+    2. Sin profile_code: Usar tasas manuales (interest_rate y commission_rate obligatorias)
+    
     Validaciones iniciales:
     - El asociado tiene crédito disponible suficiente
     - El cliente no tiene otros préstamos PENDING
     - El cliente no es moroso
     
-    Body:
+    Body (Opción 1 - Con perfil):
+    ```json
+    {
+        "user_id": 5,
+        "associate_user_id": 10,
+        "amount": 22000.00,
+        "term_biweeks": 12,
+        "profile_code": "standard",
+        "notes": "Préstamo para negocio"
+    }
+    ```
+    
+    Body (Opción 2 - Tasas manuales):
     ```json
     {
         "user_id": 5,
         "associate_user_id": 10,
         "amount": 5000.00,
-        "interest_rate": 2.50,
-        "commission_rate": 0.50,
         "term_biweeks": 12,
-        "notes": "Préstamo para negocio"
+        "interest_rate": 4.25,
+        "commission_rate": 2.50,
+        "notes": "Préstamo personalizado"
     }
     ```
     
@@ -256,13 +318,25 @@ async def create_loan(
     service = LoanService(db)
     
     try:
+        # DEBUG: Log del payload recibido
+        print(f"🔍 DEBUG CREATE LOAN - Payload recibido:")
+        print(f"  user_id: {loan_data.user_id}")
+        print(f"  associate_user_id: {loan_data.associate_user_id}")
+        print(f"  amount: {loan_data.amount}")
+        print(f"  term_biweeks: {loan_data.term_biweeks}")
+        print(f"  profile_code: {loan_data.profile_code}")
+        print(f"  interest_rate: {loan_data.interest_rate}")
+        print(f"  commission_rate: {loan_data.commission_rate}")
+        print(f"  notes: {loan_data.notes}")
+        
         loan = await service.create_loan_request(
             user_id=loan_data.user_id,
             associate_user_id=loan_data.associate_user_id,
             amount=loan_data.amount,
+            term_biweeks=loan_data.term_biweeks,
+            profile_code=loan_data.profile_code,
             interest_rate=loan_data.interest_rate,
             commission_rate=loan_data.commission_rate,
-            term_biweeks=loan_data.term_biweeks,
             notes=loan_data.notes
         )
         
@@ -278,6 +352,7 @@ async def create_loan(
             interest_rate=loan.interest_rate,
             commission_rate=loan.commission_rate,
             term_biweeks=loan.term_biweeks,
+            profile_code=loan.profile_code,
             status_id=loan.status_id,
             contract_id=loan.contract_id,
             approved_at=loan.approved_at,
