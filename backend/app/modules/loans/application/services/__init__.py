@@ -309,14 +309,122 @@ class LoanService:
             approval_date
         )
         
-        # 6. Actualizar préstamo a APPROVED
+        # 6. CRÍTICO: Asegurar que los campos calculados existan
+        # Si biweekly_payment es NULL, recalcular usando profile_code o tasas manuales
+        if loan.biweekly_payment is None:
+            print(f"⚠️  WARN: Préstamo {loan_id} no tiene biweekly_payment. Recalculando...")
+            
+            if loan.profile_code:
+                # Recalcular usando perfil
+                from sqlalchemy import text
+                
+                try:
+                    query = text("""
+                        SELECT 
+                            biweekly_payment,
+                            total_payment,
+                            total_interest,
+                            total_commission,
+                            commission_per_payment,
+                            associate_payment
+                        FROM calculate_loan_payment(:amount, :term_biweeks, :profile_code)
+                    """)
+                    
+                    result = await self.session.execute(
+                        query,
+                        {
+                            "amount": loan.amount,
+                            "term_biweeks": loan.term_biweeks,
+                            "profile_code": loan.profile_code
+                        }
+                    )
+                    
+                    row = result.fetchone()
+                    
+                    if row:
+                        loan.biweekly_payment = Decimal(str(row.biweekly_payment))
+                        loan.total_payment = Decimal(str(row.total_payment))
+                        loan.total_interest = Decimal(str(row.total_interest))
+                        loan.total_commission = Decimal(str(row.total_commission))
+                        loan.commission_per_payment = Decimal(str(row.commission_per_payment))
+                        loan.associate_payment = Decimal(str(row.associate_payment))
+                        
+                        print(f"✅ Valores recalculados con perfil '{loan.profile_code}'")
+                        print(f"   - biweekly_payment: {loan.biweekly_payment}")
+                        print(f"   - total_payment: {loan.total_payment}")
+                    else:
+                        raise ValueError(f"No se pudo recalcular valores con perfil '{loan.profile_code}'")
+                        
+                except Exception as e:
+                    print(f"❌ ERROR recalculando valores: {e}")
+                    raise ValueError(f"Error al recalcular valores del préstamo: {e}")
+            else:
+                # Sin profile_code, calcular manualmente con generate_loan_summary
+                from sqlalchemy import text
+                
+                try:
+                    query = text("""
+                        SELECT 
+                            pago_quincenal_cliente,
+                            pago_total_cliente,
+                            interes_total_cliente,
+                            tasa_efectiva_cliente,
+                            comision_por_pago,
+                            comision_total_socio,
+                            pago_quincenal_socio,
+                            pago_total_socio
+                        FROM generate_loan_summary(
+                            :amount,
+                            :term_biweeks,
+                            :interest_rate,
+                            :commission_rate
+                        )
+                    """)
+                    
+                    result = await self.session.execute(
+                        query,
+                        {
+                            "amount": loan.amount,
+                            "term_biweeks": loan.term_biweeks,
+                            "interest_rate": loan.interest_rate,
+                            "commission_rate": loan.commission_rate
+                        }
+                    )
+                    
+                    row = result.fetchone()
+                    
+                    if row:
+                        loan.biweekly_payment = Decimal(str(row.pago_quincenal_cliente))
+                        loan.total_payment = Decimal(str(row.pago_total_cliente))
+                        loan.total_interest = Decimal(str(row.interes_total_cliente))
+                        loan.total_commission = Decimal(str(row.comision_total_socio))
+                        loan.commission_per_payment = Decimal(str(row.comision_por_pago))
+                        loan.associate_payment = Decimal(str(row.pago_quincenal_socio))
+                        
+                        print(f"✅ Valores recalculados con tasas manuales")
+                        print(f"   - interest_rate: {loan.interest_rate}%")
+                        print(f"   - commission_rate: {loan.commission_rate}%")
+                        print(f"   - biweekly_payment: {loan.biweekly_payment}")
+                    else:
+                        raise ValueError("No se pudo calcular valores con generate_loan_summary")
+                        
+                except Exception as e:
+                    print(f"❌ ERROR calculando valores: {e}")
+                    raise ValueError(f"Error al calcular valores del préstamo: {e}")
+        else:
+            print(f"✅ Préstamo {loan_id} ya tiene valores calculados:")
+            print(f"   - biweekly_payment: {loan.biweekly_payment}")
+            print(f"   - total_payment: {loan.total_payment}")
+            print(f"   - commission_per_payment: {loan.commission_per_payment}")
+        
+        # 7. Actualizar préstamo a APPROVED
         loan.status_id = LoanStatusEnum.APPROVED.value
         loan.approved_at = datetime.utcnow()
         loan.approved_by = approved_by
         if notes:
             loan.notes = f"{loan.notes}\n[APROBACIÓN] {notes}" if loan.notes else f"[APROBACIÓN] {notes}"
         
-        # 7. Guardar (transacción ACID)
+        # 8. Guardar (transacción ACID)
         # NOTA: El trigger generate_payment_schedule() se ejecuta automáticamente
         # cuando status_id cambia a APPROVED (2)
         approved_loan = await self.repository.update(loan)
