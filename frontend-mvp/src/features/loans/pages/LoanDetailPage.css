@@ -126,28 +126,42 @@
   transition: all 0.2s;
 }
 
+.info-card>label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .info-card:hover {
   border-color: var(--primary-color);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+  box-shadow: var(--shadow-red);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border-color);
+  margin: -1.25rem -1.25rem 1rem -1.25rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
+  border-radius: 10px 10px 0 0;
 }
 
 .card-icon {
   font-size: 1.5rem;
+  filter: brightness(0) invert(1);
+  /* Hace los iconos blancos */
 }
 
 .card-header h3 {
   margin: 0;
   font-size: 1.1rem;
-  color: var(--text-primary);
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .card-content {
@@ -361,6 +375,55 @@
   color: #6b7280;
 }
 
+/* Amortization Section */
+.section-header-with-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.section-header-with-badge h2 {
+  margin: 0;
+}
+
+.amortization-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.simulation-notice {
+  background: rgba(234, 179, 8, 0.1);
+  border-left: 4px solid #eab308;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.simulation-notice strong {
+  color: #eab308;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-secondary);
+}
+
+.empty-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .loan-detail-page {
@@ -393,5 +456,10 @@
 
   .timeline {
     padding-left: 1.5rem;
+  }
+
+  .section-header-with-badge {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

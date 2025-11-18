@@ -71,6 +71,15 @@ export const loansService = {
   delete: (id) => {
     return apiClient.delete(ENDPOINTS.loans.delete(id));
   },
+
+  /**
+   * Get amortization schedule (real or simulated)
+   * @param {number} id - Loan ID
+   * @returns {Promise} Response with amortization schedule
+   */
+  getAmortization: (id) => {
+    return apiClient.get(ENDPOINTS.loans.amortization(id));
+  },
 };
 
 export default loansService;

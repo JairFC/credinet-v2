@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS loans (
     CONSTRAINT check_loans_amount_positive CHECK (amount > 0),
     CONSTRAINT check_loans_interest_rate_valid CHECK (interest_rate >= 0 AND interest_rate <= 100),
     CONSTRAINT check_loans_commission_rate_valid CHECK (commission_rate >= 0 AND commission_rate <= 100),
-    CONSTRAINT check_loans_term_biweeks_valid CHECK (term_biweeks IN (6, 12, 18, 24)),
+    CONSTRAINT check_loans_term_biweeks_valid CHECK (term_biweeks IN (3, 6, 9, 12, 15, 18, 21, 24, 30, 36)),
     CONSTRAINT check_loans_approved_after_created CHECK (approved_at IS NULL OR approved_at >= created_at),
     CONSTRAINT check_loans_rejected_after_created CHECK (rejected_at IS NULL OR rejected_at >= created_at),
     -- ⭐ Validaciones campos calculados (Sprint 6 - Migración 005)
@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS loans (
 );
 
 COMMENT ON TABLE loans IS 'Tabla central del sistema. Registra todos los préstamos solicitados, aprobados, rechazados o completados.';
-COMMENT ON COLUMN loans.term_biweeks IS '⭐ V2.0: Plazo del préstamo en quincenas. Valores permitidos: 6, 12, 18 o 24 quincenas (3, 6, 9 o 12 meses). Validado por check_loans_term_biweeks_valid.';
+COMMENT ON COLUMN loans.term_biweeks IS '⭐ V2.0: Plazo del préstamo en quincenas. Valores permitidos: 3, 6, 9, 12, 15, 18, 21, 24, 30 o 36 quincenas. Validado por check_loans_term_biweeks_valid.';
 COMMENT ON COLUMN loans.commission_rate IS 'Tasa de comisión del asociado en porcentaje. Ejemplo: 2.5 = 2.5%. Rango válido: 0-100.';
 COMMENT ON COLUMN loans.biweekly_payment IS '⭐ Sprint 6: Pago quincenal calculado con interés incluido (desde calculate_loan_payment). NULL si usa tasas manuales.';
 COMMENT ON COLUMN loans.total_payment IS '⭐ Sprint 6: Monto total a pagar incluyendo capital e interés (biweekly_payment * term_biweeks).';

@@ -1,0 +1,148 @@
+/* TablaAmortizacion.css */
+.tabla-amortizacion {
+  margin-bottom: 24px;
+}
+
+.tabla-amortizacion h3 {
+  margin: 0 0 16px 0;
+  color: #2c3e50;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.table-container {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.amortization-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.amortization-table thead {
+  background: #f8f9fa;
+}
+
+.amortization-table th {
+  padding: 12px 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+}
+
+.amortization-table th.currency {
+  text-align: right;
+}
+
+.amortization-table tbody tr {
+  border-bottom: 1px solid #f1f3f5;
+  transition: background-color 0.15s;
+}
+
+.amortization-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.amortization-table tbody tr:hover {
+  background-color: #e9ecef;
+}
+
+.amortization-table tbody tr.first-payment {
+  background-color: #fff3cd !important;
+}
+
+.amortization-table tbody tr.last-payment {
+  background-color: #d4edda !important;
+}
+
+.amortization-table td {
+  padding: 10px;
+  color: #495057;
+}
+
+.amortization-table td.payment-number {
+  font-weight: 600;
+  text-align: center;
+  color: #007bff;
+}
+
+.amortization-table td.payment-date {
+  font-weight: 500;
+}
+
+.amortization-table td.cut-period {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.amortization-table td.currency {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.amortization-table td.client-value {
+  color: #007bff;
+  font-weight: 600;
+}
+
+.amortization-table td.associate-value {
+  color: #6c757d;
+  font-weight: 600;
+}
+
+.amortization-table td.commission-value {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.amortization-table td.balance-value {
+  color: #dc3545;
+}
+
+.amortization-table tfoot {
+  background: #e9ecef;
+  font-weight: 700;
+}
+
+.amortization-table tfoot td {
+  padding: 14px 10px;
+  border-top: 2px solid #dee2e6;
+}
+
+.amortization-table tfoot .totals-label {
+  text-align: right;
+  color: #495057;
+  font-size: 1rem;
+}
+
+.amortization-table tfoot .total-value {
+  color: #212529;
+  font-size: 1.05rem;
+}
+
+/* Scroll horizontal en móviles */
+@media (max-width: 768px) {
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .amortization-table {
+    font-size: 0.8rem;
+  }
+
+  .amortization-table th,
+  .amortization-table td {
+    padding: 8px 6px;
+  }
+
+  .amortization-table th {
+    font-size: 0.75rem;
+  }
+}

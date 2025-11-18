@@ -64,8 +64,16 @@ class GenerateStatementUseCase:
             dto.user_id
         )
         
-        # Get GENERATED status ID (should be 1)
-        status_id = 1  # TODO: Get from database
+        # Get GENERATED status ID from database
+        from sqlalchemy import text
+        result = self.statement_repository.db_session.execute(
+            text("SELECT id FROM statement_statuses WHERE code = 'GENERATED' LIMIT 1")
+        ).fetchone()
+        
+        if not result:
+            raise ValueError("GENERATED status not found in statement_statuses table")
+        
+        status_id = result[0]
         
         # Create statement
         statement = self.statement_repository.create(
@@ -91,11 +99,21 @@ class GenerateStatementUseCase:
         """
         Generate unique statement number.
         
-        Format: ST-{YYYY}-Q{NN}-{USER_ID}
+        Format: ST-{YYYY}-{PERIOD_CODE}-{USER_ID}
         Example: ST-2025-Q01-003
-        
-        TODO: Get period code from database
         """
-        # For now, use simple format
-        # In production, fetch cut_period.cut_code from DB
-        return f"ST-{cut_period_id:03d}-{user_id:03d}"
+        from sqlalchemy import text
+        
+        # Obtener código del período desde la base de datos
+        result = self.statement_repository.db_session.execute(
+            text("SELECT cut_code FROM cut_periods WHERE id = :id"),
+            {"id": cut_period_id}
+        ).fetchone()
+        
+        if not result:
+            raise ValueError(f"Cut period {cut_period_id} not found")
+        
+        period_code = result[0]
+        
+        # Generar número de statement
+        return f"ST-{period_code}-{user_id:03d}"

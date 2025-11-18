@@ -29,7 +29,7 @@ export const rateProfilesService = {
    * @returns {Promise} Lista de montos predefinidos
    */
   getLegacyAmounts: async () => {
-    const response = await apiClient.get('/api/v1/legacy-payments');
+    const response = await apiClient.get('/api/v1/rate-profiles/legacy-payments');
     return response;
   },
 

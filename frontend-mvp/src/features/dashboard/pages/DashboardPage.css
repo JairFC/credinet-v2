@@ -176,7 +176,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #C4252D, #9B1C22);
   opacity: 0;
   transition: opacity 0.35s ease;
   z-index: 0;
@@ -474,7 +474,7 @@
 .retry-button {
   margin-top: 1.5rem;
   padding: 0.75rem 1.5rem;
-  background: #667eea;
+  background: #C4252D;
   color: white;
   border: none;
   border-radius: 8px;

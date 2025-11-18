@@ -372,11 +372,11 @@ export default function LoansPage() {
                     </td>
                     <td className="actions-cell">
                       <button
-                        className="btn-icon"
+                        className="btn-details"
                         onClick={() => navigate(`/prestamos/${loan.id}`)}
-                        title="Ver detalles"
+                        title="Ver detalles del préstamo"
                       >
-                        👁️
+                        Detalles
                       </button>
                       {canApproveOrReject(loan) && (
                         <>

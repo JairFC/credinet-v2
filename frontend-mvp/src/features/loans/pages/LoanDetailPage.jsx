@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { loansService } from '@/shared/api/services';
+import TablaAmortizacion from '../components/simulator/TablaAmortizacion';
 import './LoanDetailPage.css';
 
 /**
@@ -20,10 +21,14 @@ export default function LoanDetailPage() {
   const [loan, setLoan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [amortization, setAmortization] = useState(null);
+  const [amortizationLoading, setAmortizationLoading] = useState(false);
+  const [isSimulation, setIsSimulation] = useState(false);
 
   useEffect(() => {
     if (id) {
       loadLoanDetail();
+      loadAmortization();
     }
   }, [id]);
 
@@ -35,12 +40,35 @@ export default function LoanDetailPage() {
       setError(null);
 
       const response = await loansService.getById(id);
+      console.log('=== LOAN DATA LOADED ===', response.data);
+      console.log('client_name:', response.data.client_name);
+      console.log('associate_name:', response.data.associate_name);
+      console.log('interest_rate:', response.data.interest_rate);
+      console.log('commission_rate:', response.data.commission_rate);
       setLoan(response.data);
     } catch (err) {
       console.error('Error loading loan detail:', err);
       setError(err.response?.data?.detail || 'Error al cargar préstamo');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAmortization = async () => {
+    if (!id) return;
+
+    try {
+      setAmortizationLoading(true);
+      const response = await loansService.getAmortization(id);
+      console.log('Amortization response:', response.data);
+      setAmortization(response.data.schedule);
+      setIsSimulation(response.data.is_simulation);
+    } catch (err) {
+      console.error('Error loading amortization:', err);
+      console.error('Error details:', err.response?.data);
+      // No mostrar error crítico si falla la amortización
+    } finally {
+      setAmortizationLoading(false);
     }
   };
 
@@ -60,11 +88,14 @@ export default function LoanDetailPage() {
 
   // ============ UTILIDADES DE FORMATO ============
   const formatCurrency = (amount) => {
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount)) return '$0.00';
+
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN',
       minimumFractionDigits: 2
-    }).format(amount || 0);
+    }).format(numericAmount);
   };
 
   const formatDate = (dateString) => {
@@ -85,12 +116,22 @@ export default function LoanDetailPage() {
   // ============ CÁLCULOS ============
   const calculateTotalInterest = () => {
     if (!loan) return 0;
-    return loan.total_interest || (loan.total_to_pay - loan.amount) || 0;
+    const totalInterest = parseFloat(loan.total_interest);
+    if (!isNaN(totalInterest)) return totalInterest;
+
+    const totalToPay = parseFloat(loan.total_to_pay);
+    const amount = parseFloat(loan.amount);
+    return (!isNaN(totalToPay) && !isNaN(amount)) ? (totalToPay - amount) : 0;
   };
 
   const calculateTotalCommission = () => {
     if (!loan) return 0;
-    return loan.total_commission || (loan.commission_per_payment * loan.term_biweeks) || 0;
+    const totalCommission = parseFloat(loan.total_commission);
+    if (!isNaN(totalCommission)) return totalCommission;
+
+    const commissionPerPayment = parseFloat(loan.commission_per_payment);
+    const termBiweeks = parseInt(loan.term_biweeks);
+    return (!isNaN(commissionPerPayment) && !isNaN(termBiweeks)) ? (commissionPerPayment * termBiweeks) : 0;
   };
 
   // ============ RENDER ============
@@ -317,6 +358,40 @@ export default function LoanDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Sección: Tabla de Amortización */}
+        <div className="detail-section">
+          <div className="section-header-with-badge">
+            <h2>📊 Tabla de Amortización</h2>
+            {amortization && (
+              <span className={`amortization-badge ${isSimulation ? 'badge-warning' : 'badge-success'}`}>
+                {isSimulation ? '⚠️ SIMULACIÓN - Fechas Tentativas' : '✅ CRONOGRAMA OFICIAL'}
+              </span>
+            )}
+          </div>
+
+          {amortizationLoading ? (
+            <div className="loading-spinner">
+              <div className="spinner"></div>
+              <p>Cargando cronograma...</p>
+            </div>
+          ) : amortization && amortization.length > 0 ? (
+            <>
+              {isSimulation && (
+                <div className="simulation-notice">
+                  <strong>ℹ️ Nota:</strong> Estas fechas son tentativas y se recalculan automáticamente.
+                  Una vez aprobado el préstamo, se generará el cronograma oficial con fechas definitivas.
+                </div>
+              )}
+              <TablaAmortizacion payments={amortization} />
+            </>
+          ) : (
+            <div className="empty-state">
+              <span className="empty-icon">📋</span>
+              <p>No hay cronograma disponible para este préstamo</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

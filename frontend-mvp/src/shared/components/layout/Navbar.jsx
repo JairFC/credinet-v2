@@ -8,6 +8,7 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [usersMenuOpen, setUsersMenuOpen] = useState(false);
+  const [loansMenuOpen, setLoansMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -20,6 +21,10 @@ const Navbar = () => {
 
   const toggleUsersMenu = () => {
     setUsersMenuOpen(!usersMenuOpen);
+  };
+
+  const toggleLoansMenu = () => {
+    setLoansMenuOpen(!loansMenuOpen);
   };
 
   return (
@@ -42,11 +47,43 @@ const Navbar = () => {
                 📊 Dashboard
               </Link>
             </li>
-            <li>
-              <Link to="/prestamos" onClick={() => setMenuOpen(false)}>
-                💰 Préstamos
-              </Link>
+
+            {/* Loans Module - Dropdown */}
+            <li className="navbar-dropdown">
+              <button
+                className="dropdown-toggle"
+                onClick={toggleLoansMenu}
+              >
+                💰 Préstamos {loansMenuOpen ? '▲' : '▼'}
+              </button>
+              {loansMenuOpen && (
+                <ul className="dropdown-menu">
+                  <li>
+                    <Link
+                      to="/prestamos"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setLoansMenuOpen(false);
+                      }}
+                    >
+                      📋 Gestión
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/prestamos/simulador"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setLoansMenuOpen(false);
+                      }}
+                    >
+                      🧮 Simulador
+                    </Link>
+                  </li>
+                </ul>
+              )}
             </li>
+
             <li>
               <Link to="/pagos" onClick={() => setMenuOpen(false)}>
                 💳 Pagos
@@ -54,7 +91,7 @@ const Navbar = () => {
             </li>
             <li>
               <Link to="/estados-cuenta" onClick={() => setMenuOpen(false)}>
-                📋 Estados de Cuenta
+                📊 Estados de Cuenta
               </Link>
             </li>
 

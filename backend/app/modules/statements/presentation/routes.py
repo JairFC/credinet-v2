@@ -20,6 +20,7 @@ from ..application.list_statements import ListStatementsUseCase
 from ..application.get_statement_details import GetStatementDetailsUseCase
 from ..application.mark_statement_paid import MarkStatementPaidUseCase
 from ..application.apply_late_fee import ApplyLateFeeUseCase
+from ..application.enhanced_service import StatementEnhancedService
 from ..infrastructure.pg_statement_repository import PgStatementRepository
 
 
@@ -41,6 +42,7 @@ def get_statement_repository(db: Session = Depends(get_db)) -> PgStatementReposi
 )
 def generate_statement(
     dto: CreateStatementDTO,
+    db: Session = Depends(get_db),
     repository: PgStatementRepository = Depends(get_statement_repository),
     current_user: dict = Depends(get_current_user)
 ):
@@ -56,37 +58,17 @@ def generate_statement(
         use_case = GenerateStatementUseCase(repository)
         statement = use_case.execute(dto)
         
-        # TODO: Map to response DTO with joined data
-        return StatementResponseDTO(
-            id=statement.id,
-            statement_number=statement.statement_number,
-            user_id=statement.user_id,
-            associate_name="TODO",  # Fetch from user
-            cut_period_id=statement.cut_period_id,
-            cut_period_code="TODO",  # Fetch from cut_period
-            total_payments_count=statement.total_payments_count,
-            total_amount_collected=statement.total_amount_collected,
-            total_commission_owed=statement.total_commission_owed,
-            commission_rate_applied=statement.commission_rate_applied,
-            status_id=statement.status_id,
-            status_name="GENERATED",  # TODO: Fetch from status
-            generated_date=statement.generated_date,
-            sent_date=statement.sent_date,
-            due_date=statement.due_date,
-            paid_date=statement.paid_date,
-            paid_amount=statement.paid_amount,
-            payment_method_id=statement.payment_method_id,
-            payment_method_name=None,
-            payment_reference=statement.payment_reference,
-            late_fee_amount=statement.late_fee_amount,
-            late_fee_applied=statement.late_fee_applied,
-            is_paid=statement.is_paid,
-            is_overdue=statement.is_overdue,
-            days_overdue=statement.days_overdue,
-            remaining_amount=statement.remaining_amount,
-            created_at=statement.created_at,
-            updated_at=statement.updated_at
-        )
+        # Obtener datos completos con JOINs
+        enhanced_service = StatementEnhancedService(db)
+        statement_data = enhanced_service.get_statement_with_details(statement.id)
+        
+        if not statement_data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to retrieve generated statement {statement.id}"
+            )
+        
+        return StatementResponseDTO(**statement_data)
         
     except ValueError as e:
         raise HTTPException(
@@ -103,7 +85,7 @@ def generate_statement(
 )
 def get_statement(
     statement_id: int,
-    repository: PgStatementRepository = Depends(get_statement_repository),
+    db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -112,45 +94,25 @@ def get_statement(
     **Permissions**: admin, supervisor, associate (own statements only)
     """
     try:
-        use_case = GetStatementDetailsUseCase(repository)
-        statement = use_case.execute(statement_id)
+        # Usar servicio mejorado con JOINs
+        enhanced_service = StatementEnhancedService(db)
+        statement_data = enhanced_service.get_statement_with_details(statement_id)
         
-        # TODO: Map to response DTO with joined data
-        return StatementResponseDTO(
-            id=statement.id,
-            statement_number=statement.statement_number,
-            user_id=statement.user_id,
-            associate_name="TODO",
-            cut_period_id=statement.cut_period_id,
-            cut_period_code="TODO",
-            total_payments_count=statement.total_payments_count,
-            total_amount_collected=statement.total_amount_collected,
-            total_commission_owed=statement.total_commission_owed,
-            commission_rate_applied=statement.commission_rate_applied,
-            status_id=statement.status_id,
-            status_name="TODO",
-            generated_date=statement.generated_date,
-            sent_date=statement.sent_date,
-            due_date=statement.due_date,
-            paid_date=statement.paid_date,
-            paid_amount=statement.paid_amount,
-            payment_method_id=statement.payment_method_id,
-            payment_method_name=None,
-            payment_reference=statement.payment_reference,
-            late_fee_amount=statement.late_fee_amount,
-            late_fee_applied=statement.late_fee_applied,
-            is_paid=statement.is_paid,
-            is_overdue=statement.is_overdue,
-            days_overdue=statement.days_overdue,
-            remaining_amount=statement.remaining_amount,
-            created_at=statement.created_at,
-            updated_at=statement.updated_at
-        )
+        if not statement_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Statement {statement_id} not found"
+            )
         
-    except LookupError as e:
+        # Retornar datos completos (sin TODOs)
+        return StatementResponseDTO(**statement_data)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching statement: {str(e)}"
         )
 
 
@@ -167,7 +129,7 @@ def list_statements(
     is_overdue: Optional[bool] = Query(None, description="Filter overdue only"),
     limit: int = Query(10, ge=1, le=100, description="Results per page"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
-    repository: PgStatementRepository = Depends(get_statement_repository),
+    db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -176,36 +138,20 @@ def list_statements(
     **Permissions**: admin, supervisor (all), associate (own only)
     """
     try:
-        use_case = ListStatementsUseCase(repository)
+        # Usar servicio mejorado con JOINs
+        enhanced_service = StatementEnhancedService(db)
         
-        if user_id:
-            statements = use_case.by_associate(user_id, limit, offset)
-        elif cut_period_id:
-            statements = use_case.by_period(cut_period_id, limit, offset)
-        elif status_filter:
-            statements = use_case.by_status(status_filter, limit, offset)
-        elif is_overdue:
-            statements = use_case.overdue(limit, offset)
-        else:
-            # Default: list by associate (current user if associate)
-            statements = use_case.by_associate(current_user.id, limit, offset)
+        statements_data = enhanced_service.list_statements_with_details(
+            user_id=user_id,
+            cut_period_id=cut_period_id,
+            status_filter=status_filter,
+            is_overdue=is_overdue,
+            limit=limit,
+            offset=offset
+        )
         
-        # TODO: Map to summary DTO with joined data
-        return [
-            StatementSummaryDTO(
-                id=s.id,
-                statement_number=s.statement_number,
-                associate_name="TODO",
-                cut_period_code="TODO",
-                total_payments_count=s.total_payments_count,
-                total_commission_owed=s.total_commission_owed,
-                status_name="TODO",
-                due_date=s.due_date,
-                is_overdue=s.is_overdue,
-                remaining_amount=s.remaining_amount
-            )
-            for s in statements
-        ]
+        # Retornar datos completos (sin TODOs)
+        return [StatementSummaryDTO(**s) for s in statements_data]
         
     except ValueError as e:
         raise HTTPException(
@@ -223,6 +169,7 @@ def list_statements(
 def mark_statement_paid(
     statement_id: int,
     dto: MarkStatementPaidDTO,
+    db: Session = Depends(get_db),
     repository: PgStatementRepository = Depends(get_statement_repository),
     current_user: dict = Depends(get_current_user)
 ):
@@ -235,37 +182,17 @@ def mark_statement_paid(
         use_case = MarkStatementPaidUseCase(repository)
         statement = use_case.execute(statement_id, dto)
         
-        # TODO: Map to response DTO
-        return StatementResponseDTO(
-            id=statement.id,
-            statement_number=statement.statement_number,
-            user_id=statement.user_id,
-            associate_name="TODO",
-            cut_period_id=statement.cut_period_id,
-            cut_period_code="TODO",
-            total_payments_count=statement.total_payments_count,
-            total_amount_collected=statement.total_amount_collected,
-            total_commission_owed=statement.total_commission_owed,
-            commission_rate_applied=statement.commission_rate_applied,
-            status_id=statement.status_id,
-            status_name="TODO",
-            generated_date=statement.generated_date,
-            sent_date=statement.sent_date,
-            due_date=statement.due_date,
-            paid_date=statement.paid_date,
-            paid_amount=statement.paid_amount,
-            payment_method_id=statement.payment_method_id,
-            payment_method_name=None,
-            payment_reference=statement.payment_reference,
-            late_fee_amount=statement.late_fee_amount,
-            late_fee_applied=statement.late_fee_applied,
-            is_paid=statement.is_paid,
-            is_overdue=statement.is_overdue,
-            days_overdue=statement.days_overdue,
-            remaining_amount=statement.remaining_amount,
-            created_at=statement.created_at,
-            updated_at=statement.updated_at
-        )
+        # Obtener datos completos con JOINs
+        enhanced_service = StatementEnhancedService(db)
+        statement_data = enhanced_service.get_statement_with_details(statement_id)
+        
+        if not statement_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Statement {statement_id} not found after update"
+            )
+        
+        return StatementResponseDTO(**statement_data)
         
     except LookupError as e:
         raise HTTPException(
@@ -288,6 +215,7 @@ def mark_statement_paid(
 def apply_late_fee(
     statement_id: int,
     dto: ApplyLateFeeDTO,
+    db: Session = Depends(get_db),
     repository: PgStatementRepository = Depends(get_statement_repository),
     current_user: dict = Depends(get_current_user)
 ):
@@ -300,37 +228,17 @@ def apply_late_fee(
         use_case = ApplyLateFeeUseCase(repository)
         statement = use_case.execute(statement_id, dto)
         
-        # TODO: Map to response DTO
-        return StatementResponseDTO(
-            id=statement.id,
-            statement_number=statement.statement_number,
-            user_id=statement.user_id,
-            associate_name="TODO",
-            cut_period_id=statement.cut_period_id,
-            cut_period_code="TODO",
-            total_payments_count=statement.total_payments_count,
-            total_amount_collected=statement.total_amount_collected,
-            total_commission_owed=statement.total_commission_owed,
-            commission_rate_applied=statement.commission_rate_applied,
-            status_id=statement.status_id,
-            status_name="TODO",
-            generated_date=statement.generated_date,
-            sent_date=statement.sent_date,
-            due_date=statement.due_date,
-            paid_date=statement.paid_date,
-            paid_amount=statement.paid_amount,
-            payment_method_id=statement.payment_method_id,
-            payment_method_name=None,
-            payment_reference=statement.payment_reference,
-            late_fee_amount=statement.late_fee_amount,
-            late_fee_applied=statement.late_fee_applied,
-            is_paid=statement.is_paid,
-            is_overdue=statement.is_overdue,
-            days_overdue=statement.days_overdue,
-            remaining_amount=statement.remaining_amount,
-            created_at=statement.created_at,
-            updated_at=statement.updated_at
-        )
+        # Obtener datos completos con JOINs
+        enhanced_service = StatementEnhancedService(db)
+        statement_data = enhanced_service.get_statement_with_details(statement_id)
+        
+        if not statement_data:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Statement {statement_id} not found after update"
+            )
+        
+        return StatementResponseDTO(**statement_data)
         
     except LookupError as e:
         raise HTTPException(
@@ -352,7 +260,7 @@ def apply_late_fee(
 )
 def get_period_stats(
     cut_period_id: int,
-    repository: PgStatementRepository = Depends(get_statement_repository),
+    db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -360,10 +268,62 @@ def get_period_stats(
     
     **Permissions**: admin, supervisor
     """
-    # TODO: Implement aggregation query
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Statistics endpoint not yet implemented"
+    from sqlalchemy import text
+    
+    # Verificar que el período existe y obtener su código
+    period = db.execute(
+        text("SELECT cut_code FROM cut_periods WHERE id = :id"),
+        {"id": cut_period_id}
+    ).fetchone()
+    
+    if not period:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Cut period {cut_period_id} not found"
+        )
+    
+    # Obtener estadísticas agregadas
+    stats = db.execute(text("""
+        SELECT 
+            COUNT(DISTINCT s.id) AS total_statements,
+            COUNT(DISTINCT s.user_id) AS total_associates,
+            COALESCE(SUM(s.total_payments_count), 0) AS total_payments,
+            COALESCE(SUM(s.total_amount_collected), 0) AS total_collected,
+            COALESCE(SUM(s.total_commission_owed), 0) AS total_commissions,
+            COUNT(DISTINCT CASE WHEN st.code = 'PAID' THEN s.id END) AS paid_statements,
+            COUNT(DISTINCT CASE WHEN s.is_overdue = true THEN s.id END) AS overdue_statements,
+            COUNT(DISTINCT CASE WHEN st.code IN ('GENERATED', 'SENT') THEN s.id END) AS pending_statements
+        FROM associate_payment_statements s
+        JOIN statement_statuses st ON st.id = s.status_id
+        WHERE s.cut_period_id = :cut_period_id
+    """), {"cut_period_id": cut_period_id}).fetchone()
+    
+    if not stats:
+        # Si no hay statements para este período, retornar ceros
+        return PeriodStatsDTO(
+            cut_period_id=cut_period_id,
+            cut_period_code=period[0],
+            total_statements=0,
+            total_associates=0,
+            total_payments=0,
+            total_collected=0,
+            total_commissions=0,
+            paid_statements=0,
+            overdue_statements=0,
+            pending_statements=0
+        )
+    
+    return PeriodStatsDTO(
+        cut_period_id=cut_period_id,
+        cut_period_code=period[0],
+        total_statements=stats[0] or 0,
+        total_associates=stats[1] or 0,
+        total_payments=stats[2] or 0,
+        total_collected=stats[3] or 0,
+        total_commissions=stats[4] or 0,
+        paid_statements=stats[5] or 0,
+        overdue_statements=stats[6] or 0,
+        pending_statements=stats[7] or 0
     )
 
 

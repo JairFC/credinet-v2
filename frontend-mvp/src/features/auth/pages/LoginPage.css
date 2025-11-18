@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
   padding: 2rem;
 }
 
@@ -104,7 +104,7 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #C4252D;
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
 }
 
@@ -126,7 +126,7 @@
   font-size: 1.1rem;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
   border: none;
   border-radius: 10px;
   cursor: pointer;
@@ -169,7 +169,7 @@
   border-radius: 6px;
   font-family: 'Courier New', monospace;
   font-size: 0.9rem;
-  color: #667eea;
+  color: #C4252D;
   font-weight: 600;
 }
 

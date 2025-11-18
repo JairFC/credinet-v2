@@ -21,6 +21,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../../app/providers/AuthProvider';
 import { statementsService } from '../../../shared/api/services/statementsService';
 import ModalRegistrarAbono from '../../../shared/components/ModalRegistrarAbono';
+import RegistrarPagoModal from '../../payments/components/RegistrarPagoModal';
 import TablaDesglosePagos from '../../../shared/components/TablaDesglosePagos';
 import './StatementsPage.css';
 
@@ -121,9 +122,18 @@ const StatementsPage = () => {
     });
   };
 
-  const handlePaymentSuccess = async () => {
-    setMarkPaidModal(null);
-    await fetchStatements();
+  const handlePaymentSuccess = async (paymentData) => {
+    try {
+      // Llamar al API para registrar el pago
+      await statementsService.registerPayment(markPaidModal.id, paymentData);
+
+      // Cerrar modal y recargar datos
+      setMarkPaidModal(null);
+      await fetchStatements();
+    } catch (err) {
+      console.error('Error al registrar pago:', err);
+      throw err; // Re-throw para que el modal muestre el error
+    }
   };
 
   const toggleStatementDetail = (statementId) => {
@@ -415,13 +425,21 @@ const StatementsPage = () => {
 
       {/* Modal: Registrar Abono */}
       {markPaidModal && (
-        <ModalRegistrarAbono
+        <RegistrarPagoModal
           isOpen={!!markPaidModal}
           onClose={() => setMarkPaidModal(null)}
-          statementId={markPaidModal.id}
+          tipo="periodo"
+          statement={{
+            id: markPaidModal.id,
+            cut_code: markPaidModal.cut_code,
+            total_collected_amount: markPaidModal.total_amount_collected || 0,
+            commission_amount: markPaidModal.total_commission_owed || 0,
+            paid_amount: markPaidModal.paid_amount || 0,
+            late_fee_amount: markPaidModal.late_fee_amount || 0,
+            total_amount_collected: markPaidModal.total_amount_collected || 0,
+            total_commission_owed: markPaidModal.total_commission_owed || 0,
+          }}
           associateId={markPaidModal.user_id}
-          totalOwed={(markPaidModal.total_commission_owed || 0) + (markPaidModal.late_fee_amount || 0)}
-          paidAmount={markPaidModal.paid_amount || 0}
           onSuccess={handlePaymentSuccess}
         />
       )}

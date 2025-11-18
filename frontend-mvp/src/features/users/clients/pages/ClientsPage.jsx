@@ -188,10 +188,11 @@ export default function ClientsPage() {
                   </td>
                   <td>
                     <button
-                      className="btn btn-sm btn-secondary"
+                      className="btn-details"
                       onClick={() => handleViewDetail(client.id)}
+                      title="Ver detalles del cliente"
                     >
-                      👁️ Ver
+                      Detalles
                     </button>
                   </td>
                 </tr>

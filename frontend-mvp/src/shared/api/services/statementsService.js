@@ -72,6 +72,37 @@ export const statementsService = {
   recalculate: (id) => {
     return apiClient.post(ENDPOINTS.statements.recalculate(id));
   },
+
+  /**
+   * Register payment to associate statement (abono al período)
+   * @param {number} id - Statement ID
+   * @param {Object} paymentData - { payment_amount, payment_date, payment_method_id, payment_reference, notes }
+   * @returns {Promise} Response with updated statement
+   */
+  registerPayment: (id, paymentData) => {
+    // El endpoint usa query params, no body
+    return apiClient.post(ENDPOINTS.statements.registerPayment(id), null, {
+      params: paymentData
+    });
+  },
+
+  /**
+   * Get all payments made to a statement
+   * @param {number} id - Statement ID
+   * @returns {Promise} Response with payments list
+   */
+  getPayments: (id) => {
+    return apiClient.get(ENDPOINTS.statements.payments(id));
+  },
+
+  /**
+   * Get period statistics
+   * @param {number} periodId - Period ID
+   * @returns {Promise} Response with period statistics
+   */
+  getPeriodStats: (periodId) => {
+    return apiClient.get(ENDPOINTS.statements.periodStats(periodId));
+  },
 };
 
 export default statementsService;

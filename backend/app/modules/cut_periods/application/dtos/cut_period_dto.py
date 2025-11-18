@@ -31,8 +31,11 @@ class CutPeriodListItemDTO(BaseModel):
     """DTO simplificado para listar periodos"""
     id: int
     cut_number: int
+    cut_code: str
     period_start_date: date
     period_end_date: date
+    payment_date: date
+    cut_date: date
     status_id: int
     collection_percentage: float
     

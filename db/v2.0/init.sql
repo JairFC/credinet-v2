@@ -411,7 +411,7 @@ CREATE TABLE IF NOT EXISTS loans (
     CONSTRAINT check_loans_amount_positive CHECK (amount > 0),
     CONSTRAINT check_loans_interest_rate_valid CHECK (interest_rate >= 0 AND interest_rate <= 100),
     CONSTRAINT check_loans_commission_rate_valid CHECK (commission_rate >= 0 AND commission_rate <= 100),
-    CONSTRAINT check_loans_term_biweeks_valid CHECK (term_biweeks IN (6, 12, 18, 24)),
+    CONSTRAINT check_loans_term_biweeks_valid CHECK (term_biweeks IN (3, 6, 9, 12, 15, 18, 21, 24, 30, 36)),
     CONSTRAINT check_loans_approved_after_created CHECK (approved_at IS NULL OR approved_at >= created_at),
     CONSTRAINT check_loans_rejected_after_created CHECK (rejected_at IS NULL OR rejected_at >= created_at),
     -- ⭐ Validaciones campos calculados (Sprint 6 - Migración 005)
@@ -424,7 +424,7 @@ CREATE TABLE IF NOT EXISTS loans (
 );
 
 COMMENT ON TABLE loans IS 'Tabla central del sistema. Registra todos los préstamos solicitados, aprobados, rechazados o completados.';
-COMMENT ON COLUMN loans.term_biweeks IS '⭐ V2.0: Plazo del préstamo en quincenas. Valores permitidos: 6, 12, 18 o 24 quincenas (3, 6, 9 o 12 meses). Validado por check_loans_term_biweeks_valid.';
+COMMENT ON COLUMN loans.term_biweeks IS '⭐ V2.0: Plazo del préstamo en quincenas. Valores permitidos: 3, 6, 9, 12, 15, 18, 21, 24, 30 o 36 quincenas. Validado por check_loans_term_biweeks_valid.';
 COMMENT ON COLUMN loans.commission_rate IS 'Tasa de comisión del asociado en porcentaje. Ejemplo: 2.5 = 2.5%. Rango válido: 0-100.';
 COMMENT ON COLUMN loans.biweekly_payment IS '⭐ Sprint 6: Pago quincenal calculado con interés incluido (desde calculate_loan_payment). NULL si usa tasas manuales.';
 COMMENT ON COLUMN loans.total_payment IS '⭐ Sprint 6: Monto total a pagar incluyendo capital e interés (biweekly_payment * term_biweeks).';
@@ -4206,3 +4206,131 @@ INSERT INTO legacy_payment_table (amount, biweekly_payment, term_biweeks) VALUES
 
 COMMENT ON SCHEMA public IS 'Schema público de CrediCuenta v2.0.3 con sistema de perfiles de tasa flexible.';
 
+-- =============================================================================
+-- MIGRACIÓN 017: Función simulate_loan para simulador de préstamos
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION simulate_loan(
+    p_amount DECIMAL(12,2),
+    p_term_biweeks INTEGER,
+    p_profile_code VARCHAR(50),
+    p_approval_date DATE DEFAULT CURRENT_DATE
+) RETURNS TABLE (
+    payment_number INTEGER,
+    payment_date DATE,
+    cut_period_code VARCHAR(20),
+    client_payment DECIMAL(10,2),
+    associate_payment DECIMAL(10,2),
+    commission_amount DECIMAL(10,2),
+    remaining_balance DECIMAL(12,2)
+) AS $$
+DECLARE
+    v_calc RECORD;
+    v_current_date DATE;
+    v_balance DECIMAL(12,2);
+    v_cut_code VARCHAR(20);
+    i INTEGER;
+BEGIN
+    -- Obtener cálculos del perfil
+    SELECT * INTO v_calc
+    FROM calculate_loan_payment(p_amount, p_term_biweeks, p_profile_code);
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Perfil % no encontrado o deshabilitado', p_profile_code;
+    END IF;
+    
+    -- Calcular primera fecha de pago usando el oráculo
+    v_current_date := calculate_first_payment_date(p_approval_date);
+    v_balance := p_amount;
+    
+    -- Generar tabla de amortización
+    FOR i IN 1..p_term_biweeks LOOP
+        -- Determinar código de corte según regla del calendario
+        IF EXTRACT(DAY FROM v_current_date) <= 8 THEN
+            v_cut_code := 'CORTE_8_' || EXTRACT(MONTH FROM v_current_date)::TEXT;
+        ELSE
+            v_cut_code := 'CORTE_23_' || EXTRACT(MONTH FROM v_current_date)::TEXT;
+        END IF;
+        
+        -- Calcular saldo restante (se va reduciendo el capital)
+        v_balance := p_amount - (v_calc.biweekly_payment - (p_amount * v_calc.interest_rate_percent / 100)) * i;
+        IF v_balance < 0 THEN
+            v_balance := 0;
+        END IF;
+        
+        RETURN QUERY SELECT
+            i,
+            v_current_date,
+            v_cut_code,
+            v_calc.biweekly_payment,
+            v_calc.associate_payment,
+            v_calc.commission_per_payment,
+            v_balance;
+        
+        -- Calcular siguiente fecha: alternar entre día 15 y último día del mes
+        IF EXTRACT(DAY FROM v_current_date) = 15 THEN
+            -- Si estamos en día 15, siguiente pago es el último día del mes
+            v_current_date := (DATE_TRUNC('month', v_current_date) + INTERVAL '1 month' - INTERVAL '1 day')::DATE;
+        ELSE
+            -- Si estamos en último día, siguiente pago es el 15 del siguiente mes
+            v_current_date := MAKE_DATE(
+                EXTRACT(YEAR FROM v_current_date + INTERVAL '1 month')::INTEGER,
+                EXTRACT(MONTH FROM v_current_date + INTERVAL '1 month')::INTEGER,
+                15
+            );
+        END IF;
+    END LOOP;
+    
+    RETURN;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+COMMENT ON FUNCTION simulate_loan IS 
+'Genera tabla de amortización completa para simulación de préstamos.
+Calcula fechas de pago cada 15 días, asigna períodos de corte, y muestra desglose por pago.
+Uso: SELECT * FROM simulate_loan(10000, 12, ''standard'', ''2025-01-15'');';
+-- =============================================================================
+-- MIGRACIÓN 018: Poblar tabla de referencia con datos legacy
+-- =============================================================================
+-- Inserta los 29 registros de la tabla legacy_payment_table en la tabla
+-- rate_profile_reference_table para que aparezcan en el simulador
+
+INSERT INTO rate_profile_reference_table (
+    profile_code,
+    amount,
+    term_biweeks,
+    biweekly_payment,
+    total_payment,
+    commission_per_payment,
+    total_commission,
+    associate_payment,
+    associate_total,
+    interest_rate_percent,
+    commission_rate_percent
+)
+SELECT 
+    'legacy' as profile_code,
+    amount,
+    term_biweeks,
+    biweekly_payment,
+    total_payment,
+    commission_per_payment,
+    commission_per_payment * term_biweeks as total_commission,
+    associate_biweekly_payment as associate_payment,
+    associate_total_payment as associate_total,
+    biweekly_rate_percent as interest_rate_percent,
+    ROUND(((commission_per_payment / NULLIF(biweekly_payment, 0)) * 100)::NUMERIC, 3) as commission_rate_percent
+FROM legacy_payment_table
+ON CONFLICT (profile_code, amount, term_biweeks) DO UPDATE SET
+    biweekly_payment = EXCLUDED.biweekly_payment,
+    total_payment = EXCLUDED.total_payment,
+    commission_per_payment = EXCLUDED.commission_per_payment,
+    total_commission = EXCLUDED.total_commission,
+    associate_payment = EXCLUDED.associate_payment,
+    associate_total = EXCLUDED.associate_total,
+    interest_rate_percent = EXCLUDED.interest_rate_percent,
+    commission_rate_percent = EXCLUDED.commission_rate_percent;
+
+COMMENT ON TABLE rate_profile_reference_table IS 
+'Tabla de referencia precalculada con valores para todos los perfiles (legacy, transition, standard, premium).
+Incluye los 29 registros históricos del perfil legacy para consulta rápida en el simulador.';

@@ -174,6 +174,14 @@ class LoanResponseDTO(BaseModel):
     total_to_pay: Optional[Decimal] = Field(None, description="Monto total a pagar")
     payment_amount: Optional[Decimal] = Field(None, description="Monto de cada cuota quincenal")
     
+    # ⭐ Campos calculados guardados en BD (Sprint 6 - Migración 005)
+    biweekly_payment: Optional[Decimal] = Field(None, description="Pago quincenal del cliente")
+    total_payment: Optional[Decimal] = Field(None, description="Total a pagar por el cliente")
+    total_interest: Optional[Decimal] = Field(None, description="Interés total")
+    total_commission: Optional[Decimal] = Field(None, description="Comisión total")
+    commission_per_payment: Optional[Decimal] = Field(None, description="Comisión por pago quincenal")
+    associate_payment: Optional[Decimal] = Field(None, description="Pago quincenal al asociado (hacia CrediCuenta)")
+    
     model_config = ConfigDict(from_attributes=True)
 
 

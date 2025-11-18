@@ -306,6 +306,7 @@ class PostgreSQLLoanRepository(LoanRepository):
         model = _map_loan_entity_to_model(loan)
         self.session.add(model)
         await self.session.flush()  # Para obtener el ID generado
+        self.session.expire(model)  # Invalidar cache para forzar SELECT
         await self.session.refresh(model)  # Refrescar datos de BD (created_at, etc.)
         
         return _map_loan_model_to_entity(model)

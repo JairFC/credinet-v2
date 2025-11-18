@@ -1,10 +1,10 @@
 """PostgreSQL implementation of StatementRepository."""
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import date
 from decimal import Decimal
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_
+from sqlalchemy import and_, text
 
 from ..domain import Statement, StatementRepository
 from .models import StatementModel
@@ -85,11 +85,10 @@ class PgStatementRepository(StatementRepository):
         limit: int = 100,
         offset: int = 0
     ) -> List[Statement]:
-        """Find statements by status."""
-        # TODO: Join with statement_statuses table to filter by name
-        # For now, we'll need to import the status model
+        """Find statements by status name (using JOIN)."""
         from app.modules.statements.infrastructure.models import StatementModel
         
+        # JOIN con statement_statuses para filtrar por nombre
         models = self.db.query(StatementModel).join(
             StatementModel.status
         ).filter(

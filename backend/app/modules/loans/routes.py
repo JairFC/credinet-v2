@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_db
+from app.modules.auth.routes import get_current_user
 from app.modules.loans.application.dtos import (
     LoanFilterDTO,
     LoanCreateDTO,
@@ -157,64 +158,47 @@ async def list_loans(
 @router.get("/{loan_id}", response_model=LoanResponseDTO)
 async def get_loan_detail(
     loan_id: int,
-    db: AsyncSession = Depends(get_async_db),
+    db: AsyncSession = Depends(get_async_db)
+    # TODO: Restaurar autenticación cuando se completen validaciones de roles
+    # current_user=Depends(get_current_user)
 ):
     """
-    Obtiene el detalle completo de un préstamo por su ID.
-    
-    Parámetros:
-    - loan_id: ID del préstamo
-    
-    Retorna:
-    - Todos los campos del préstamo
-    - Cálculos de negocio (total_to_pay, payment_amount)
-    
-    Errores:
-    - 404: Préstamo no encontrado
-    
-    Ejemplos:
-    - GET /loans/123 → Detalle del préstamo 123
+    Obtiene el detalle completo de un préstamo con datos relacionados.
     """
-    repo = PostgreSQLLoanRepository(db)
+    from app.modules.loans.application.enhanced_service import LoanEnhancedService
     
-    loan = await repo.find_by_id(loan_id)
+    enhanced_service = LoanEnhancedService(db)
+    loan_data = await enhanced_service.get_loan_with_details(loan_id)
     
-    if not loan:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Préstamo con ID {loan_id} no encontrado"
-        )
+    if not loan_data:
+        raise HTTPException(status_code=404, detail="Préstamo no encontrado")
     
-    # Convertir a DTO
-    return LoanResponseDTO(
-        id=loan.id,
-        user_id=loan.user_id,
-        associate_user_id=loan.associate_user_id,
-        amount=loan.amount,
-        interest_rate=loan.interest_rate,
-        commission_rate=loan.commission_rate,
-        term_biweeks=loan.term_biweeks,
-        profile_code=loan.profile_code,
-        status_id=loan.status_id,
-        contract_id=loan.contract_id,
-        approved_at=loan.approved_at,
-        approved_by=loan.approved_by,
-        rejected_at=loan.rejected_at,
-        rejected_by=loan.rejected_by,
-        rejection_reason=loan.rejection_reason,
-        notes=loan.notes,
-        created_at=loan.created_at,
-        updated_at=loan.updated_at,
-        # TODO: Agregar nombres con joins en Sprint 2
-        status_name=None,
-        client_name=None,
-        associate_name=None,
-        approver_name=None,
-        rejecter_name=None,
-        # Cálculos de negocio
-        total_to_pay=loan.calculate_total_to_pay(),
-        payment_amount=loan.calculate_payment_amount(),
-    )
+    # TODO: Restaurar validación de permisos cuando se complete autenticación
+    # Verificar permisos:
+    # - Admin: puede ver todos los préstamos
+    # - Associate: puede ver préstamos asignados a él
+    # - Regular user: puede ver solo sus propios préstamos
+    #
+    # is_admin = any(role.name == "admin" for role in current_user.roles)
+    # is_associate = any(role.name == "associate" for role in current_user.roles)
+    # 
+    # if not is_admin:
+    #     if is_associate:
+    #         # Associate: solo préstamos asignados
+    #         if loan_data["associate_user_id"] != current_user.id:
+    #             raise HTTPException(
+    #                 status_code=403, 
+    #                 detail="No tiene permisos para ver este préstamo"
+    #             )
+    #     else:
+    #         # Usuario regular: solo sus propios préstamos
+    #         if loan_data["user_id"] != current_user.id:
+    #             raise HTTPException(
+    #                 status_code=403,
+    #                 detail="No tiene permisos para ver este préstamo"
+    #             )
+    
+    return LoanResponseDTO(**loan_data)
 
 
 @router.get("/{loan_id}/balance", response_model=LoanBalanceDTO)
@@ -258,6 +242,136 @@ async def get_loan_balance(
     
     # Convertir a DTO
     return LoanBalanceDTO.from_loan_balance(balance)
+
+
+@router.get("/{loan_id}/amortization")
+async def get_loan_amortization(
+    loan_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Obtiene la tabla de amortización de un préstamo.
+    
+    - Si el préstamo está APROBADO: devuelve los pagos reales de la tabla payments
+    - Si está PENDIENTE: genera una simulación con fechas tentativas
+    
+    Retorna:
+    - status: 'approved' o 'pending'
+    - is_simulation: true si son fechas simuladas
+    - schedule: array con el cronograma de pagos
+    """
+    from sqlalchemy import text
+    
+    # Obtener info del préstamo
+    loan_query = text("""
+        SELECT 
+            l.id,
+            l.amount,
+            l.term_biweeks,
+            l.profile_code,
+            l.status_id,
+            l.approved_at,
+            l.created_at,
+            s.name as status_name
+        FROM loans l
+        JOIN loan_statuses s ON l.status_id = s.id
+        WHERE l.id = :loan_id
+    """)
+    
+    result = await db.execute(loan_query, {"loan_id": loan_id})
+    loan = result.fetchone()
+    
+    if not loan:
+        raise HTTPException(status_code=404, detail="Préstamo no encontrado")
+    
+    loan_status_id = loan[4]
+    
+    # Status 2 = Approved (verificar en tu tabla loan_statuses)
+    if loan_status_id == 2:
+        # Préstamo aprobado: obtener pagos reales
+        payments_query = text("""
+            SELECT 
+                payment_number,
+                payment_due_date as payment_date,
+                COALESCE(cp.cut_code, 'N/A') as cut_period,
+                expected_amount as client_payment,
+                associate_payment,
+                commission_amount as commission,
+                balance_remaining as remaining_balance
+            FROM payments p
+            LEFT JOIN cut_periods cp ON p.cut_period_id = cp.id
+            WHERE p.loan_id = :loan_id
+            ORDER BY payment_number
+        """)
+        
+        payments_result = await db.execute(payments_query, {"loan_id": loan_id})
+        payments = payments_result.fetchall()
+        
+        schedule = [
+            {
+                "payment_number": row[0],
+                "payment_date": row[1].isoformat() if row[1] else None,
+                "cut_period": row[2],
+                "client_payment": float(row[3]) if row[3] else 0,
+                "associate_payment": float(row[4]) if row[4] else 0,
+                "commission": float(row[5]) if row[5] else 0,
+                "remaining_balance": float(row[6]) if row[6] else 0,
+            }
+            for row in payments
+        ]
+        
+        return {
+            "status": "approved",
+            "is_simulation": False,
+            "loan_id": loan_id,
+            "schedule": schedule
+        }
+    
+    else:
+        # Préstamo pendiente: generar simulación
+        approval_date = loan[6].date() if loan[6] else date.today()
+        
+        simulation_query = text("""
+            SELECT * FROM simulate_loan(
+                :amount,
+                :term,
+                :profile,
+                :approval_date
+            )
+        """)
+        
+        from datetime import date
+        sim_result = await db.execute(
+            simulation_query,
+            {
+                "amount": float(loan[1]),
+                "term": loan[2],
+                "profile": loan[3],
+                "approval_date": approval_date
+            }
+        )
+        sim_rows = sim_result.fetchall()
+        
+        schedule = [
+            {
+                "payment_number": row[0],
+                "payment_date": row[1].isoformat() if row[1] else None,
+                "cut_period": row[2],
+                "client_payment": float(row[3]) if row[3] else 0,
+                "associate_payment": float(row[4]) if row[4] else 0,
+                "commission": float(row[5]) if row[5] else 0,
+                "remaining_balance": float(row[6]) if row[6] else 0,
+            }
+            for row in sim_rows
+        ]
+        
+        return {
+            "status": "pending",
+            "is_simulation": True,
+            "loan_id": loan_id,
+            "approval_date_used": approval_date.isoformat(),
+            "schedule": schedule
+        }
 
 
 # =============================================================================

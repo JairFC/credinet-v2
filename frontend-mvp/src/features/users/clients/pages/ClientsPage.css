@@ -69,7 +69,7 @@
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
   padding: 1.5rem;
   border-radius: 12px;
   color: white;
@@ -157,9 +157,36 @@
 }
 
 .page-info {
-  font-size: 0.95rem;
   color: #6b7280;
 }
+
+/* Botón de detalles profesional */
+.btn-details {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #9B1C22 0%, #C4252D 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+  letter-spacing: 0.3px;
+}
+
+.btn-details:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #9B1C22 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+}
+
+.btn-details:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.2);
+}
+
+/* Responsive */
 
 .error-message {
   background: #fee2e2;

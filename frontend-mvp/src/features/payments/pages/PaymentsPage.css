@@ -119,14 +119,14 @@
 }
 
 .filter-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
+  border-color: #C4252D;
+  color: #C4252D;
   background: #f7faff;
 }
 
 .filter-btn.active {
-  border-color: #667eea;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #C4252D;
+  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
   color: white;
 }
 
@@ -157,7 +157,7 @@
 
 .loan-filter-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #C4252D;
 }
 
 .btn-clear {
@@ -189,7 +189,7 @@
 }
 
 .payments-table thead {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
   color: white;
 }
 
@@ -228,7 +228,7 @@
 .link-btn {
   background: none;
   border: none;
-  color: #667eea;
+  color: #C4252D;
   cursor: pointer;
   text-decoration: underline;
   font-size: 0.95rem;
@@ -237,7 +237,7 @@
 }
 
 .link-btn:hover {
-  color: #764ba2;
+  color: #9B1C22;
 }
 
 .paid-amount {
@@ -432,7 +432,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -509,7 +509,7 @@
   background: #f7fafc;
   padding: 1rem;
   border-radius: 8px;
-  border-left: 4px solid #667eea;
+  border-left: 4px solid #C4252D;
   margin: 1.5rem 0;
   line-height: 1.8;
 }
@@ -540,7 +540,7 @@
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #C4252D;
 }
 
 .form-group input:disabled,

@@ -191,8 +191,9 @@ BEGIN
         v_payment := v_legacy_entry.biweekly_payment;
         v_total := v_legacy_entry.total_payment;
         
-        -- Para legacy, usar comisión del perfil o default 2.5%
-        v_commission_per_payment := v_payment * (COALESCE(v_profile.commission_rate_percent, 2.5) / 100);
+        -- ⭐ CORRECCIÓN: Usar valores precalculados de la tabla legacy
+        -- La tabla legacy YA tiene commission_per_payment y associate_biweekly_payment calculados
+        v_commission_per_payment := COALESCE(v_legacy_entry.commission_per_payment, 0);
         
         RETURN QUERY SELECT
             v_profile.code,
@@ -200,7 +201,8 @@ BEGIN
             v_profile.calculation_type,
             
             v_legacy_entry.biweekly_rate_percent AS interest_rate,
-            COALESCE(v_profile.commission_rate_percent, 2.5) AS commission_rate,
+            -- Calcular % comisión dinámicamente: (comisión / pago_cliente) * 100
+            ROUND(((COALESCE(v_legacy_entry.commission_per_payment, 0) / NULLIF(v_payment, 0)) * 100)::NUMERIC, 3) AS commission_rate,
             
             v_payment,
             v_total,
@@ -208,9 +210,9 @@ BEGIN
             v_legacy_entry.effective_rate_percent,
             
             ROUND(v_commission_per_payment, 2),
-            ROUND(v_commission_per_payment * p_term_biweeks, 2),
-            ROUND(v_payment - v_commission_per_payment, 2),
-            ROUND((v_payment - v_commission_per_payment) * p_term_biweeks, 2);
+            ROUND(COALESCE(v_legacy_entry.total_commission, 0), 2),
+            ROUND(COALESCE(v_legacy_entry.associate_biweekly_payment, 0), 2),
+            ROUND(COALESCE(v_legacy_entry.associate_total_payment, 0), 2);
         
         RETURN;
     END IF;

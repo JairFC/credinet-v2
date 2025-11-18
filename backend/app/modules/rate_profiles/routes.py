@@ -10,8 +10,9 @@ Rutas:
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.core.database import get_db, get_async_db
 from .application import (
     RateProfileDTO,
     LegacyAmountDTO,
@@ -31,7 +32,7 @@ def get_rate_profile_service(db: Session = Depends(get_db)) -> RateProfileServic
     return RateProfileService(db)
 
 
-@router.get("/rate-profiles", response_model=List[RateProfileDTO])
+@router.get("/", response_model=List[RateProfileDTO])
 def list_rate_profiles(
     enabled_only: bool = True,
     service: RateProfileService = Depends(get_rate_profile_service)
@@ -67,7 +68,147 @@ def list_rate_profiles(
     ]
 
 
-@router.get("/rate-profiles/{profile_code}", response_model=RateProfileDTO)
+# ============================================================================
+# ENDPOINT: Tabla de Referencia (debe estar ANTES de /{profile_code})
+# ============================================================================
+@router.get("/reference")
+async def get_reference_table(
+    profile_code: str = None,
+    term_biweeks: int = None,
+    session: AsyncSession = Depends(get_async_db)
+):
+    """
+    Obtiene la tabla de referencia precalculada para consulta rápida.
+    """
+    from sqlalchemy import text
+    
+    # Build WHERE clause
+    if profile_code and term_biweeks:
+        where_clause = "r.profile_code = :profile_code AND r.term_biweeks = :term_biweeks"
+        params = {"profile_code": profile_code, "term_biweeks": term_biweeks}
+    elif profile_code:
+        where_clause = "r.profile_code = :profile_code"
+        params = {"profile_code": profile_code}
+    elif term_biweeks:
+        where_clause = "r.term_biweeks = :term_biweeks"
+        params = {"term_biweeks": term_biweeks}
+    else:
+        where_clause = "1=1"
+        params = {}
+    
+    query_str = f"""
+        SELECT 
+            r.profile_code,
+            r.amount,
+            r.term_biweeks,
+            r.biweekly_payment,
+            r.total_payment,
+            r.commission_per_payment,
+            r.total_commission,
+            r.associate_payment,
+            r.associate_total,
+            r.interest_rate_percent,
+            r.commission_rate_percent,
+            p.name as profile_name
+        FROM rate_profile_reference_table r
+        JOIN rate_profiles p ON r.profile_code = p.code
+        WHERE {where_clause}
+        ORDER BY r.profile_code, r.term_biweeks, r.amount
+    """
+    
+    result = await session.execute(text(query_str), params)
+    rows = result.fetchall()
+    
+    if not rows:
+        return {
+            "profile_code": profile_code or "all",
+            "reference_table": []
+        }
+    
+    # Get profile info from first row
+    first_row = rows[0]
+    
+    return {
+        "profile_code": profile_code or "all",
+        "profile_name": first_row[11] if profile_code and rows else "Multiple",
+        "interest_rate_percent": float(first_row[9]) if profile_code and rows else None,
+        "commission_rate_percent": float(first_row[10]) if profile_code and rows else None,
+        "reference_table": [
+            {
+                "profile_code": row[0],
+                "amount": float(row[1]),
+                "term_biweeks": row[2],
+                "biweekly_payment": float(row[3]),
+                "total_payment": float(row[4]),
+                "commission_per_payment": float(row[5]),
+                "total_commission": float(row[6]),
+                "associate_payment": float(row[7]),
+                "associate_total": float(row[8])
+            }
+            for row in rows
+        ]
+    }
+
+
+# ============================================================================
+# ENDPOINT: Legacy Payments (debe estar ANTES de /{profile_code})
+# ============================================================================
+@router.get("/legacy-payments", response_model=List[LegacyAmountDTO])
+def list_legacy_amounts(
+    service: RateProfileService = Depends(get_rate_profile_service)
+):
+    """
+    Lista todos los montos disponibles en la tabla legacy_payment_table.
+    
+    Estos son los montos predefinidos que se pueden usar con el perfil legacy.
+    Todos los montos legacy son para 12 quincenas.
+    
+    Returns:
+        Lista de montos disponibles ordenados por amount
+        
+    Example:
+        ```json
+        [
+          {
+            "amount": 3000.00,
+            "biweekly_payment": 316.67,
+            "total_payment": 3800.00,
+            "total_interest": 800.00,
+            "effective_rate_percent": 26.67
+          },
+          ...
+        ]
+        ```
+    """
+    from sqlalchemy import text
+    
+    query = text("""
+        SELECT 
+            amount,
+            biweekly_payment,
+            total_payment,
+            total_interest,
+            effective_rate_percent
+        FROM legacy_payment_table
+        ORDER BY amount
+    """)
+    
+    result = service.db.execute(query)
+    rows = result.fetchall()
+    
+    return [
+        LegacyAmountDTO(
+            amount=row.amount,
+            biweekly_payment=row.biweekly_payment,
+            total_payment=row.total_payment,
+            total_interest=row.total_interest,
+            effective_rate_percent=row.effective_rate_percent
+        )
+        for row in rows
+    ]
+
+
+@router.get("/{profile_code}", response_model=RateProfileDTO)
 def get_rate_profile(
     profile_code: str,
     service: RateProfileService = Depends(get_rate_profile_service)
@@ -246,59 +387,5 @@ def compare_rate_profiles(
     )
 
 
-@router.get("/legacy-payments", response_model=List[LegacyAmountDTO])
-def list_legacy_amounts(
-    service: RateProfileService = Depends(get_rate_profile_service)
-):
-    """
-    Lista todos los montos disponibles en la tabla legacy_payment_table.
-    
-    Estos son los montos predefinidos que se pueden usar con el perfil legacy.
-    Todos los montos legacy son para 12 quincenas.
-    
-    Returns:
-        Lista de montos disponibles ordenados por amount
-        
-    Example:
-        ```json
-        [
-          {
-            "amount": 3000.00,
-            "biweekly_payment": 316.67,
-            "total_payment": 3800.00,
-            "total_interest": 800.00,
-            "effective_rate_percent": 26.67
-          },
-          ...
-        ]
-        ```
-    """
-    from sqlalchemy import text
-    
-    query = text("""
-        SELECT 
-            amount,
-            biweekly_payment,
-            total_payment,
-            total_interest,
-            effective_rate_percent
-        FROM legacy_payment_table
-        ORDER BY amount
-    """)
-    
-    result = service.db.execute(query)
-    rows = result.fetchall()
-    
-    return [
-        LegacyAmountDTO(
-            amount=row.amount,
-            biweekly_payment=row.biweekly_payment,
-            total_payment=row.total_payment,
-            total_interest=row.total_interest,
-            effective_rate_percent=row.effective_rate_percent
-        )
-        for row in rows
-    ]
-
-
 __all__ = ['router']
+

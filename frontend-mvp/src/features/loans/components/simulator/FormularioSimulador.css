@@ -1,0 +1,142 @@
+/* FormularioSimulador.css */
+.formulario-simulador {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 24px;
+}
+
+.formulario-simulador h3 {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.formulario-simulador .form-group {
+  margin-bottom: 20px;
+}
+
+.formulario-simulador label {
+  display: block;
+  margin-bottom: 6px;
+  color: #34495e;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.formulario-simulador .required {
+  color: #e74c3c;
+}
+
+.formulario-simulador input,
+.formulario-simulador select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+
+.formulario-simulador input:focus,
+.formulario-simulador select:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.formulario-simulador input.error,
+.formulario-simulador select.error {
+  border-color: #e74c3c;
+}
+
+.formulario-simulador input[type="date"] {
+  cursor: pointer;
+}
+
+.formulario-simulador .help-text {
+  display: block;
+  margin-top: 4px;
+  color: #7f8c8d;
+  font-size: 0.85rem;
+}
+
+.formulario-simulador .error-message {
+  display: block;
+  margin-top: 6px;
+  color: #e74c3c;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.formulario-simulador .btn-simulate {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.formulario-simulador .btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.formulario-simulador .btn-primary:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.formulario-simulador .btn-simulate:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+/* Custom amount toggle */
+.formulario-simulador .custom-amount-toggle {
+  margin-top: 12px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.formulario-simulador .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #495057;
+  font-weight: 500;
+  margin: 0;
+}
+
+.formulario-simulador .checkbox-label input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+  transform: scale(1.1);
+}
+
+.formulario-simulador .checkbox-label span {
+  user-select: none;
+}
+
+.formulario-simulador .checkbox-label:hover {
+  color: #007bff;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .formulario-simulador {
+    padding: 16px;
+  }
+
+  .formulario-simulador h3 {
+    font-size: 1.1rem;
+  }
+}

@@ -5,8 +5,9 @@ import DashboardPage from "../../features/dashboard/pages/DashboardPage";
 import LoansPage from "../../features/loans/pages/LoansPage";
 import LoanCreatePage from "../../features/loans/pages/LoanCreatePage";
 import LoanDetailPage from "../../features/loans/pages/LoanDetailPage";
+import SimuladorPrestamosPage from "../../features/loans/pages/SimuladorPrestamosPage";
 import PaymentsPage from "../../features/payments/pages/PaymentsPage";
-import StatementsPage from "../../features/statements/pages/StatementsPage";
+import PeriodosConStatementsPage from "../../features/statements/pages/PeriodosConStatementsPage";
 import AssociateDetailPage from "../../features/associates/pages/AssociateDetailPage";
 
 // Users Module - Separated by role
@@ -71,6 +72,17 @@ const AppRoutes = () => {
         />
 
         <Route
+          path="/prestamos/simulador"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <SimuladorPrestamosPage />
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+
+        <Route
           path="/pagos"
           element={
             <PrivateRoute>
@@ -86,7 +98,7 @@ const AppRoutes = () => {
           element={
             <PrivateRoute>
               <MainLayout>
-                <StatementsPage />
+                <PeriodosConStatementsPage />
               </MainLayout>
             </PrivateRoute>
           }

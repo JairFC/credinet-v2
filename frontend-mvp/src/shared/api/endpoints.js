@@ -33,6 +33,7 @@ export const ENDPOINTS = {
     reject: (id) => `/api/v1/loans/${id}/reject`,
     update: (id) => `/api/v1/loans/${id}`,
     delete: (id) => `/api/v1/loans/${id}`,
+    amortization: (id) => `/api/v1/loans/${id}/amortization`,
   },
 
   // Payments
@@ -54,6 +55,14 @@ export const ENDPOINTS = {
     // Phase 6: Payment tracking endpoints
     payments: (id) => `/api/v1/statements/${id}/payments`,
     registerPayment: (id) => `/api/v1/statements/${id}/payments`,
+  },
+
+  // Cut Periods (Estados de Cuenta base)
+  cutPeriods: {
+    list: '/api/v1/cut-periods',
+    detail: (id) => `/api/v1/cut-periods/${id}`,
+    current: '/api/v1/cut-periods/current',
+    statements: (periodId) => `/api/v1/cut-periods/${periodId}/statements`,
   },
 
   // Associates
@@ -93,6 +102,13 @@ export const ENDPOINTS = {
   rateProfiles: {
     list: '/api/v1/rate-profiles',
     detail: (code) => `/api/v1/rate-profiles/${code}`,
+    reference: '/api/v1/rate-profiles/reference',
+  },
+
+  // Simulator
+  simulator: {
+    simulate: '/api/v1/simulator/simulate',
+    quick: '/api/v1/simulator/quick',
   },
 };
 

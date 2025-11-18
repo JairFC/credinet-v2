@@ -177,7 +177,31 @@ class LoanService:
             
             final_interest_rate = interest_rate
             final_commission_rate = commission_rate
-            # No hay valores calculados en modo manual
+            
+            # Calcular valores manualmente usando la misma fórmula que la BD (interés simple)
+            # Formula: total = amount * (1 + (interest_rate / 100) * term_biweeks)
+            factor = Decimal('1') + (interest_rate / Decimal('100')) * Decimal(str(term_biweeks))
+            total_payment = amount * factor
+            biweekly_payment = total_payment / Decimal(str(term_biweeks))
+            total_interest = total_payment - amount
+            
+            # Calcular comisiones
+            commission_per_payment = biweekly_payment * (commission_rate / Decimal('100'))
+            total_commission = commission_per_payment * Decimal(str(term_biweeks))
+            associate_payment = biweekly_payment - commission_per_payment
+            
+            calculated_values = {
+                'biweekly_payment': biweekly_payment.quantize(Decimal('0.01')),
+                'total_payment': total_payment.quantize(Decimal('0.01')),
+                'total_interest': total_interest.quantize(Decimal('0.01')),
+                'total_commission': total_commission.quantize(Decimal('0.01')),
+                'commission_per_payment': commission_per_payment.quantize(Decimal('0.01')),
+                'associate_payment': associate_payment.quantize(Decimal('0.01')),
+            }
+            
+            print(f"🔍 DEBUG: Valores calculados manualmente (custom):")
+            print(f"  biweekly_payment: {calculated_values['biweekly_payment']}")
+            print(f"  total_payment: {calculated_values['total_payment']}")
         
         # Validación 1: Crédito del asociado
         print(f"🔍 DEBUG: Validación 1 - Verificando crédito del asociado {associate_user_id}")
