@@ -1,0 +1,233 @@
+/* =============================================================================
+   LOGIN PAGE - DESKTOP FIRST DESIGN
+   ============================================================================= */
+
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
+  padding: 2rem;
+}
+
+.login-card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 3rem 4rem;
+  max-width: 550px;
+  width: 100%;
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-logo {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 1.5rem auto;
+  animation: spin 20s linear infinite;
+  filter: drop-shadow(0 4px 12px rgba(97, 219, 251, 0.4));
+  display: block;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.login-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 0.75rem 0;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  font-size: 1.05rem;
+  color: #718096;
+  margin: 0;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.form-group label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  letter-spacing: 0.3px;
+}
+
+.form-group input {
+  padding: 1rem 1.25rem;
+  font-size: 1.05rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #C4252D;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+}
+
+.form-group input::placeholder {
+  color: #cbd5e0;
+}
+
+.error-message {
+  padding: 1rem 1.25rem;
+  background-color: #fed7d7;
+  color: #c53030;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  border-left: 4px solid #fc8181;
+}
+
+.login-button {
+  padding: 1.1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 1rem;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.login-button:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+}
+
+.login-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.login-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.hint {
+  font-size: 0.95rem;
+  color: #718096;
+  margin: 0;
+  padding: 1rem;
+  background-color: #f7fafc;
+  border-radius: 10px;
+}
+
+.hint code {
+  background-color: #edf2f7;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: #C4252D;
+  font-weight: 600;
+}
+
+/* =============================================================================
+   RESPONSIVE - TABLETS Y MÓVILES
+   ============================================================================= */
+
+/* Tablets */
+@media (max-width: 768px) {
+  .login-card {
+    max-width: 480px;
+    padding: 2.5rem 3rem;
+  }
+
+  .login-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+}
+
+/* Móviles */
+@media (max-width: 480px) {
+  .login-container {
+    padding: 1rem;
+  }
+
+  .login-card {
+    padding: 2rem 1.5rem;
+    max-width: 100%;
+  }
+
+  .login-logo {
+    width: 70px;
+    height: 70px;
+  }
+
+  .login-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+  }
+
+  .form-group input {
+    padding: 0.85rem 1rem;
+    font-size: 1rem;
+  }
+
+  .login-button {
+    padding: 0.95rem 1.5rem;
+    font-size: 1rem;
+  }
+
+  .login-header h1 {
+    font-size: 24px;
+  }
+}

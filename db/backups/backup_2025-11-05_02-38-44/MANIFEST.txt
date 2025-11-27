@@ -1,0 +1,24 @@
+# BACKUP CREDINET v2.0
+# ===================
+Fecha: 2025-11-05 02:38:44
+Host: credinet
+Usuario: credicuenta
+
+# CONTENIDO
+- postgres.dump (formato binario, pg_restore)
+- postgres.sql (formato SQL plano)
+- postgres_volume.tar.gz (volumen Docker completo)
+- uploads.tar.gz (archivos subidos por usuarios)
+- docker-compose.yml (configuración)
+- .env (variables de entorno)
+
+# RESTAURACIÓN
+Para restaurar este backup:
+  ./backup_volumes.sh restore backup_2025-11-05_02-38-44
+
+# VERIFICACIÓN
+8.0K	/home/credicuenta/proyectos/credinet-v2/db/backups/backup_2025-11-05_02-38-44/docker-compose.yml
+4.0K	/home/credicuenta/proyectos/credinet-v2/db/backups/backup_2025-11-05_02-38-44/MANIFEST.txt
+288K	/home/credicuenta/proyectos/credinet-v2/db/backups/backup_2025-11-05_02-38-44/postgres.dump
+276K	/home/credicuenta/proyectos/credinet-v2/db/backups/backup_2025-11-05_02-38-44/postgres.sql
+4.0K	/home/credicuenta/proyectos/credinet-v2/db/backups/backup_2025-11-05_02-38-44/uploads.tar.gz

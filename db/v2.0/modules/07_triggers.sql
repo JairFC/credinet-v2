@@ -6,16 +6,17 @@
 --   Incluye triggers de migraciones 07 y 12.
 --
 -- Categorías:
---   1. Triggers de updated_at (automáticos)
+--   1. Triggers de updated_at (automáticos) - 20 triggers
 --   2. Trigger de aprobación de préstamos
 --   3. Trigger de generación de schedule ⭐ CRÍTICO
 --   4. Trigger de historial de pagos ⭐ MIGRACIÓN 12
---   5. Triggers de crédito del asociado ⭐ MIGRACIÓN 07
---   6. Triggers de auditoría general
+--   5. Triggers de crédito del asociado ⭐ MIGRACIÓN 07 (4 triggers)
+--   6. Triggers de auditoría general (5 triggers)
+--   7. Trigger de actualización de statements ⭐ NUEVO v2.0.1
 --
--- Total: 28 triggers
--- Versión: 2.0.0
--- Fecha: 2025-10-30
+-- Total: 33 triggers
+-- Versión: 2.0.1
+-- Fecha: 2025-10-31
 -- =============================================================================
 
 -- =============================================================================
@@ -362,6 +363,18 @@ COMMENT ON TRIGGER audit_loans_trigger ON loans IS
 
 COMMENT ON TRIGGER audit_payments_trigger ON payments IS
 'Registra todos los cambios en la tabla payments en audit_log para trazabilidad completa.';
+
+-- =============================================================================
+-- CATEGORÍA 7: TRIGGER DE ABONOS DE ASOCIADO ⭐ NUEVO v2.0
+-- =============================================================================
+
+CREATE TRIGGER trigger_update_statement_on_payment
+    AFTER INSERT ON associate_statement_payments
+    FOR EACH ROW
+    EXECUTE FUNCTION update_statement_on_payment();
+
+COMMENT ON TRIGGER trigger_update_statement_on_payment ON associate_statement_payments IS
+'⭐ NUEVO v2.0: Actualiza automáticamente el estado de cuenta (associate_payment_statements) cuando se registra un abono. Suma todos los abonos y actualiza estado a PARTIAL_PAID o PAID según corresponda.';
 
 -- =============================================================================
 -- FIN MÓDULO 07

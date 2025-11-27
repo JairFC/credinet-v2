@@ -64,26 +64,34 @@ class LoanService:
         user_id: int,
         associate_user_id: int,
         amount: Decimal,
-        interest_rate: Decimal,
-        commission_rate: Decimal,
         term_biweeks: int,
+        profile_code: Optional[str] = None,
+        interest_rate: Optional[Decimal] = None,
+        commission_rate: Optional[Decimal] = None,
         notes: Optional[str] = None
     ) -> Loan:
         """
         Crea una nueva solicitud de préstamo.
         
+        Opciones de tasas:
+        1. Con profile_code: Las tasas se calculan automáticamente usando rate_profiles
+        2. Sin profile_code: Tasas manuales (interest_rate y commission_rate son obligatorias)
+        
         Validaciones iniciales:
-        1. El asociado tiene crédito disponible suficiente
-        2. El cliente no tiene otros préstamos PENDING
-        3. El cliente no es moroso
+        1. Si usa profile_code, calcular tasas automáticamente
+        2. Si no usa profile_code, validar que tasas manuales estén presentes
+        3. El asociado tiene crédito disponible suficiente
+        4. El cliente no tiene otros préstamos PENDING
+        5. El cliente no es moroso
         
         Args:
             user_id: ID del cliente solicitante
             associate_user_id: ID del asociado que otorga el préstamo
             amount: Monto solicitado
-            interest_rate: Tasa de interés (%)
-            commission_rate: Tasa de comisión (%)
             term_biweeks: Plazo en quincenas
+            profile_code: Código del perfil de tasa (opcional)
+            interest_rate: Tasa de interés manual (%) - requerida si no hay profile_code
+            commission_rate: Tasa de comisión manual (%) - requerida si no hay profile_code
             notes: Notas adicionales (opcional)
             
         Returns:
@@ -92,10 +100,115 @@ class LoanService:
         Raises:
             ValueError: Si alguna validación falla
         """
+        # Validación 0: Determinar tasas (automáticas o manuales)
+        # Variables para guardar valores calculados
+        calculated_values = None
+        
+        if profile_code:
+            # Opción 1: Calcular tasas usando perfil
+            # Usar SQL directo para calcular (evitar importar RateProfileService por ahora)
+            from sqlalchemy import text
+            
+            print(f"🔍 DEBUG: Calculando con perfil '{profile_code}'")
+            
+            try:
+                # Llamar a la función SQL directamente
+                query = text("""
+                    SELECT 
+                        profile_code,
+                        profile_name,
+                        calculation_method,
+                        interest_rate_percent,
+                        commission_rate_percent,
+                        biweekly_payment,
+                        total_payment,
+                        total_interest,
+                        effective_rate_percent,
+                        commission_per_payment,
+                        total_commission,
+                        associate_payment,
+                        associate_total
+                    FROM calculate_loan_payment(:amount, :term_biweeks, :profile_code)
+                """)
+                
+                result = await self.session.execute(
+                    query,
+                    {"amount": amount, "term_biweeks": term_biweeks, "profile_code": profile_code}
+                )
+                
+                row = result.fetchone()
+                
+                print(f"🔍 DEBUG: Resultado de calculate_loan_payment:")
+                print(f"  row: {row}")
+                
+                if not row:
+                    raise ValueError(f"No se pudo calcular préstamo con perfil '{profile_code}'")
+                
+                # Guardar todos los valores calculados
+                calculated_values = {
+                    'biweekly_payment': Decimal(str(row.biweekly_payment)),
+                    'total_payment': Decimal(str(row.total_payment)),
+                    'total_interest': Decimal(str(row.total_interest)),
+                    'total_commission': Decimal(str(row.total_commission)),
+                    'commission_per_payment': Decimal(str(row.commission_per_payment)),
+                    'associate_payment': Decimal(str(row.associate_payment)),
+                }
+                
+                # Usar las tasas calculadas
+                final_interest_rate = row.interest_rate_percent
+                final_commission_rate = row.commission_rate_percent
+                
+                print(f"🔍 DEBUG: Tasas calculadas:")
+                print(f"  final_interest_rate: {final_interest_rate}")
+                print(f"  final_commission_rate: {final_commission_rate}")
+                
+            except Exception as e:
+                print(f"❌ ERROR en calculate_loan_payment: {e}")
+                import traceback
+                traceback.print_exc()
+                raise ValueError(f"Error al calcular tasas con perfil '{profile_code}': {e}")
+        
+        else:
+            # Opción 2: Usar tasas manuales
+            if interest_rate is None or commission_rate is None:
+                raise ValueError(
+                    "Si no se proporciona profile_code, interest_rate y commission_rate son obligatorias"
+                )
+            
+            final_interest_rate = interest_rate
+            final_commission_rate = commission_rate
+            
+            # Calcular valores manualmente usando la misma fórmula que la BD (interés simple)
+            # Formula: total = amount * (1 + (interest_rate / 100) * term_biweeks)
+            factor = Decimal('1') + (interest_rate / Decimal('100')) * Decimal(str(term_biweeks))
+            total_payment = amount * factor
+            biweekly_payment = total_payment / Decimal(str(term_biweeks))
+            total_interest = total_payment - amount
+            
+            # Calcular comisiones
+            commission_per_payment = biweekly_payment * (commission_rate / Decimal('100'))
+            total_commission = commission_per_payment * Decimal(str(term_biweeks))
+            associate_payment = biweekly_payment - commission_per_payment
+            
+            calculated_values = {
+                'biweekly_payment': biweekly_payment.quantize(Decimal('0.01')),
+                'total_payment': total_payment.quantize(Decimal('0.01')),
+                'total_interest': total_interest.quantize(Decimal('0.01')),
+                'total_commission': total_commission.quantize(Decimal('0.01')),
+                'commission_per_payment': commission_per_payment.quantize(Decimal('0.01')),
+                'associate_payment': associate_payment.quantize(Decimal('0.01')),
+            }
+            
+            print(f"🔍 DEBUG: Valores calculados manualmente (custom):")
+            print(f"  biweekly_payment: {calculated_values['biweekly_payment']}")
+            print(f"  total_payment: {calculated_values['total_payment']}")
+        
         # Validación 1: Crédito del asociado
+        print(f"🔍 DEBUG: Validación 1 - Verificando crédito del asociado {associate_user_id}")
         has_credit = await self.repository.check_associate_credit_available(
             associate_user_id, amount
         )
+        print(f"🔍 DEBUG: has_credit = {has_credit}")
         if not has_credit:
             raise ValueError(
                 f"El asociado {associate_user_id} no tiene crédito disponible "
@@ -103,7 +216,9 @@ class LoanService:
             )
         
         # Validación 2: Cliente no tiene préstamos PENDING
+        print(f"🔍 DEBUG: Validación 2 - Verificando préstamos PENDING del cliente {user_id}")
         has_pending = await self.repository.has_pending_loans(user_id)
+        print(f"🔍 DEBUG: has_pending = {has_pending}")
         if has_pending:
             raise ValueError(
                 f"El cliente {user_id} ya tiene préstamos pendientes de aprobación. "
@@ -111,7 +226,9 @@ class LoanService:
             )
         
         # Validación 3: Cliente no es moroso
+        print(f"🔍 DEBUG: Validación 3 - Verificando morosidad del cliente {user_id}")
         is_defaulter = await self.repository.is_client_defaulter(user_id)
+        print(f"🔍 DEBUG: is_defaulter = {is_defaulter}")
         if is_defaulter:
             raise ValueError(
                 f"El cliente {user_id} está marcado como moroso. "
@@ -124,11 +241,20 @@ class LoanService:
             user_id=user_id,
             associate_user_id=associate_user_id,
             amount=amount,
-            interest_rate=interest_rate,
-            commission_rate=commission_rate,
+            interest_rate=final_interest_rate,
+            commission_rate=final_commission_rate,
             term_biweeks=term_biweeks,
             status_id=LoanStatusEnum.PENDING.value,
             contract_id=None,  # Se asigna después si hay contrato
+            profile_code=profile_code,  # Guardar código del perfil usado (si aplica)
+            # Campos calculados (solo si se usó profile_code)
+            biweekly_payment=calculated_values['biweekly_payment'] if calculated_values else None,
+            total_payment=calculated_values['total_payment'] if calculated_values else None,
+            total_interest=calculated_values['total_interest'] if calculated_values else None,
+            total_commission=calculated_values['total_commission'] if calculated_values else None,
+            commission_per_payment=calculated_values['commission_per_payment'] if calculated_values else None,
+            associate_payment=calculated_values['associate_payment'] if calculated_values else None,
+            # Estado y tracking
             approved_at=None,
             approved_by=None,
             rejected_at=None,
@@ -207,14 +333,122 @@ class LoanService:
             approval_date
         )
         
-        # 6. Actualizar préstamo a APPROVED
+        # 6. CRÍTICO: Asegurar que los campos calculados existan
+        # Si biweekly_payment es NULL, recalcular usando profile_code o tasas manuales
+        if loan.biweekly_payment is None:
+            print(f"⚠️  WARN: Préstamo {loan_id} no tiene biweekly_payment. Recalculando...")
+            
+            if loan.profile_code:
+                # Recalcular usando perfil
+                from sqlalchemy import text
+                
+                try:
+                    query = text("""
+                        SELECT 
+                            biweekly_payment,
+                            total_payment,
+                            total_interest,
+                            total_commission,
+                            commission_per_payment,
+                            associate_payment
+                        FROM calculate_loan_payment(:amount, :term_biweeks, :profile_code)
+                    """)
+                    
+                    result = await self.session.execute(
+                        query,
+                        {
+                            "amount": loan.amount,
+                            "term_biweeks": loan.term_biweeks,
+                            "profile_code": loan.profile_code
+                        }
+                    )
+                    
+                    row = result.fetchone()
+                    
+                    if row:
+                        loan.biweekly_payment = Decimal(str(row.biweekly_payment))
+                        loan.total_payment = Decimal(str(row.total_payment))
+                        loan.total_interest = Decimal(str(row.total_interest))
+                        loan.total_commission = Decimal(str(row.total_commission))
+                        loan.commission_per_payment = Decimal(str(row.commission_per_payment))
+                        loan.associate_payment = Decimal(str(row.associate_payment))
+                        
+                        print(f"✅ Valores recalculados con perfil '{loan.profile_code}'")
+                        print(f"   - biweekly_payment: {loan.biweekly_payment}")
+                        print(f"   - total_payment: {loan.total_payment}")
+                    else:
+                        raise ValueError(f"No se pudo recalcular valores con perfil '{loan.profile_code}'")
+                        
+                except Exception as e:
+                    print(f"❌ ERROR recalculando valores: {e}")
+                    raise ValueError(f"Error al recalcular valores del préstamo: {e}")
+            else:
+                # Sin profile_code, calcular manualmente con generate_loan_summary
+                from sqlalchemy import text
+                
+                try:
+                    query = text("""
+                        SELECT 
+                            pago_quincenal_cliente,
+                            pago_total_cliente,
+                            interes_total_cliente,
+                            tasa_efectiva_cliente,
+                            comision_por_pago,
+                            comision_total_socio,
+                            pago_quincenal_socio,
+                            pago_total_socio
+                        FROM generate_loan_summary(
+                            :amount,
+                            :term_biweeks,
+                            :interest_rate,
+                            :commission_rate
+                        )
+                    """)
+                    
+                    result = await self.session.execute(
+                        query,
+                        {
+                            "amount": loan.amount,
+                            "term_biweeks": loan.term_biweeks,
+                            "interest_rate": loan.interest_rate,
+                            "commission_rate": loan.commission_rate
+                        }
+                    )
+                    
+                    row = result.fetchone()
+                    
+                    if row:
+                        loan.biweekly_payment = Decimal(str(row.pago_quincenal_cliente))
+                        loan.total_payment = Decimal(str(row.pago_total_cliente))
+                        loan.total_interest = Decimal(str(row.interes_total_cliente))
+                        loan.total_commission = Decimal(str(row.comision_total_socio))
+                        loan.commission_per_payment = Decimal(str(row.comision_por_pago))
+                        loan.associate_payment = Decimal(str(row.pago_quincenal_socio))
+                        
+                        print(f"✅ Valores recalculados con tasas manuales")
+                        print(f"   - interest_rate: {loan.interest_rate}%")
+                        print(f"   - commission_rate: {loan.commission_rate}%")
+                        print(f"   - biweekly_payment: {loan.biweekly_payment}")
+                    else:
+                        raise ValueError("No se pudo calcular valores con generate_loan_summary")
+                        
+                except Exception as e:
+                    print(f"❌ ERROR calculando valores: {e}")
+                    raise ValueError(f"Error al calcular valores del préstamo: {e}")
+        else:
+            print(f"✅ Préstamo {loan_id} ya tiene valores calculados:")
+            print(f"   - biweekly_payment: {loan.biweekly_payment}")
+            print(f"   - total_payment: {loan.total_payment}")
+            print(f"   - commission_per_payment: {loan.commission_per_payment}")
+        
+        # 7. Actualizar préstamo a APPROVED
         loan.status_id = LoanStatusEnum.APPROVED.value
         loan.approved_at = datetime.utcnow()
         loan.approved_by = approved_by
         if notes:
             loan.notes = f"{loan.notes}\n[APROBACIÓN] {notes}" if loan.notes else f"[APROBACIÓN] {notes}"
         
-        # 7. Guardar (transacción ACID)
+        # 8. Guardar (transacción ACID)
         # NOTA: El trigger generate_payment_schedule() se ejecuta automáticamente
         # cuando status_id cambia a APPROVED (2)
         approved_loan = await self.repository.update(loan)

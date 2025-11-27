@@ -38,9 +38,9 @@ cat > "$TEMP_FILE" << EOF
 --   Generado automáticamente desde arquitectura modular.
 --
 -- Generación: $(date '+%Y-%m-%d %H:%M:%S')
--- Versión: 2.0.0
--- Módulos incluidos: 9 (01_catalog → 09_seeds)
--- Migraciones integradas: 6 (07-12)
+-- Versión: 2.0.3
+-- Módulos incluidos: 10 (01_catalog → 10_rate_profiles)
+-- Migraciones integradas: Sprint 6 (associates + rate_profiles)
 --
 -- ADVERTENCIA:
 --   Este archivo es GENERADO AUTOMÁTICAMENTE.
@@ -52,7 +52,7 @@ echo -e "${GREEN}✓ Header generado${NC}"
 
 # Concatenar módulos
 echo -e "${YELLOW}[2/3] Concatenando módulos...${NC}"
-for i in {01..09}; do
+for i in {01..10}; do
     module="$MODULES_DIR/${i}_*.sql"
     if [ -f $module ]; then
         module_name=$(basename $module)

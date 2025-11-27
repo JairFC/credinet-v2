@@ -1,0 +1,1 @@
+id,cut_period_id,user_id,statement_number,total_payments_count,total_amount_collected,total_commission_owed,commission_rate_applied,status_id,generated_date,sent_date,due_date,paid_date,paid_amount,payment_method_id,payment_reference,late_fee_amount,late_fee_applied,created_at,updated_at

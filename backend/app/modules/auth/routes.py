@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db_session
+from app.core.database import get_async_db
 from app.core.security import decode_access_token
 from app.core.exceptions import (
     AuthenticationError,
@@ -39,7 +39,7 @@ security = HTTPBearer()
 # DEPENDENCY INJECTION
 # ============================================================================
 
-def get_auth_service(db: AsyncSession = Depends(get_db_session)) -> AuthService:
+def get_auth_service(db: AsyncSession = Depends(get_async_db)) -> AuthService:
     """
     Dependency to get AuthService instance.
     
@@ -368,3 +368,110 @@ async def logout(
     return MessageResponse(
         message=f"User {user_id} logged out successfully. Remove token from client."
     )
+
+
+# =============================================================================
+# VALIDATION ENDPOINTS
+# =============================================================================
+
+@router.get(
+    "/validate/username/{username}",
+    status_code=status.HTTP_200_OK,
+    summary="Validate Username",
+    description="Check if username is available."
+)
+async def validate_username(
+    username: str,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """Verifica si un username está disponible"""
+    try:
+        exists = await auth_service.user_repository.exists_username(username)
+        return {
+            "available": not exists,
+            "message": "Username disponible" if not exists else "Username ya existe"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error validating username: {str(e)}"
+        )
+
+
+@router.get(
+    "/validate/email/{email}",
+    status_code=status.HTTP_200_OK,
+    summary="Validate Email",
+    description="Check if email is available."
+)
+async def validate_email(
+    email: str,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """Verifica si un email está disponible"""
+    try:
+        exists = await auth_service.user_repository.exists_email(email)
+        return {
+            "available": not exists,
+            "message": "Email disponible" if not exists else "Email ya registrado"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error validating email: {str(e)}"
+        )
+
+
+@router.get(
+    "/validate/phone/{phone_number}",
+    status_code=status.HTTP_200_OK,
+    summary="Validate Phone Number",
+    description="Check if phone number is available."
+)
+async def validate_phone(
+    phone_number: str,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """Verifica si un teléfono está disponible"""
+    try:
+        from sqlalchemy import select, exists as sql_exists
+        from app.modules.auth.infrastructure.models import UserModel
+        
+        result = await db.execute(
+            select(sql_exists().where(UserModel.phone_number == phone_number))
+        )
+        exists = result.scalar()
+        
+        return {
+            "available": not exists,
+            "message": "Teléfono disponible" if not exists else "Teléfono ya registrado"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error validating phone: {str(e)}"
+        )
+
+
+@router.get(
+    "/validate/curp/{curp}",
+    status_code=status.HTTP_200_OK,
+    summary="Validate CURP",
+    description="Check if CURP is available."
+)
+async def validate_curp(
+    curp: str,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """Verifica si un CURP está disponible"""
+    try:
+        exists = await auth_service.user_repository.exists_curp(curp)
+        return {
+            "available": not exists,
+            "message": "CURP disponible" if not exists else "CURP ya registrado"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error validating CURP: {str(e)}"
+        )

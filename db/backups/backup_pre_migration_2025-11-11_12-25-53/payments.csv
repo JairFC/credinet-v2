@@ -1,0 +1,1 @@
+id,loan_id,amount_paid,payment_date,payment_due_date,is_late,status_id,cut_period_id,marked_by,marked_at,marking_notes,created_at,updated_at,payment_number,expected_amount,interest_amount,principal_amount,commission_amount,associate_payment,balance_remaining

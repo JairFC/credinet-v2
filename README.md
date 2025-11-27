@@ -33,12 +33,13 @@
 | 💾 Base de Datos v2.0 | ✅ 100% | N/A | ✅ Completa |
 | 🔐 Módulo Auth | ✅ 100% | 28/28 | ✅ Completa |
 | 💰 Módulo Loans | ✅ 100% | 96/96 | ✅ Completa |
+| 🎨 Frontend (Auth + Dashboard) | ✅ 100% | 0/0 | ✅ Completa |
+| 🐳 Dockerización | ✅ 100% | N/A | ✅ Completa |
 | 🤝 Módulo Associates | ⏳ 0% | 0/25 | ⏳ Pendiente |
 | 📅 Módulo Periods | ⏳ 0% | 0/30 | ⏳ Pendiente |
 | 💳 Módulo Payments | ⏳ 0% | 0/20 | ⏳ Pendiente |
-| 🎨 Frontend | ⏳ 30% | 0/0 | ⏳ Pendiente |
 
-**Progreso general:** 2/8 sprints completados (25%)
+**Progreso general:** Sprint 7/12 completado (58%)
 
 ---
 
@@ -46,8 +47,41 @@
 
 ### Prerrequisitos
 
-- Docker 20+
-- Docker Compose 2+
+- Docker 20.10+
+- Docker Compose 2.0+
+- 4GB RAM disponible
+- Puertos libres: 5173, 8000, 5432
+
+### Instalación con Docker (Recomendado)
+
+```bash
+# 1. Clonar el repositorio
+git clone <repo-url>
+cd credinet-v2
+
+# 2. Copiar variables de entorno
+cp .env.example .env
+
+# 3. Iniciar todos los servicios (PostgreSQL + Backend + Frontend)
+./scripts/docker/start.sh
+
+# 4. Acceder a la aplicación
+# Frontend: http://localhost:5173
+# Backend API: http://localhost:8000/docs
+```
+
+**Credenciales de prueba:**
+- Usuario: `admin`
+- Contraseña: `Sparrow20`
+
+### Ver logs y gestión
+
+```bash
+./scripts/docker/logs.sh          # Ver logs de todos los servicios
+./scripts/docker/logs.sh backend  # Solo backend
+./scripts/docker/restart.sh       # Reiniciar servicios
+./scripts/docker/stop.sh          # Detener servicios
+```
 - Git
 
 ### Instalación

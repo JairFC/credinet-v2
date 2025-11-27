@@ -1,0 +1,209 @@
+/* TablaReferenciaRapida.css */
+.tabla-referencia-rapida {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.referencia-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.referencia-header h3 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.profile-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-selector label {
+  color: #495057;
+  font-weight: 500;
+}
+
+.profile-selector select {
+  padding: 8px 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.profile-info {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.profile-info p {
+  margin: 0;
+  color: #495057;
+  font-size: 0.95rem;
+}
+
+.term-section {
+  margin-bottom: 32px;
+}
+
+.term-section:last-child {
+  margin-bottom: 0;
+}
+
+.term-section h4 {
+  margin: 0 0 12px 0;
+  color: #007bff;
+  font-size: 1rem;
+  font-weight: 600;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #007bff;
+}
+
+.table-container {
+  overflow-x: auto;
+  margin-bottom: 8px;
+}
+
+.reference-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.reference-table thead {
+  background: #f8f9fa;
+}
+
+.reference-table th {
+  padding: 10px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.reference-table th.currency {
+  text-align: right;
+}
+
+.reference-table tbody tr {
+  border-bottom: 1px solid #f1f3f5;
+  transition: background-color 0.15s;
+}
+
+.reference-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.reference-table tbody tr:hover {
+  background-color: #e9ecef;
+}
+
+.reference-table td {
+  padding: 8px 10px;
+  color: #495057;
+}
+
+.reference-table td.amount {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.reference-table td.currency {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.reference-table td.client-value {
+  color: #007bff;
+  font-weight: 600;
+}
+
+.reference-table td.associate-value {
+  color: #6c757d;
+  font-weight: 600;
+}
+
+.reference-table td.commission-value {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.reference-table td.total-value {
+  color: #212529;
+  font-weight: 600;
+}
+
+.referencia-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #dee2e6;
+}
+
+.referencia-footer p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.tabla-referencia-loading,
+.tabla-referencia-error,
+.tabla-referencia-empty {
+  background: #fff;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tabla-referencia-loading p,
+.tabla-referencia-error p,
+.tabla-referencia-empty p {
+  margin: 0;
+  color: #6c757d;
+  font-size: 1rem;
+}
+
+.btn-retry {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-retry:hover {
+  background: #0056b3;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .referencia-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .reference-table {
+    font-size: 0.8rem;
+  }
+
+  .reference-table th,
+  .reference-table td {
+    padding: 6px 8px;
+  }
+}

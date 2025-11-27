@@ -72,7 +72,7 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       
       # CORS (ajusta según tu IP)
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://192.168.98.98:5173,http://192.168.98.98:8000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174,http://localhost:3000,http://192.168.98.98:5173,http://192.168.98.98:5174,http://192.168.98.98:8000,http://172.28.0.1:5174}
       
       # File Upload (futuro módulo documents)
       MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-10485760}
@@ -100,27 +100,27 @@ services:
         max-file: "3"
 
   # ===========================================================================
-  # FRONTEND (React 18 + Vite 5 v2.0)
+  # FRONTEND (React 18 + Vite 7.1.14 - Feature-Sliced Design)
   # ===========================================================================
-  # Estado: Base limpia (sin páginas legacy)
+  # Estado: Sprint 7 completo (Auth + Dashboard con Navbar)
   # ===========================================================================
   frontend:
     build:
-      context: ./frontend
+      context: ./frontend-mvp
       dockerfile: Dockerfile
     container_name: credinet-frontend
     restart: unless-stopped
     environment:
       # Vite Configuration
       - VITE_API_URL=${VITE_API_URL:-http://192.168.98.98:8000}
-      - VITE_APP_NAME=${VITE_APP_NAME:-Credinet v2.0}
+      - VITE_APP_NAME=${VITE_APP_NAME:-CrediNet V2}
       - VITE_APP_VERSION=${VITE_APP_VERSION:-2.0.0}
       
       # Hot Reload (Development)
       - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING:-true}
       - WATCHPACK_POLLING=${WATCHPACK_POLLING:-true}
     volumes:
-      - ./frontend:/app
+      - ./frontend-mvp:/app
       - /app/node_modules
       - /app/dist
     ports:

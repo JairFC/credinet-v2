@@ -1,59 +1,194 @@
 # 🗄️ BASE DE DATOS CREDINET v2.0
 
-> **Arquitectura**: Modular + Híbrida  
+> **Arquitectura**: Single Source of Truth (Modular)  
 > **PostgreSQL**: 15+  
-> **Versión**: 2.0.0  
-> **Fecha**: 2025-10-30  
+> **Versión**: 2.0.1 (Sprint 6 - Rate Profiles)  
+> **Fecha**: 2025-11-05  
+
+---
+
+## ⚠️ PRINCIPIO FUNDAMENTAL: SINGLE SOURCE OF TRUTH
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ✅ ÚNICA FUENTE DE VERDAD: /db/v2.0/modules/*.sql     │
+│  ✅ Siempre actualizado y sincronizado con BD           │
+│  ✅ Genera init.sql (NO EDITAR DIRECTAMENTE)            │
+│  ✅ IA debe analizar SOLO estos 10 archivos             │
+└─────────────────────────────────────────────────────────┘
+                           │
+                           ├─ init.sql (GENERADO)
+                           └─ docker-compose.yml → PostgreSQL
+                           
+┌─────────────────────────────────────────────────────────┐
+│  📚 HISTÓRICO: /db/v2.0/archive/migrations/             │
+│  📚 Solo para auditoría y rollback                      │
+│  📚 NO ejecutar directamente (ya aplicados en modules/) │
+└─────────────────────────────────────────────────────────┘
+```
+
+**⚠️ IMPORTANTE**:
+- **NO editar** `init.sql` directamente → será sobrescrito
+- **NO ejecutar** migraciones en `/archive/` → ya consolidadas
+- **SÍ editar** módulos en `/modules/` → fuente de verdad
+- **SÍ regenerar** `init.sql` después de cambios → `./generate_monolithic.sh`
 
 ---
 
 ## 📋 ÍNDICE
 
-1. [Visión General](#visión-general)
-2. [Arquitectura Modular](#arquitectura-modular)
-3. [Migraciones Integradas](#migraciones-integradas)
-4. [Uso](#uso)
-5. [Módulos Detallados](#módulos-detallados)
-6. [Mantenimiento](#mantenimiento)
+1. [Workflow de Cambios](#-workflow-de-cambios)
+2. [Estructura de Archivos](#-estructura-de-archivos)
+3. [Módulos Principales](#-módulos-principales)
+4. [Uso y Deploy](#-uso-y-deploy)
+5. [Histórico de Migraciones](#-histórico-de-migraciones)
+6. [Mantenimiento](#-mantenimiento)
+
+---
+
+## 🔄 WORKFLOW DE CAMBIOS
+
+### Para Desarrolladores
+
+```bash
+# 1. Editar módulo correspondiente
+vim db/v2.0/modules/02_core_tables.sql
+
+# 2. Regenerar monolítico
+cd db/v2.0
+./generate_monolithic.sh
+
+# 3. Aplicar en BD (desarrollo)
+docker exec credinet-postgres psql -U credinet_user -d credinet_db < init.sql
+
+# 4. Validar cambios
+docker exec credinet-postgres psql -U credinet_user -d credinet_db -c "\d loans"
+
+# 5. Commit (incluir módulo + init.sql generado)
+git add modules/02_core_tables.sql init.sql
+git commit -m "feat: add new field to loans table"
+```
+
+### Para IA (Análisis de Contexto)
+
+**Prioridad de análisis**:
+1. **HIGH**: `/db/v2.0/modules/*.sql` (10 archivos, 165K) ← ÚNICA VERDAD
+2. **MEDIUM**: `/db/v2.0/init.sql` (generado, solo referencia)
+3. **LOW**: `/db/v2.0/archive/**` (histórico, NO sugerir ediciones)
+4. **DOCS**: `/docs/ARQUITECTURA_DOBLE_CALENDARIO.md`, `/docs/DASHBOARD_VALIDACION_SPRINT6.md`
 
 ---
 
 ## 🎯 VISIÓN GENERAL
 
-La base de datos de Credinet v2.0 implementa una **arquitectura modular híbrida** que permite:
+La base de datos de Credinet v2.0 implementa una **arquitectura modular con consolidación automática**:
 
+- ✅ **Single Source of Truth**: Módulos son la única verdad
 - ✅ **Desarrollo ágil**: Trabajar en módulos independientes
-- ✅ **Deploy rápido**: Versión monolítica consolidada
+- ✅ **Deploy rápido**: Versión monolítica auto-generada
 - ✅ **Mantenibilidad**: Cambios quirúrgicos sin afectar todo
 - ✅ **Testing**: Probar módulos individuales
 - ✅ **Escalabilidad**: Agregar módulos sin romper existentes
+- ✅ **Trazabilidad**: Histórico completo en `/archive/`
 
-### Estadísticas
-- **Tablas**: 29 (26 base + 3 nuevas)
-- **Funciones**: 22 (5 base + 17 nuevas)
-- **Triggers**: 28 (5 base + 23 nuevos)
-- **Vistas**: 9 (0 base + 9 nuevas)
-- **Estados de Pago**: 12 (consolidados y documentados)
-- **Líneas de código**: ~3,800
+### Estadísticas v2.0.1 (Sprint 6)
+- **Tablas**: 38 (13 catálogos + 25 transaccionales)
+- **Funciones**: 23 (lógica de negocio compleja)
+- **Triggers**: 34 (21 updated_at + 13 lógica de negocio)
+- **Vistas**: 12 (reporting y análisis)
+- **Índices**: 80 (optimización de consultas, +8 Sprint 6)
+- **Líneas de código**: 4,164 líneas (+158 Sprint 6)
+- **Tamaño**: 185K (init.sql, +5K Sprint 6)
 
 ---
 
-## 🏗️ ARQUITECTURA
-
-### Estructura de Archivos
+## 📂 ESTRUCTURA DE ARCHIVOS
 
 ```
 db/v2.0/
-├── modules/                          # 📦 Módulos SQL independientes (desarrollo)
-│   ├── 01_catalog_tables.sql         # Catálogos y estados (12 tablas)
-│   ├── 02_core_tables.sql            # Tablas principales (users, loans, payments)
-│   ├── 03_business_tables.sql        # Lógica de negocio (agreements, associates)
-│   ├── 04_audit_tables.sql           # Auditoría y tracking
-│   ├── 05_functions_base.sql         # Funciones base (nivel 1)
-│   ├── 06_functions_business.sql     # Funciones de negocio (nivel 2-3)
-│   ├── 07_triggers.sql               # Todos los triggers (28+)
-│   ├── 08_views.sql                  # Todas las vistas (9)
-│   └── 09_seeds.sql                  # Datos iniciales (catálogos, roles, usuarios)
+├── init.sql                          # 🤖 GENERADO (NO EDITAR)
+├── generate_monolithic.sh            # Script de generación
+├── README.md                         # Este archivo
+│
+├── modules/                          # 🎯 ÚNICA FUENTE DE VERDAD (EDITAR AQUÍ)
+│   ├── 01_catalog_tables.sql         # Catálogos y estados (13 tablas, 11K)
+│   ├── 02_core_tables.sql            # Tablas principales (loans, payments, 21K)
+│   ├── 03_business_tables.sql        # Lógica de negocio (agreements, 17K)
+│   ├── 04_audit_tables.sql           # Auditoría y tracking (12K)
+│   ├── 05_functions_base.sql         # Funciones base: cálculos (19K)
+│   ├── 06_functions_business.sql     # Funciones negocio: triggers (29K)
+│   ├── 07_triggers.sql               # Triggers updated_at + audit (15K)
+│   ├── 08_views.sql                  # Vistas de reporting (22K)
+│   ├── 09_seeds.sql                  # Datos iniciales (catálogos, 19K)
+│   ├── 10_rate_profiles.sql          # Sistema de tasas (Sprint 6, 23K)
+│   └── migrations/                   # VACÍA (consolidado en modules/)
+│
+├── archive/                          # 📚 HISTÓRICO (SOLO AUDITORÍA)
+│   ├── migrations/
+│   │   └── v2.0.0_to_v2.0.1/         # Sprint 6: Rate Profiles
+│   │       ├── CHANGELOG.md          # Resumen consolidado
+│   │       ├── 005_add_calculated_fields_to_loans.sql (16K)
+│   │       ├── 006_add_breakdown_fields_to_payments.sql (22K)
+│   │       └── 007_fix_generate_payment_schedule_trigger.sql (16K)
+│   └── schemas/
+│       └── (snapshots futuros)       # Backups pre-migración
+│
+└── docs/                             # 📖 DOCUMENTACIÓN
+    └── (ver /docs/ en raíz del proyecto)
+```
+
+**Tamaños**:
+- **Módulos activos**: 165K (10 archivos)
+- **init.sql generado**: 185K
+- **Migraciones archivadas**: 54K (histórico Sprint 6)
+- **Total**: ~400K
+
+---
+
+## 📚 HISTÓRICO DE MIGRACIONES
+
+### ¿Qué hay en `/archive/migrations/`?
+
+Esta carpeta contiene migraciones **YA APLICADAS y CONSOLIDADAS** en los módulos principales. **NO ejecutar directamente**.
+
+```
+/archive/migrations/v2.0.0_to_v2.0.1/  ← Sprint 6: Rate Profiles
+├── CHANGELOG.md                       ← Resumen detallado de cambios
+├── 005_add_calculated_fields_to_loans.sql (16K)
+├── 006_add_breakdown_fields_to_payments.sql (22K)
+└── 007_fix_generate_payment_schedule_trigger.sql (16K)
+```
+
+**Propósito del archivo**:
+- 📖 **Auditoría**: Histórico completo de decisiones de diseño
+- 🔙 **Rollback**: Referencia para revertir cambios si necesario
+- 👥 **Onboarding**: Nuevos devs entienden evolución del schema
+- 🔍 **Compliance**: Trazabilidad completa de cambios
+
+**⚠️ Estado actual**:
+- ✅ Cambios **YA consolidados** en `/modules/02_core_tables.sql` y `/modules/06_functions_business.sql`
+- ✅ `init.sql` **YA regenerado** con cambios aplicados
+- ✅ **Validado** en producción (préstamo id=6 exitoso)
+- ❌ **NO ejecutar** estas migraciones → causaría errores de "column already exists"
+
+**Referencia rápida Sprint 6**:
+```sql
+-- Campos agregados a loans (6):
+biweekly_payment, total_payment, total_interest, total_commission, 
+commission_per_payment, associate_payment
+
+-- Campos agregados a payments (7):
+payment_number, expected_amount, interest_amount, principal_amount,
+commission_amount, associate_payment, balance_remaining
+
+-- Función reescrita:
+generate_payment_schedule() - 138→251 líneas
+- Bug corregido: Ahora usa biweekly_payment (con interés) vs amount/term (sin interés)
+- Integración con generate_amortization_schedule()
+- Validación matemática automática (±$1.00)
+```
+
+Ver documentación completa: `/archive/migrations/v2.0.0_to_v2.0.1/CHANGELOG.md`
 │
 ├── init.sql                          # 🎯 FUENTE DE VERDAD (Producción + Docker)
 ├── generate_monolithic.sh            # Script para regenerar init.sql desde modules/
@@ -63,7 +198,7 @@ db/v2.0/
 
 **Filosofía:**
 - **`modules/`**: Para desarrollo y mantenimiento modular
-- **`init.sql`**: Archivo consolidado único para producción/Docker (136K, 3,075 líneas)
+- **`init.sql`**: Archivo consolidado único para producción/Docker (146K, 3,301 líneas)
 - Sin archivos duplicados ni patches externos
 
 ---

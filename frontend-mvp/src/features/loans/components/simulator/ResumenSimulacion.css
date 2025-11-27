@@ -1,0 +1,105 @@
+/* ResumenSimulacion.css */
+.resumen-simulacion {
+  margin-bottom: 24px;
+}
+
+.resumen-simulacion h3 {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.resumen-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.resumen-card h4 {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+.card-info h4 {
+  color: #3498db;
+}
+
+.card-client h4 {
+  color: #007bff;
+}
+
+.card-associate h4 {
+  color: #6c757d;
+}
+
+.resumen-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.resumen-item:last-child {
+  border-bottom: none;
+}
+
+.resumen-item .label {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.resumen-item .value {
+  font-weight: 600;
+  color: #2c3e50;
+  text-align: right;
+}
+
+.resumen-item .value.big {
+  font-size: 1.2rem;
+  color: #007bff;
+}
+
+.resumen-item .highlight-rate {
+  background: #fff3cd;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #856404;
+  font-weight: 700;
+}
+
+.resumen-item .highlight-commission {
+  background: #d4edda;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #155724;
+  font-weight: 700;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .resumen-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .resumen-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .resumen-item .value {
+    text-align: left;
+  }
+}

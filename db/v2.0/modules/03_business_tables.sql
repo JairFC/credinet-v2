@@ -1,22 +1,24 @@
 -- =============================================================================
--- CREDINET DB v2.0 - MÓDULO 03: TABLAS DE LÓGICA DE NEGOCIO
+-- CREDINET DB v2.0.1 - MÓDULO 03: TABLAS DE LÓGICA DE NEGOCIO
 -- =============================================================================
 -- Descripción:
 --   Tablas para lógica de negocio específica: asociados, convenios, renovaciones.
 --   Incluye las extensiones de la migración 07 (sistema de crédito del asociado).
 --
--- Tablas incluidas:
+-- Tablas incluidas (9 total):
 --   - associate_profiles (con credit tracking v2.0)
 --   - associate_payment_statements (con late_fee v2.0)
+--   - associate_statement_payments ⭐ NUEVO v2.0.1 (tracking de abonos)
 --   - associate_accumulated_balances
 --   - associate_level_history
+--   - associate_debt_breakdown
 --   - agreements (convenios de pago)
 --   - agreement_items (ítems de convenio)
 --   - agreement_payments (pagos de convenio)
 --   - loan_renewals (registro de renovaciones)
 --
--- Versión: 2.0.0
--- Fecha: 2025-10-30
+-- Versión: 2.0.1
+-- Fecha: 2025-10-31
 -- =============================================================================
 
 -- =============================================================================
@@ -63,10 +65,10 @@ CREATE TABLE IF NOT EXISTS associate_profiles (
 
 COMMENT ON TABLE associate_profiles IS 'Información extendida de usuarios que son asociados (gestores de cartera de préstamos). Incluye sistema de crédito v2.0.';
 COMMENT ON COLUMN associate_profiles.consecutive_full_credit_periods IS 'Contador de períodos consecutivos con 100% de cobro. Usado para evaluaciones de nivel.';
-COMMENT ON COLUMN associate_profiles.credit_used IS '⭐ v2.0: Crédito actualmente utilizado por el asociado (préstamos absorbidos no liquidados).';
-COMMENT ON COLUMN associate_profiles.credit_limit IS '⭐ v2.0: Límite máximo de crédito disponible para el asociado según su nivel.';
-COMMENT ON COLUMN associate_profiles.credit_available IS '⭐ v2.0: Crédito disponible restante (columna calculada: credit_limit - credit_used).';
-COMMENT ON COLUMN associate_profiles.debt_balance IS '⭐ v2.0: Deuda total del asociado (pagos no reportados + clientes morosos + mora).';
+COMMENT ON COLUMN associate_profiles.credit_used IS '⭐ v2.0: Crédito operativo actualmente utilizado (suma de saldos pendientes de préstamos activos).';
+COMMENT ON COLUMN associate_profiles.credit_limit IS '⭐ v2.0: Límite máximo de crédito operativo según nivel (Bronce: $50k, Plata: $100k, Oro: $250k, Platino: $600k, Diamante: $1M).';
+COMMENT ON COLUMN associate_profiles.credit_available IS '⭐ v2.0: Crédito operativo disponible (columna calculada: credit_limit - credit_used). NOTA: Validación real considera también debt_balance.';
+COMMENT ON COLUMN associate_profiles.debt_balance IS '⭐ v2.0: Deuda administrativa acumulada (pagos no reportados + clientes morosos + mora del 30%). Se gestiona por separado vía liquidaciones/convenios.';
 
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_associate_profiles_user_id ON associate_profiles(user_id);
@@ -114,6 +116,77 @@ CREATE TABLE IF NOT EXISTS associate_payment_statements (
 COMMENT ON TABLE associate_payment_statements IS 'Estados de cuenta generados para asociados por cada período de corte. Incluye sistema de mora v2.0.';
 COMMENT ON COLUMN associate_payment_statements.late_fee_amount IS '⭐ v2.0: Mora del 30% aplicada sobre comisión si NO reportó ningún pago (total_payments_count = 0).';
 COMMENT ON COLUMN associate_payment_statements.late_fee_applied IS '⭐ v2.0: Flag que indica si ya se aplicó la mora del 30%.';
+
+-- =============================================================================
+-- 2B. ASSOCIATE_STATEMENT_PAYMENTS - Tracking de Abonos Parciales ⭐ NUEVO
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS associate_statement_payments (
+    id SERIAL PRIMARY KEY,
+    statement_id INTEGER NOT NULL REFERENCES associate_payment_statements(id) ON DELETE CASCADE,
+    payment_amount DECIMAL(12, 2) NOT NULL,
+    payment_date DATE NOT NULL,
+    payment_method_id INTEGER NOT NULL REFERENCES payment_methods(id),
+    payment_reference VARCHAR(100),
+    registered_by INTEGER NOT NULL REFERENCES users(id),
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Validaciones
+    CONSTRAINT check_statement_payments_amount_positive CHECK (payment_amount > 0),
+    CONSTRAINT check_statement_payments_date_logical CHECK (payment_date <= CURRENT_DATE)
+);
+
+COMMENT ON TABLE associate_statement_payments IS '⭐ NUEVO v2.0: Registro detallado de abonos parciales del asociado para liquidar estados de cuenta. Permite múltiples pagos por statement con tracking completo.';
+COMMENT ON COLUMN associate_statement_payments.statement_id IS 'Referencia al estado de cuenta que se está liquidando.';
+COMMENT ON COLUMN associate_statement_payments.payment_amount IS 'Monto del abono (puede ser parcial). Múltiples abonos se suman para liquidar el statement.';
+COMMENT ON COLUMN associate_statement_payments.payment_reference IS 'Referencia bancaria (ej: SPEI-123456) o número de recibo para transferencias/depósitos.';
+COMMENT ON COLUMN associate_statement_payments.registered_by IS 'Usuario que registró el abono (normalmente admin o auxiliar administrativo).';
+COMMENT ON COLUMN associate_statement_payments.notes IS 'Notas adicionales sobre el abono (ej: "Abono parcial, liquidación completa pendiente").';
+
+-- Índices para associate_statement_payments
+CREATE INDEX IF NOT EXISTS idx_statement_payments_statement_id ON associate_statement_payments(statement_id);
+CREATE INDEX IF NOT EXISTS idx_statement_payments_payment_date ON associate_statement_payments(payment_date);
+CREATE INDEX IF NOT EXISTS idx_statement_payments_registered_by ON associate_statement_payments(registered_by);
+CREATE INDEX IF NOT EXISTS idx_statement_payments_method ON associate_statement_payments(payment_method_id);
+CREATE INDEX IF NOT EXISTS idx_statement_payments_statement_amount ON associate_statement_payments(statement_id, payment_amount);
+
+-- =============================================================================
+-- 2C. ASSOCIATE_DEBT_PAYMENTS - Tracking de Abonos a Deuda Acumulada ⭐ NUEVO v2.0.4
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS associate_debt_payments (
+    id SERIAL PRIMARY KEY,
+    associate_profile_id INTEGER NOT NULL REFERENCES associate_profiles(id) ON DELETE CASCADE,
+    payment_amount DECIMAL(12, 2) NOT NULL,
+    payment_date DATE NOT NULL,
+    payment_method_id INTEGER NOT NULL REFERENCES payment_methods(id),
+    payment_reference VARCHAR(100),
+    registered_by INTEGER NOT NULL REFERENCES users(id),
+    applied_breakdown_items JSONB NOT NULL DEFAULT '[]'::jsonb,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Validaciones
+    CONSTRAINT check_debt_payments_amount_positive CHECK (payment_amount > 0),
+    CONSTRAINT check_debt_payments_date_logical CHECK (payment_date <= CURRENT_DATE)
+);
+
+COMMENT ON TABLE associate_debt_payments IS '⭐ NUEVO v2.0.4: Registro de abonos directos a DEUDA ACUMULADA. Permite al asociado pagar deuda antigua sin tener que pagar saldo actual primero. Aplica FIFO automáticamente.';
+COMMENT ON COLUMN associate_debt_payments.associate_profile_id IS 'Asociado que realiza el abono a su deuda acumulada.';
+COMMENT ON COLUMN associate_debt_payments.payment_amount IS 'Monto del abono a deuda acumulada. Se distribuye automáticamente en FIFO.';
+COMMENT ON COLUMN associate_debt_payments.applied_breakdown_items IS 'JSON con detalle de items de deuda liquidados: [{"breakdown_id": 123, "amount_applied": 500.00, "liquidated": true}, ...]';
+COMMENT ON COLUMN associate_debt_payments.payment_reference IS 'Referencia bancaria o número de recibo del abono a deuda.';
+COMMENT ON COLUMN associate_debt_payments.registered_by IS 'Usuario que registró el abono a deuda.';
+COMMENT ON COLUMN associate_debt_payments.notes IS 'Notas adicionales (ej: "Abono voluntario a deuda acumulada").';
+
+-- Índices para associate_debt_payments
+CREATE INDEX IF NOT EXISTS idx_debt_payments_associate_id ON associate_debt_payments(associate_profile_id);
+CREATE INDEX IF NOT EXISTS idx_debt_payments_payment_date ON associate_debt_payments(payment_date);
+CREATE INDEX IF NOT EXISTS idx_debt_payments_registered_by ON associate_debt_payments(registered_by);
+CREATE INDEX IF NOT EXISTS idx_debt_payments_method ON associate_debt_payments(payment_method_id);
+CREATE INDEX IF NOT EXISTS idx_debt_payments_applied_items ON associate_debt_payments USING GIN (applied_breakdown_items);
+CREATE INDEX IF NOT EXISTS idx_debt_payments_associate_date ON associate_debt_payments(associate_profile_id, payment_date DESC);
 
 -- =============================================================================
 -- 3. ASSOCIATE_ACCUMULATED_BALANCES - Balances Acumulados

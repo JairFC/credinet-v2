@@ -36,6 +36,7 @@ class User:
     phone_number: Optional[str] = None
     curp: Optional[str] = None
     birth_date: Optional[datetime] = None
+    profile_picture_url: Optional[str] = None
     active: bool = True
     roles: List[str] = None
     created_at: Optional[datetime] = None

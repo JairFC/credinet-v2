@@ -49,9 +49,10 @@ from app.modules.catalogs.infrastructure.models import (
     LoanStatusModel,
     PaymentMethodModel,
     PaymentStatusModel,
-    RoleModel,
     StatementStatusModel,
 )
+# Import RoleModel from auth module to avoid duplication
+from app.modules.auth.infrastructure.models import RoleModel
 
 
 # =============================================================================
