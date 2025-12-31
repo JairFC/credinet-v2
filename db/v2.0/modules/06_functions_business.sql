@@ -245,9 +245,8 @@ BEGIN
 EXCEPTION
     WHEN OTHERS THEN
         -- Log detallado del error
-        RAISE EXCEPTION 'ERROR CRÍTICO al generar payment schedule para préstamo %: % (%). SQLState: %, Context: %',
-            NEW.id, SQLERRM, SQLSTATE, SQLSTATE, 
-            coalesce(PG_EXCEPTION_CONTEXT, 'No context');
+        RAISE EXCEPTION 'ERROR CRÍTICO al generar payment schedule para préstamo %: % (%). SQLState: %',
+            NEW.id, SQLERRM, SQLSTATE, SQLSTATE;
         RETURN NULL;
 END;
 $function$;

@@ -46,7 +46,8 @@ class StatementModel(Base):
     # Statistics
     total_payments_count = Column(Integer, nullable=False, default=0)
     total_amount_collected = Column(DECIMAL(12, 2), nullable=False, default=0.00)
-    total_commission_owed = Column(DECIMAL(12, 2), nullable=False, default=0.00)
+    total_to_credicuenta = Column(DECIMAL(12, 2), nullable=False, default=0.00)  # Lo que debe pagar a CrediCuenta
+    commission_earned = Column(DECIMAL(12, 2), nullable=False, default=0.00)  # Comisión ganada por el asociado
     commission_rate_applied = Column(DECIMAL(5, 2), nullable=False)
     
     # Status
@@ -100,7 +101,8 @@ class StatementModel(Base):
         CheckConstraint(
             "total_payments_count >= 0 AND "
             "total_amount_collected >= 0 AND "
-            "total_commission_owed >= 0 AND "
+            "total_to_credicuenta >= 0 AND "
+            "commission_earned >= 0 AND "
             "late_fee_amount >= 0",
             name="check_statements_totals_non_negative"
         ),

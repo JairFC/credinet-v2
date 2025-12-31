@@ -21,10 +21,21 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  display: table !important;
+  table-layout: auto;
 }
 
 .amortization-table thead {
   background: #f8f9fa;
+  display: table-header-group !important;
+}
+
+.amortization-table tbody {
+  display: table-row-group !important;
+}
+
+.amortization-table tr {
+  display: table-row !important;
 }
 
 .amortization-table th {
@@ -34,6 +45,7 @@
   color: #495057;
   border-bottom: 2px solid #dee2e6;
   white-space: nowrap;
+  display: table-cell !important;
 }
 
 .amortization-table th.currency {
@@ -64,6 +76,7 @@
 .amortization-table td {
   padding: 10px;
   color: #495057;
+  display: table-cell !important;
 }
 
 .amortization-table td.payment-number {
@@ -104,6 +117,11 @@
 
 .amortization-table td.balance-value {
   color: #dc3545;
+}
+
+.amortization-table td.associate-balance {
+  color: #17a2b8;
+  font-weight: 600;
 }
 
 .amortization-table tfoot {

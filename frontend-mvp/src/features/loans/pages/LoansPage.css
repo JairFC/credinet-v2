@@ -712,3 +712,80 @@
 .btn-icon:hover.btn-danger {
   background: #fff5f5;
 }
+
+/* =============================================================================
+   PAGINACIÓN
+   ============================================================================= */
+
+.pagination-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  background: #f8fafc;
+  border-radius: 0 0 12px 12px;
+  border-top: 1px solid #e8eef5;
+  margin-top: 0;
+}
+
+.pagination-info {
+  color: #6b7c93;
+  font-size: 0.95rem;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid #e8eef5;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: #C4252D;
+  background: #fff5f5;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-pages {
+  padding: 0 1rem;
+  font-weight: 600;
+  color: #1a1f36;
+  font-size: 0.95rem;
+}
+
+/* Responsive pagination */
+@media (max-width: 768px) {
+  .pagination-container {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .pagination-info {
+    font-size: 0.85rem;
+  }
+  
+  .pagination-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+  }
+}
+

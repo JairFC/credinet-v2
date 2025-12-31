@@ -90,10 +90,16 @@
 }
 
 .period-list-item.active {
-  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
-  border-color: #C4252D;
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  border-color: #6366F1;
   color: white;
   transform: translateX(4px);
+}
+
+.period-list-item.active .period-code,
+.period-list-item.active .period-dates,
+.period-list-item.active .period-collection {
+  color: white;
 }
 
 .period-item-icon {

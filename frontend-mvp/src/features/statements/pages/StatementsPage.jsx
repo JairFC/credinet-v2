@@ -1,19 +1,21 @@
 /**
  * StatementsPage - Vista de gestión de estados de cuenta de asociados
  * 
- * Lógica del Sistema (Backend v2.0 - 5 Estados):
- * 1 = GENERATED      # Generado
- * 2 = SENT           # Enviado al asociado
+ * Lógica del Sistema (Backend v2.0 - Estados de Statements):
+ * 6 = DRAFT          # Borrador (período en CUTOFF)
+ * 7 = COLLECTING     # En cobro (período en COLLECTING)
  * 3 = PAID           # Pagado completamente (is_paid = TRUE)
- * 4 = PARTIAL_PAID   # Pago parcial
+ * 4 = PARTIAL        # Pago parcial
  * 5 = OVERDUE        # Vencido sin pagar
+ * 8 = ABSORBED       # Deuda transferida (período CLOSED)
  * 
- * Reglas de Negocio:
- * - Mora del 30%: Se aplica AL FINAL DEL CORTE si el asociado NO hizo ningún abono (paid_amount = 0)
- * - late_fee_amount = total_commission_owed * 0.30
- * - Total adeudado = total_commission_owed + late_fee_amount
+ * Campos de BD (schema actualizado):
+ * - total_to_credicuenta: Lo que el asociado debe pagar a CrediCuenta
+ * - commission_earned: La comisión que gana el asociado
+ * - late_fee_amount = total_to_credicuenta * 0.30 (si aplica)
+ * - Total adeudado = total_to_credicuenta + late_fee_amount
  * - Saldo restante = total_adeudado - paid_amount
- * - Solo GENERATED, SENT, PARTIAL_PAID y OVERDUE pueden recibir pagos
+ * - Solo COLLECTING, PARTIAL y OVERDUE pueden recibir pagos
  * - Mora solo se aplica si: OVERDUE + NO pagado + NO tiene mora aplicada + paid_amount = 0
  */
 
@@ -73,14 +75,15 @@ const StatementsPage = () => {
     }
   };
 
-  // Mapeo de estados
+  // Mapeo de estados (IDs actualizados según BD)
   const getStatusInfo = (statusId) => {
     const statusMap = {
-      1: { text: 'Generado', class: 'generated', filter: 'pending', canPay: true, canApplyFee: false },
-      2: { text: 'Enviado', class: 'sent', filter: 'pending', canPay: true, canApplyFee: false },
+      6: { text: 'Borrador', class: 'draft', filter: 'pending', canPay: false, canApplyFee: false },
+      7: { text: 'En Cobro', class: 'collecting', filter: 'pending', canPay: true, canApplyFee: false },
       3: { text: 'Pagado', class: 'paid', filter: 'paid', canPay: false, canApplyFee: false },
       4: { text: 'Pago Parcial', class: 'partial', filter: 'pending', canPay: true, canApplyFee: false },
-      5: { text: 'Vencido', class: 'overdue', filter: 'overdue', canPay: true, canApplyFee: true }
+      5: { text: 'Vencido', class: 'overdue', filter: 'overdue', canPay: true, canApplyFee: true },
+      8: { text: 'Absorbido', class: 'absorbed', filter: 'closed', canPay: false, canApplyFee: false }
     };
     return statusMap[statusId] || { text: 'Desconocido', class: 'unknown', filter: 'all', canPay: false, canApplyFee: false };
   };
@@ -170,7 +173,7 @@ const StatementsPage = () => {
     paid: statements.filter(s => s.status_id === 3).length,
     pending: statements.filter(s => [1, 2, 4].includes(s.status_id)).length,
     overdue: statements.filter(s => s.status_id === 5).length,
-    totalCommissionOwed: statements.reduce((sum, s) => sum + (s.total_commission_owed || 0), 0),
+    totalToCredicuenta: statements.reduce((sum, s) => sum + (s.total_to_credicuenta || 0), 0),
     totalLateFees: statements.reduce((sum, s) => sum + (s.late_fee_amount || 0), 0),
     totalCollected: statements.reduce((sum, s) => sum + (s.paid_amount || 0), 0)
   };
@@ -329,7 +332,7 @@ const StatementsPage = () => {
             <tbody>
               {filteredStatements.map((stmt) => {
                 const statusInfo = getStatusInfo(stmt.status_id);
-                const totalOwed = (stmt.total_commission_owed || 0) + (stmt.late_fee_amount || 0);
+                const totalOwed = (stmt.total_to_credicuenta || 0) + (stmt.late_fee_amount || 0);
                 const remaining = stmt.remaining_amount || 0;
 
                 return (
@@ -343,7 +346,7 @@ const StatementsPage = () => {
                         {stmt.total_payments_count}
                         {stmt.total_payments_count === 0 && <span className="badge-warning-small">⚠️ Sin pagos</span>}
                       </td>
-                      <td className="text-right">${(stmt.total_commission_owed || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                      <td className="text-right">${(stmt.total_to_credicuenta || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
                       <td className="text-right">
                         {stmt.late_fee_amount > 0 ? (
                           <span className="text-danger">
@@ -433,11 +436,11 @@ const StatementsPage = () => {
             id: markPaidModal.id,
             cut_code: markPaidModal.cut_code,
             total_collected_amount: markPaidModal.total_amount_collected || 0,
-            commission_amount: markPaidModal.total_commission_owed || 0,
+            total_to_credicuenta: markPaidModal.total_to_credicuenta || 0,
+            commission_earned: markPaidModal.commission_earned || 0,
             paid_amount: markPaidModal.paid_amount || 0,
             late_fee_amount: markPaidModal.late_fee_amount || 0,
             total_amount_collected: markPaidModal.total_amount_collected || 0,
-            total_commission_owed: markPaidModal.total_commission_owed || 0,
           }}
           associateId={markPaidModal.user_id}
           onSuccess={handlePaymentSuccess}
@@ -455,15 +458,15 @@ const StatementsPage = () => {
 
             <div className="modal-body">
               <div className="statement-info-box warning-box">
-                <p><strong>⚠️ ADVERTENCIA:</strong> Esta acción aplicará una mora del 30% sobre la comisión adeudada.</p>
+                <p><strong>⚠️ ADVERTENCIA:</strong> Esta acción aplicará una mora del 30% sobre el monto adeudado a CrediCuenta.</p>
                 <p><strong>Razón:</strong> El asociado NO realizó ningún abono al final del período de corte.</p>
                 <p><strong>Statement:</strong> {applyFeeModal.statement_number}</p>
                 <p><strong>Asociado:</strong> {applyFeeModal.associate_name || `Usuario ${applyFeeModal.user_id}`}</p>
                 <p><strong>Período:</strong> {applyFeeModal.cut_period_code || `Período ${applyFeeModal.cut_period_id}`}</p>
-                <p><strong>Comisión base:</strong> ${(applyFeeModal.total_commission_owed || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+                <p><strong>Monto adeudado:</strong> ${(applyFeeModal.total_to_credicuenta || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
                 <p><strong>Abonos realizados:</strong> <span className="text-danger">${(applyFeeModal.paid_amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })} (Sin abonos)</span></p>
-                <p><strong>Mora a aplicar (30%):</strong> <span className="text-danger">${(applyFeeModal.total_commission_owed * 0.30).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span></p>
-                <p><strong>Nuevo total:</strong> ${(applyFeeModal.total_commission_owed * 1.30).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
+                <p><strong>Mora a aplicar (30%):</strong> <span className="text-danger">${((applyFeeModal.total_to_credicuenta || 0) * 0.30).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span></p>
+                <p><strong>Nuevo total:</strong> ${((applyFeeModal.total_to_credicuenta || 0) * 1.30).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>
               </div>
 
               <div className="form-group">

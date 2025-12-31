@@ -252,3 +252,28 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Botón de abono inline en tarjeta de deuda */
+.btn-abono-inline {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  background-color: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-abono-inline:hover {
+  background-color: #218838;
+}
+
+/* Ajuste de márgenes para secciones colapsables */
+.associate-detail-page .collapsible-section {
+  margin-top: 16px;
+}

@@ -91,20 +91,20 @@
 }
 
 /* Info Cards */
-.info-card {
+.client-detail-page .info-card {
   background: white;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
-.card-header {
+.client-detail-page .info-card .card-header {
   background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid #e5e7eb;
 }
 
-.card-header h2 {
+.client-detail-page .info-card .card-header h2 {
   font-size: 1.25rem;
   font-weight: 600;
   color: white;
@@ -156,7 +156,7 @@
 }
 
 /* Audit Card */
-.audit-card .card-header {
+.client-detail-page .audit-card .card-header {
   background: linear-gradient(135deg, #718096 0%, #4a5568 100%);
 }
 

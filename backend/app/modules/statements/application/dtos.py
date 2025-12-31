@@ -17,9 +17,14 @@ class CreateStatementDTO(BaseModel):
         description="Total amount collected from clients",
         ge=0
     )
-    total_commission_owed: Decimal = Field(
+    total_to_credicuenta: Decimal = Field(
         Decimal("0.00"),
-        description="Total commission owed to associate",
+        description="Total amount owed to CrediCuenta (monto a pagar)",
+        ge=0
+    )
+    commission_earned: Decimal = Field(
+        Decimal("0.00"),
+        description="Commission earned by associate (total_collected - total_to_credicuenta)",
         ge=0
     )
     commission_rate_applied: Decimal = Field(
@@ -38,7 +43,8 @@ class CreateStatementDTO(BaseModel):
                 "cut_period_id": 5,
                 "total_payments_count": 97,
                 "total_amount_collected": "103697.00",
-                "total_commission_owed": "12680.00",
+                "total_to_credicuenta": "91017.00",
+                "commission_earned": "12680.00",
                 "commission_rate_applied": "2.50",
                 "generated_date": "2025-01-08",
                 "due_date": "2025-01-29"
@@ -100,7 +106,8 @@ class StatementResponseDTO(BaseModel):
     # Statistics
     total_payments_count: int
     total_amount_collected: Decimal
-    total_commission_owed: Decimal
+    total_to_credicuenta: Decimal
+    commission_earned: Decimal
     commission_rate_applied: Decimal
     
     # Status
@@ -144,7 +151,8 @@ class StatementSummaryDTO(BaseModel):
     associate_name: str
     cut_period_code: str
     total_payments_count: int
-    total_commission_owed: Decimal
+    total_to_credicuenta: Decimal
+    commission_earned: Decimal
     status_name: str
     due_date: date
     is_overdue: bool

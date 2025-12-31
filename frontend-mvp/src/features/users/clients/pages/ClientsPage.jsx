@@ -2,8 +2,9 @@
  * ClientsPage - Gestión de Clientes
  * 
  * Clientes: Usuarios que SOLICITAN préstamos
+ * Versión profesional con diseño limpio y búsqueda inteligente
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientsService } from '../../../../shared/api/services/clientsService';
 import './ClientsPage.css';
@@ -20,7 +21,7 @@ export default function ClientsPage() {
 
   // Pagination
   const [pagination, setPagination] = useState({
-    limit: 50,
+    limit: 10,
     offset: 0,
     total: 0,
   });
@@ -60,24 +61,56 @@ export default function ClientsPage() {
     navigate('/usuarios/clientes/nuevo');
   };
 
-  const filteredClients = clients.filter((client) => {
-    if (!filters.search) return true;
-    const searchLower = filters.search.toLowerCase();
-    return (
-      client.username?.toLowerCase().includes(searchLower) ||
-      client.full_name?.toLowerCase().includes(searchLower) ||
-      client.email?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Normaliza texto para búsqueda (quita acentos y convierte a minúsculas)
+  const normalizeText = (text) => {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  };
+
+  // Búsqueda inteligente - busca en múltiples campos
+  const filteredClients = useMemo(() => {
+    if (!filters.search.trim()) return clients;
+
+    const searchTerms = normalizeText(filters.search).split(/\s+/).filter(Boolean);
+
+    return clients.filter((client) => {
+      const searchableText = normalizeText([
+        client.username,
+        client.full_name,
+        client.id?.toString(),
+        client.email,
+        client.phone_number,
+      ].filter(Boolean).join(' '));
+
+      return searchTerms.every(term => searchableText.includes(term));
+    });
+  }, [clients, filters.search]);
+
+  // Estadísticas
+  const stats = useMemo(() => {
+    const activeCount = clients.filter(c => c.active).length;
+    return {
+      total: pagination.total,
+      showing: filteredClients.length,
+      active: activeCount,
+    };
+  }, [clients, filteredClients, pagination.total]);
 
   const totalPages = Math.ceil(pagination.total / pagination.limit);
   const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
 
+  const goToPage = (page) => {
+    setPagination(prev => ({ ...prev, offset: (page - 1) * prev.limit }));
+  };
+
   if (loading) {
     return (
       <div className="clients-page">
-        <div className="clients-header">
-          <h1>👥 Gestión de Clientes</h1>
+        <div className="page-header">
+          <h1>Gestión de Clientes</h1>
         </div>
         <div className="loading-container">
           <div className="skeleton-table">
@@ -92,105 +125,134 @@ export default function ClientsPage() {
 
   return (
     <div className="clients-page">
-      <div className="clients-header">
-        <div className="header-content">
-          <h1>👥 Gestión de Clientes</h1>
-          <p className="subtitle">Usuarios que solicitan préstamos</p>
+      {/* Header */}
+      <div className="page-header">
+        <div className="header-info">
+          <h1>Gestión de Clientes</h1>
+          <p className="header-subtitle">
+            Usuarios que solicitan préstamos
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={handleCreateClient}>
-          ➕ Nuevo Cliente
+        <button className="btn-primary-action" onClick={handleCreateClient}>
+          <span className="btn-icon">+</span>
+          Nuevo Cliente
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="filters-section">
-        <div className="search-box">
+      {/* Resumen */}
+      <div className="stats-summary">
+        <div className="stat-card stat-highlight">
+          <span className="stat-value">{stats.total}</span>
+          <span className="stat-label">Total Clientes</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{stats.showing}</span>
+          <span className="stat-label">Mostrando</span>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="filters-bar">
+        <div className="search-container">
+          <span className="search-icon">🔍</span>
           <input
             type="text"
-            placeholder="🔍 Buscar por nombre, usuario o email..."
+            placeholder="Buscar por nombre, usuario o email..."
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
             className="search-input"
           />
+          {filters.search && (
+            <button
+              className="search-clear"
+              onClick={() => setFilters({ ...filters, search: '' })}
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        <div className="filter-options">
-          <label className="checkbox-label">
+        <div className="filter-controls">
+          <label className="toggle-label">
             <input
               type="checkbox"
               checked={filters.active_only}
-              onChange={(e) =>
-                setFilters({ ...filters, active_only: e.target.checked })
-              }
+              onChange={(e) => setFilters({ ...filters, active_only: e.target.checked })}
+              className="toggle-input"
             />
-            <span>Solo activos</span>
+            <span className="toggle-switch"></span>
+            <span className="toggle-text">Solo activos</span>
           </label>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="stats-row">
-        <div className="stat-card">
-          <div className="stat-value">{pagination.total}</div>
-          <div className="stat-label">Total Clientes</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-value">{filteredClients.length}</div>
-          <div className="stat-label">Mostrando</div>
         </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="error-message">
-          ⚠️ {error}
+        <div className="error-banner">
+          <span className="error-icon">⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Table */}
-      <div className="table-container">
-        <table className="clients-table">
+      {/* Tabla */}
+      <div className="table-wrapper">
+        <table className="data-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Usuario</th>
-              <th>Nombre Completo</th>
-              <th>Email</th>
-              <th>Teléfono</th>
-              <th>Estado</th>
-              <th>Acciones</th>
+              <th className="col-id">ID</th>
+              <th className="col-user">Usuario</th>
+              <th className="col-name">Nombre Completo</th>
+              <th className="col-email">Email</th>
+              <th className="col-phone">Teléfono</th>
+              <th className="col-status">Estado</th>
+              <th className="col-actions">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {filteredClients.length === 0 ? (
               <tr>
-                <td colSpan="7" className="no-data">
-                  No se encontraron clientes
+                <td colSpan="7" className="empty-state">
+                  <div className="empty-content">
+                    <span className="empty-icon">📋</span>
+                    <p>No se encontraron clientes</p>
+                    {filters.search && (
+                      <button
+                        className="btn-link"
+                        onClick={() => setFilters({ ...filters, search: '' })}
+                      >
+                        Limpiar búsqueda
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
               filteredClients.map((client) => (
                 <tr key={client.id}>
-                  <td>{client.id}</td>
-                  <td>
-                    <strong>{client.username}</strong>
+                  <td className="col-id">
+                    <span className="id-badge">{client.id}</span>
                   </td>
-                  <td>{client.full_name || 'N/A'}</td>
-                  <td>{client.email || 'N/A'}</td>
-                  <td>{client.phone_number || 'N/A'}</td>
-                  <td>
-                    <span
-                      className={`status-badge ${client.active ? 'status-active' : 'status-inactive'
-                        }`}
-                    >
-                      {client.active ? '✓ Activo' : '✗ Inactivo'}
+                  <td className="col-user">
+                    <span className="username">@{client.username}</span>
+                  </td>
+                  <td className="col-name">
+                    <span className="client-name">{client.full_name || 'Sin nombre'}</span>
+                  </td>
+                  <td className="col-email">
+                    <span className="email-text">{client.email || '—'}</span>
+                  </td>
+                  <td className="col-phone">
+                    <span className="phone-text">{client.phone_number || '—'}</span>
+                  </td>
+                  <td className="col-status">
+                    <span className={`status-pill ${client.active ? 'active' : 'inactive'}`}>
+                      {client.active ? '✓ ACTIVO' : '✗ Inactivo'}
                     </span>
                   </td>
-                  <td>
+                  <td className="col-actions">
                     <button
-                      className="btn-details"
+                      className="btn-action"
                       onClick={() => handleViewDetail(client.id)}
-                      title="Ver detalles del cliente"
                     >
                       Detalles
                     </button>
@@ -202,40 +264,76 @@ export default function ClientsPage() {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Paginación */}
       {totalPages > 1 && (
-        <div className="pagination">
-          <button
-            className="btn btn-sm"
-            disabled={currentPage === 1}
-            onClick={() =>
-              setPagination((prev) => ({
-                ...prev,
-                offset: Math.max(0, prev.offset - prev.limit),
-              }))
-            }
-          >
-            ← Anterior
-          </button>
+        <div className="pagination-bar">
+          <div className="pagination-info">
+            Mostrando {filteredClients.length} de {pagination.total} clientes
+          </div>
+          <div className="pagination-controls">
+            <button
+              className="pagination-btn"
+              onClick={() => goToPage(1)}
+              disabled={currentPage === 1}
+              title="Primera página"
+            >
+              «
+            </button>
+            <button
+              className="pagination-btn"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              ‹ Anterior
+            </button>
 
-          <span className="page-info">
-            Página {currentPage} de {totalPages}
-          </span>
+            <div className="pagination-pages">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage < 3) {
+                  pageNum = i + 1;
+                } else if (currentPage > totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => goToPage(pageNum)}
+                    className={`pagination-page ${currentPage === pageNum ? 'active' : ''}`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
 
-          <button
-            className="btn btn-sm"
-            disabled={currentPage === totalPages}
-            onClick={() =>
-              setPagination((prev) => ({
-                ...prev,
-                offset: prev.offset + prev.limit,
-              }))
-            }
-          >
-            Siguiente →
-          </button>
+            <button
+              className="pagination-btn"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Siguiente ›
+            </button>
+            <button
+              className="pagination-btn"
+              onClick={() => goToPage(totalPages)}
+              disabled={currentPage === totalPages}
+              title="Última página"
+            >
+              »
+            </button>
+          </div>
         </div>
       )}
+
+      {/* Footer info */}
+      <div className="page-footer">
+        Página {currentPage} de {totalPages}
+      </div>
     </div>
   );
 }

@@ -8,6 +8,7 @@ Sprint 3: Endpoints restantes
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_db
@@ -41,17 +42,19 @@ async def list_loans(
     status_id: Optional[int] = Query(None, description="Filtrar por estado del préstamo"),
     user_id: Optional[int] = Query(None, description="Filtrar por ID del cliente"),
     associate_user_id: Optional[int] = Query(None, description="Filtrar por ID del asociado"),
+    search: Optional[str] = Query(None, description="Buscar por ID, nombre de cliente o asociado"),
     limit: int = Query(50, ge=1, le=100, description="Máximo de registros a retornar"),
     offset: int = Query(0, ge=0, description="Desplazamiento para paginación"),
     db: AsyncSession = Depends(get_async_db),
 ):
     """
-    Lista préstamos con filtros opcionales y paginación.
+    Lista préstamos con filtros opcionales, búsqueda y paginación.
     
     Parámetros de filtro:
     - status_id: Estado del préstamo (1=PENDING, 2=APPROVED, 3=ACTIVE, etc.)
     - user_id: ID del cliente
     - associate_user_id: ID del asociado
+    - search: Texto para buscar en ID, nombre de cliente o asociado
     - limit: Máximo de registros (1-100, default 50)
     - offset: Desplazamiento para paginación (default 0)
     
@@ -110,16 +113,38 @@ async def list_loans(
     if associate_user_id is not None:
         conditions.append(LoanModel.associate_user_id == associate_user_id)
     
+    # Búsqueda por texto (ID, nombre cliente, nombre asociado)
+    if search:
+        from sqlalchemy import or_, cast, String
+        search_term = f"%{search.lower()}%"
+        search_conditions = or_(
+            cast(LoanModel.id, String).ilike(search_term),
+            (ClientUser.first_name + ' ' + ClientUser.last_name).ilike(search_term),
+            (AssociateUser.first_name + ' ' + AssociateUser.last_name).ilike(search_term),
+        )
+        conditions.append(search_conditions)
+    
     if conditions:
         query = query.where(and_(*conditions))
     
     # Ordenar por más reciente primero
     query = query.order_by(LoanModel.created_at.desc())
     
-    # Contar total (antes de paginación)
-    count_query = select(sql_func.count()).select_from(LoanModel)
-    if conditions:
-        count_query = count_query.where(and_(*conditions))
+    # Contar total (con los mismos filtros incluyendo búsqueda)
+    # Necesitamos recrear la query con JOINs para el conteo cuando hay búsqueda
+    if search:
+        count_query = select(sql_func.count()).select_from(LoanModel).join(
+            ClientUser, LoanModel.user_id == ClientUser.id
+        ).join(
+            AssociateUser, LoanModel.associate_user_id == AssociateUser.id, isouter=True
+        )
+        if conditions:
+            count_query = count_query.where(and_(*conditions))
+    else:
+        count_query = select(sql_func.count()).select_from(LoanModel)
+        if conditions:
+            count_query = count_query.where(and_(*conditions))
+    
     count_result = await db.execute(count_query)
     total = count_result.scalar()
     
@@ -262,7 +287,7 @@ async def get_loan_amortization(
     """
     from sqlalchemy import text
     
-    # Obtener info del préstamo
+    # Obtener info del préstamo (incluyendo tasas para perfil custom)
     loan_query = text("""
         SELECT 
             l.id,
@@ -272,7 +297,9 @@ async def get_loan_amortization(
             l.status_id,
             l.approved_at,
             l.created_at,
-            s.name as status_name
+            s.name as status_name,
+            l.interest_rate,
+            l.commission_rate
         FROM loans l
         JOIN loan_statuses s ON l.status_id = s.id
         WHERE l.id = :loan_id
@@ -289,19 +316,26 @@ async def get_loan_amortization(
     # Status 2 = Approved (verificar en tu tabla loan_statuses)
     if loan_status_id == 2:
         # Préstamo aprobado: obtener pagos reales
+        # Incluimos total_pending (saldo total pendiente incluyendo intereses)
         payments_query = text("""
             SELECT 
-                payment_number,
-                payment_due_date as payment_date,
+                p.payment_number,
+                p.payment_due_date as payment_date,
                 COALESCE(cp.cut_code, 'N/A') as cut_period,
-                expected_amount as client_payment,
-                associate_payment,
-                commission_amount as commission,
-                balance_remaining as remaining_balance
+                p.expected_amount as client_payment,
+                p.associate_payment,
+                p.commission_amount as commission,
+                p.balance_remaining as remaining_balance,
+                p.associate_balance_remaining,
+                -- Saldo total pendiente: (pagos restantes incluyendo actual) × pago cliente
+                ((l.term_biweeks - p.payment_number + 1) * p.expected_amount) as total_pending_balance,
+                -- Saldo asociado pendiente: (pagos restantes incluyendo actual) × pago asociado
+                ((l.term_biweeks - p.payment_number + 1) * p.associate_payment) as associate_total_pending
             FROM payments p
+            JOIN loans l ON p.loan_id = l.id
             LEFT JOIN cut_periods cp ON p.cut_period_id = cp.id
             WHERE p.loan_id = :loan_id
-            ORDER BY payment_number
+            ORDER BY p.payment_number
         """)
         
         payments_result = await db.execute(payments_query, {"loan_id": loan_id})
@@ -316,6 +350,10 @@ async def get_loan_amortization(
                 "associate_payment": float(row[4]) if row[4] else 0,
                 "commission": float(row[5]) if row[5] else 0,
                 "remaining_balance": float(row[6]) if row[6] else 0,
+                "associate_remaining_balance": float(row[7]) if row[7] else 0,
+                # Saldos totales pendientes (incluyendo intereses)
+                "total_pending_balance": float(row[8]) if row[8] else 0,
+                "associate_total_pending": float(row[9]) if row[9] else 0,
             }
             for row in payments
         ]
@@ -329,41 +367,87 @@ async def get_loan_amortization(
     
     else:
         # Préstamo pendiente: generar simulación
-        approval_date = loan[6].date() if loan[6] else date.today()
-        
-        simulation_query = text("""
-            SELECT * FROM simulate_loan(
-                :amount,
-                :term,
-                :profile,
-                :approval_date
-            )
-        """)
-        
         from datetime import date
-        sim_result = await db.execute(
-            simulation_query,
-            {
-                "amount": float(loan[1]),
-                "term": loan[2],
-                "profile": loan[3],
-                "approval_date": approval_date
-            }
-        )
+        approval_date = loan[6].date() if loan[6] else date.today()
+        term_biweeks = loan[2]
+        profile_code = loan[3]
+        
+        # Para perfil 'custom', usar simulate_loan_custom con las tasas del préstamo
+        if profile_code == 'custom':
+            interest_rate = loan[8]  # interest_rate
+            commission_rate = loan[9]  # commission_rate
+            
+            simulation_query = text("""
+                SELECT * FROM simulate_loan_custom(
+                    :amount,
+                    :term,
+                    :interest_rate,
+                    :commission_rate,
+                    :approval_date
+                )
+            """)
+            
+            sim_result = await db.execute(
+                simulation_query,
+                {
+                    "amount": float(loan[1]),
+                    "term": term_biweeks,
+                    "interest_rate": float(interest_rate) if interest_rate else 0,
+                    "commission_rate": float(commission_rate) if commission_rate else 0,
+                    "approval_date": approval_date
+                }
+            )
+        else:
+            # Perfiles estándar (legacy, standard, etc.)
+            simulation_query = text("""
+                SELECT * FROM simulate_loan(
+                    :amount,
+                    :term,
+                    :profile,
+                    :approval_date
+                )
+            """)
+            
+            sim_result = await db.execute(
+                simulation_query,
+                {
+                    "amount": float(loan[1]),
+                    "term": term_biweeks,
+                    "profile": profile_code,
+                    "approval_date": approval_date
+                }
+            )
+        
         sim_rows = sim_result.fetchall()
         
-        schedule = [
-            {
-                "payment_number": row[0],
+        schedule = []
+        for row in sim_rows:
+            payment_num = row[0]
+            client_payment = float(row[3]) if row[3] else 0
+            associate_payment = float(row[4]) if row[4] else 0
+            
+            # Calcular saldos totales pendientes para simulación
+            remaining_payments = term_biweeks - payment_num + 1
+            total_pending = remaining_payments * client_payment
+            associate_total_pending = remaining_payments * associate_payment
+            
+            # simulate_loan_custom tiene 7 columnas, simulate_loan tiene 8
+            # Columna 7 (associate_remaining_balance) solo existe en simulate_loan
+            associate_remaining_balance = float(row[7]) if len(row) > 7 and row[7] else 0
+            
+            schedule.append({
+                "payment_number": payment_num,
                 "payment_date": row[1].isoformat() if row[1] else None,
                 "cut_period": row[2],
-                "client_payment": float(row[3]) if row[3] else 0,
-                "associate_payment": float(row[4]) if row[4] else 0,
+                "client_payment": client_payment,
+                "associate_payment": associate_payment,
                 "commission": float(row[5]) if row[5] else 0,
                 "remaining_balance": float(row[6]) if row[6] else 0,
-            }
-            for row in sim_rows
-        ]
+                "associate_remaining_balance": associate_remaining_balance,
+                # Saldos totales pendientes (incluyendo intereses)
+                "total_pending_balance": total_pending,
+                "associate_total_pending": associate_total_pending,
+            })
         
         return {
             "status": "pending",
@@ -800,6 +884,110 @@ async def delete_loan(
         
         # 204 No Content (sin body en response)
         return None
+    
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+@router.delete("/{loan_id}/force", status_code=200)
+async def force_delete_loan(
+    loan_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Elimina un préstamo Y todos sus pagos asociados (eliminación forzada).
+    
+    ⚠️ PELIGROSO: Esta acción es irreversible y elimina:
+    - El préstamo
+    - Todos los pagos (payments) asociados
+    - Libera el crédito del asociado si aplica
+    
+    Solo se permite para préstamos en estado:
+    - PENDING (1)
+    - APPROVED (2)
+    - ACTIVE (3)
+    - REJECTED (6)
+    
+    NO se permite eliminar préstamos:
+    - PAID_OFF (4) - Ya fueron liquidados
+    - DEFAULTED (5) - Tienen historial de mora
+    - CANCELLED (7) - Ya fueron cancelados
+    
+    Returns:
+        Información del préstamo eliminado
+    """
+    try:
+        # 1. Buscar préstamo
+        loan_result = await db.execute(
+            text("SELECT * FROM loans WHERE id = :loan_id"),
+            {"loan_id": loan_id}
+        )
+        loan = loan_result.fetchone()
+        
+        if not loan:
+            raise HTTPException(status_code=404, detail=f"Préstamo {loan_id} no encontrado")
+        
+        # 2. Validar estado (no permitir PAID_OFF, DEFAULTED, CANCELLED)
+        forbidden_states = [4, 5, 7]  # PAID_OFF, DEFAULTED, CANCELLED
+        if loan.status_id in forbidden_states:
+            status_names = {4: 'PAID_OFF', 5: 'DEFAULTED', 7: 'CANCELLED'}
+            raise HTTPException(
+                status_code=400,
+                detail=f"No se puede eliminar préstamo en estado {status_names.get(loan.status_id, loan.status_id)}. "
+                       f"Los préstamos liquidados, en mora o cancelados deben mantenerse como histórico."
+            )
+        
+        # 3. Contar pagos a eliminar
+        payments_count_result = await db.execute(
+            text("SELECT COUNT(*) as count FROM payments WHERE loan_id = :loan_id"),
+            {"loan_id": loan_id}
+        )
+        payments_count = payments_count_result.scalar()
+        
+        # 4. Si tiene asociado con crédito usado, liberarlo
+        credit_released = 0
+        if loan.associate_user_id and loan.status_id in [2, 3]:  # APPROVED o ACTIVE
+            # Liberar crédito del asociado
+            await db.execute(
+                text("""
+                    UPDATE associate_profiles 
+                    SET credit_used = GREATEST(0, credit_used - :amount),
+                        updated_at = NOW()
+                    WHERE user_id = :associate_id
+                """),
+                {"amount": float(loan.amount), "associate_id": loan.associate_user_id}
+            )
+            credit_released = float(loan.amount)
+        
+        # 5. Eliminar pagos asociados
+        await db.execute(
+            text("DELETE FROM payments WHERE loan_id = :loan_id"),
+            {"loan_id": loan_id}
+        )
+        
+        # 6. Eliminar el préstamo
+        await db.execute(
+            text("DELETE FROM loans WHERE id = :loan_id"),
+            {"loan_id": loan_id}
+        )
+        
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Préstamo #{loan_id} eliminado exitosamente",
+            "details": {
+                "loan_id": loan_id,
+                "amount": float(loan.amount),
+                "status_id": loan.status_id,
+                "payments_deleted": payments_count,
+                "credit_released": credit_released
+            }
+        }
     
     except HTTPException:
         await db.rollback()

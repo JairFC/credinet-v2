@@ -43,6 +43,10 @@ class CalculateLoanRequest(BaseModel):
     term_biweeks: int = Field(..., ge=1, le=52, description="Plazo en quincenas")
     profile_code: str = Field(..., description="Código del perfil de tasa")
     
+    # Tasas opcionales para profile_code='custom'
+    interest_rate: Decimal | None = Field(None, ge=0, le=20, description="Tasa de interés por quincena (solo para custom)")
+    commission_rate: Decimal | None = Field(None, ge=0, le=10, description="Tasa de comisión % del monto (solo para custom)")
+    
     model_config = ConfigDict(from_attributes=True)
 
 

@@ -8,6 +8,7 @@ from datetime import datetime, date
 from decimal import Decimal
 
 from app.core.database import get_async_db
+from app.core.dependencies import require_admin
 from app.modules.loans.infrastructure.models import LoanModel
 from app.modules.payments.infrastructure.models import PaymentModel
 from pydantic import BaseModel
@@ -28,7 +29,11 @@ class DashboardStatsDTO(BaseModel):
     total_disbursed: Decimal
 
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(
+    prefix="/dashboard",
+    tags=["dashboard"],
+    dependencies=[Depends(require_admin)]  # 🔒 Solo admins
+)
 
 
 @router.get("/stats", response_model=DashboardStatsDTO)

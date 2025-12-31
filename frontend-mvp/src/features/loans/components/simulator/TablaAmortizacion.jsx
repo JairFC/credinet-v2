@@ -1,6 +1,11 @@
 /**
  * TablaAmortizacion
  * Muestra el desglose pago por pago con fechas y períodos de corte
+ * 
+ * Columnas:
+ * - Saldo Cliente: Capital restante del préstamo
+ * - Saldo Pendiente: Total por pagar (incluyendo intereses futuros)
+ * - Restante Asociado: Deuda real hacia CrediCuenta
  */
 import './TablaAmortizacion.css';
 
@@ -50,6 +55,7 @@ export default function TablaAmortizacion({ payments }) {
               <th className="currency">Pago Asociado</th>
               <th className="currency">Comisión</th>
               <th className="currency">Saldo Pendiente</th>
+              <th className="currency">Restante Asociado</th>
             </tr>
           </thead>
           <tbody>
@@ -65,7 +71,10 @@ export default function TablaAmortizacion({ payments }) {
                 <td className="currency associate-value">{formatCurrency(payment.associate_payment)}</td>
                 <td className="currency commission-value">{formatCurrency(payment.commission)}</td>
                 <td className="currency balance-value">
-                  {formatCurrency(Math.max(0, payment.remaining_balance))}
+                  {formatCurrency(payment.total_pending_balance ?? payment.remaining_balance ?? 0)}
+                </td>
+                <td className="currency balance-value associate-balance">
+                  {formatCurrency(payment.associate_total_pending ?? payment.associate_remaining_balance ?? 0)}
                 </td>
               </tr>
             ))}
@@ -76,7 +85,7 @@ export default function TablaAmortizacion({ payments }) {
               <td className="currency total-value">{formatCurrency(totals.client_payment)}</td>
               <td className="currency total-value">{formatCurrency(totals.associate_payment)}</td>
               <td className="currency total-value">{formatCurrency(totals.commission)}</td>
-              <td></td>
+              <td colSpan="2"></td>
             </tr>
           </tfoot>
         </table>

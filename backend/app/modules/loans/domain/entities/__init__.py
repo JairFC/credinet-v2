@@ -221,8 +221,14 @@ class Loan:
         return self.status_id == LoanStatusEnum.APPROVED
     
     def is_active(self) -> bool:
-        """Verifica si el préstamo está activo (en cobro)."""
-        return self.status_id == LoanStatusEnum.ACTIVE
+        """
+        Verifica si el préstamo está activo (en cobro).
+        
+        NOTA: Tanto APPROVED como ACTIVE se consideran "activos" funcionalmente.
+        - APPROVED (2): Aprobado, cronograma generado, crédito reservado
+        - ACTIVE (3): Estado legacy, funcionalmente igual a APPROVED
+        """
+        return self.status_id in (LoanStatusEnum.APPROVED, LoanStatusEnum.ACTIVE)
     
     def is_rejected(self) -> bool:
         """Verifica si el préstamo fue rechazado."""

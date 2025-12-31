@@ -22,7 +22,11 @@ export const AuthProvider = ({ children }) => {
           // Update user in localStorage with fresh data
           authUtils.setAuth(data, token, authUtils.getRefreshToken());
         } catch (error) {
-          console.error('Token validation failed:', error);
+          // Token validation failed - this is expected when token expires
+          // Only log if it's not a 401 error
+          if (error.response?.status !== 401) {
+            console.error('Token validation failed:', error);
+          }
           // Token is invalid - clear auth
           authUtils.clearAuth();
           setUser(null);

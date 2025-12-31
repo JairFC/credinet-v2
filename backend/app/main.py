@@ -2,6 +2,7 @@
 CrediNet Backend v2.0 - Main Application
 Clean Architecture implementation with FastAPI
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 import logging
@@ -16,13 +17,42 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+# Lifespan context manager para manejar startup/shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Maneja eventos de startup y shutdown de la aplicación.
+    """
+    # === STARTUP ===
+    logger.info("🚀 Iniciando CrediNet Backend v2.0...")
+    
+    # Iniciar el scheduler de tareas programadas
+    from app.scheduler import start_scheduler
+    start_scheduler()
+    
+    logger.info("✅ Backend iniciado correctamente")
+    
+    yield  # La aplicación corre aquí
+    
+    # === SHUTDOWN ===
+    logger.info("🛑 Deteniendo CrediNet Backend...")
+    
+    # Detener el scheduler
+    from app.scheduler import shutdown_scheduler
+    shutdown_scheduler()
+    
+    logger.info("👋 Backend detenido correctamente")
+
+
 # Create FastAPI app
 app = FastAPI(
     title=settings.app_name,
     version=settings.version,
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
+    lifespan=lifespan
 )
 
 # Setup middleware
@@ -80,6 +110,7 @@ from app.modules.statements import router as statements_router
 from app.modules.debt_payments.presentation import router as debt_payments_router
 from app.modules.shared.routes import router as shared_router
 from app.modules.loans.routes_simulator import router as simulator_router
+from app.scheduler.routes import router as scheduler_router
 
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(catalogs_router, prefix=settings.api_v1_prefix)
@@ -98,6 +129,7 @@ app.include_router(contracts_router, prefix=settings.api_v1_prefix)
 app.include_router(agreements_router, prefix=settings.api_v1_prefix)
 app.include_router(documents_router, prefix=settings.api_v1_prefix)
 app.include_router(dashboard_router, prefix=settings.api_v1_prefix)
+app.include_router(scheduler_router, prefix=settings.api_v1_prefix)
 app.include_router(statements_router, prefix=settings.api_v1_prefix)
 app.include_router(debt_payments_router, prefix=settings.api_v1_prefix)
 app.include_router(shared_router, prefix=settings.api_v1_prefix)

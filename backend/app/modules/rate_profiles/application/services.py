@@ -125,32 +125,57 @@ class RateProfileService:
         self, 
         amount: Decimal, 
         term_biweeks: int, 
-        profile_code: str
+        profile_code: str,
+        interest_rate: Decimal | None = None,
+        commission_rate: Decimal | None = None
     ) -> LoanCalculation:
         """
-        Calcula un préstamo usando un perfil de tasa.
+        Calcula un préstamo usando un perfil de tasa o tasas custom.
         
-        Llama a la función SQL: calculate_loan_payment(amount, term, profile)
+        Si profile_code='custom', usa calculate_loan_payment_custom() con las tasas provistas.
+        Si no, llama a la función SQL: calculate_loan_payment(amount, term, profile)
         
         Args:
             amount: Monto del préstamo
             term_biweeks: Plazo en quincenas
-            profile_code: Código del perfil
+            profile_code: Código del perfil (o 'custom')
+            interest_rate: Tasa de interés % quincenal (solo para custom)
+            commission_rate: Tasa de comisión % del monto (solo para custom)
             
         Returns:
             LoanCalculation con todos los cálculos
             
         Raises:
-            ValueError: Si el perfil no existe o cálculo falla
+            ValueError: Si el perfil no existe o cálculo falla, o si custom sin tasas
         """
-        query = text("""
-            SELECT * FROM calculate_loan_payment(:amount, :term_biweeks, :profile_code)
-        """)
-        
-        result = self.db.execute(
-            query,
-            {"amount": amount, "term_biweeks": term_biweeks, "profile_code": profile_code}
-        )
+        # Si es custom, usar función custom
+        if profile_code == 'custom':
+            if interest_rate is None or commission_rate is None:
+                raise ValueError("Para perfil 'custom' debe proveer interest_rate y commission_rate")
+            
+            query = text("""
+                SELECT * FROM calculate_loan_payment_custom(:amount, :term_biweeks, :interest_rate, :commission_rate)
+            """)
+            
+            result = self.db.execute(
+                query,
+                {
+                    "amount": amount, 
+                    "term_biweeks": term_biweeks, 
+                    "interest_rate": interest_rate,
+                    "commission_rate": commission_rate
+                }
+            )
+        else:
+            # Usar función normal con perfil
+            query = text("""
+                SELECT * FROM calculate_loan_payment(:amount, :term_biweeks, :profile_code)
+            """)
+            
+            result = self.db.execute(
+                query,
+                {"amount": amount, "term_biweeks": term_biweeks, "profile_code": profile_code}
+            )
         
         row = result.fetchone()
         

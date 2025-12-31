@@ -2,8 +2,9 @@
  * AssociatesManagementPage - Gestión de Asociados
  * 
  * Asociados: Usuarios que PRESTAN dinero (tienen línea de crédito)
+ * Versión profesional con diseño limpio y búsqueda inteligente
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { associatesService } from '../../../../shared/api/services/associatesService';
 import './AssociatesManagementPage.css';
@@ -20,7 +21,7 @@ export default function AssociatesManagementPage() {
 
   // Pagination
   const [pagination, setPagination] = useState({
-    limit: 50,
+    limit: 10,
     offset: 0,
     total: 0,
   });
@@ -67,39 +68,69 @@ export default function AssociatesManagementPage() {
     }).format(amount || 0);
   };
 
-  const formatPercentage = (value) => {
-    return `${((value || 0) * 100).toFixed(1)}%`;
+  // Normaliza texto para búsqueda (quita acentos y convierte a minúsculas)
+  const normalizeText = (text) => {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
   };
 
-  const filteredAssociates = associates.filter((assoc) => {
-    if (!filters.search) return true;
-    const searchLower = filters.search.toLowerCase();
-    return (
-      assoc.username?.toLowerCase().includes(searchLower) ||
-      assoc.user_id?.toString().includes(searchLower)
-    );
-  });
+  // Búsqueda inteligente - busca en múltiples campos
+  const filteredAssociates = useMemo(() => {
+    if (!filters.search.trim()) return associates;
 
-  // Calculate totals - convertir a número ya que vienen como strings del backend
-  const totals = filteredAssociates.reduce(
-    (acc, assoc) => ({
-      creditLimit: acc.creditLimit + (parseFloat(assoc.credit_limit) || 0),
-      creditUsed: acc.creditUsed + (parseFloat(assoc.credit_used) || 0),
-      creditAvailable: acc.creditAvailable + (parseFloat(assoc.credit_available) || 0),
-      debtBalance: acc.debtBalance + (parseFloat(assoc.debt_balance) || 0),
-      pendingDebts: acc.pendingDebts + (parseInt(assoc.pending_debts_count) || 0),
-    }),
-    { creditLimit: 0, creditUsed: 0, creditAvailable: 0, debtBalance: 0, pendingDebts: 0 }
-  );
+    const searchTerms = normalizeText(filters.search).split(/\s+/).filter(Boolean);
+
+    return associates.filter((assoc) => {
+      // Campos donde buscar
+      const searchableText = normalizeText([
+        assoc.username,
+        assoc.full_name,
+        assoc.user_id?.toString(),
+        assoc.id?.toString(),
+        assoc.email,
+        assoc.phone_number,
+      ].filter(Boolean).join(' '));
+
+      // Todos los términos deben coincidir (búsqueda AND)
+      return searchTerms.every(term => searchableText.includes(term));
+    });
+  }, [associates, filters.search]);
+
+  // Totales calculados
+  const totals = useMemo(() => {
+    return filteredAssociates.reduce(
+      (acc, assoc) => ({
+        creditLimit: acc.creditLimit + (parseFloat(assoc.credit_limit) || 0),
+        creditUsed: acc.creditUsed + (parseFloat(assoc.credit_used) || 0),
+        creditAvailable: acc.creditAvailable + (parseFloat(assoc.credit_available) || 0),
+        debtBalance: acc.debtBalance + (parseFloat(assoc.debt_balance) || 0),
+        pendingDebts: acc.pendingDebts + (parseInt(assoc.pending_debts_count) || 0),
+      }),
+      { creditLimit: 0, creditUsed: 0, creditAvailable: 0, debtBalance: 0, pendingDebts: 0 }
+    );
+  }, [filteredAssociates]);
+
+  // Porcentaje de uso global
+  const globalUsagePercent = totals.creditLimit > 0
+    ? ((totals.creditUsed / totals.creditLimit) * 100).toFixed(1)
+    : 0;
 
   const totalPages = Math.ceil(pagination.total / pagination.limit);
   const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
 
+  // Función para cambiar página
+  const goToPage = (page) => {
+    setPagination(prev => ({ ...prev, offset: (page - 1) * prev.limit }));
+  };
+
   if (loading) {
     return (
-      <div className="associates-management-page">
-        <div className="associates-header">
-          <h1>💼 Gestión de Asociados</h1>
+      <div className="associates-page">
+        <div className="page-header">
+          <h1>Gestión de Asociados</h1>
         </div>
         <div className="loading-container">
           <div className="skeleton-table">
@@ -113,102 +144,152 @@ export default function AssociatesManagementPage() {
   }
 
   return (
-    <div className="associates-management-page">
-      <div className="associates-header">
-        <div className="header-content">
-          <h1>💼 Gestión de Asociados</h1>
-          <p className="subtitle">Usuarios que prestan dinero (líneas de crédito)</p>
+    <div className="associates-page">
+      {/* Header */}
+      <div className="page-header">
+        <div className="header-info">
+          <h1>Gestión de Asociados</h1>
+          <p className="header-subtitle">
+            Administra las líneas de crédito y deudas de los asociados
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={handleCreateAssociate}>
-          ➕ Nuevo Asociado
+        <button className="btn-primary-action" onClick={handleCreateAssociate}>
+          <span className="btn-icon">+</span>
+          Nuevo Asociado
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="filters-section">
-        <div className="search-box">
+      {/* Resumen Financiero */}
+      <div className="financial-summary">
+        <div className="summary-main">
+          <div className="summary-card summary-highlight">
+            <div className="summary-icon">👥</div>
+            <div className="summary-content">
+              <span className="summary-value">{pagination.total}</span>
+              <span className="summary-label">Asociados Activos</span>
+            </div>
+          </div>
+
+          <div className="summary-card">
+            <div className="summary-content">
+              <span className="summary-value">{formatCurrency(totals.creditLimit)}</span>
+              <span className="summary-label">Línea de Crédito Total</span>
+            </div>
+          </div>
+
+          <div className="summary-card">
+            <div className="summary-content">
+              <span className="summary-value text-used">{formatCurrency(totals.creditUsed)}</span>
+              <span className="summary-label">Crédito Utilizado</span>
+            </div>
+            <div className="summary-bar">
+              <div
+                className="summary-bar-fill"
+                style={{ width: `${Math.min(100, globalUsagePercent)}%` }}
+              />
+            </div>
+            <span className="summary-percent">{globalUsagePercent}% usado</span>
+          </div>
+
+          <div className="summary-card">
+            <div className="summary-content">
+              <span className="summary-value text-available">{formatCurrency(totals.creditAvailable)}</span>
+              <span className="summary-label">Disponible</span>
+            </div>
+          </div>
+        </div>
+
+        {(totals.debtBalance > 0 || totals.pendingDebts > 0) && (
+          <div className="summary-alert">
+            <div className="alert-item">
+              <span className="alert-label">Deuda pendiente:</span>
+              <span className="alert-value">{formatCurrency(totals.debtBalance)}</span>
+            </div>
+            {totals.pendingDebts > 0 && (
+              <div className="alert-item">
+                <span className="alert-label">Períodos con deuda:</span>
+                <span className="alert-value alert-count">{totals.pendingDebts}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Filtros */}
+      <div className="filters-bar">
+        <div className="search-container">
+          <span className="search-icon">🔍</span>
           <input
             type="text"
-            placeholder="🔍 Buscar por usuario o ID..."
+            placeholder="Buscar por nombre, usuario, ID, email o teléfono..."
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
             className="search-input"
           />
+          {filters.search && (
+            <button
+              className="search-clear"
+              onClick={() => setFilters({ ...filters, search: '' })}
+            >
+              ✕
+            </button>
+          )}
         </div>
 
-        <div className="filter-options">
-          <label className="checkbox-label">
+        <div className="filter-controls">
+          <label className="toggle-label">
             <input
               type="checkbox"
               checked={filters.active_only}
-              onChange={(e) =>
-                setFilters({ ...filters, active_only: e.target.checked })
-              }
+              onChange={(e) => setFilters({ ...filters, active_only: e.target.checked })}
+              className="toggle-input"
             />
-            <span>Solo activos</span>
+            <span className="toggle-switch"></span>
+            <span className="toggle-text">Solo activos</span>
           </label>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="stats-row">
-        <div className="stat-card stat-total">
-          <div className="stat-value">{pagination.total}</div>
-          <div className="stat-label">Total Asociados</div>
-        </div>
-        <div className="stat-card stat-limit">
-          <div className="stat-value">{formatCurrency(totals.creditLimit)}</div>
-          <div className="stat-label">Línea Total</div>
-        </div>
-        <div className="stat-card stat-used">
-          <div className="stat-value">{formatCurrency(totals.creditUsed)}</div>
-          <div className="stat-label">Crédito Usado</div>
-        </div>
-        <div className="stat-card stat-available">
-          <div className="stat-value">{formatCurrency(totals.creditAvailable)}</div>
-          <div className="stat-label">Disponible</div>
-        </div>
-        <div className="stat-card stat-debt">
-          <div className="stat-value">{formatCurrency(totals.debtBalance)}</div>
-          <div className="stat-label">Deuda Total</div>
-        </div>
-        <div className="stat-card stat-pending">
-          <div className="stat-value">{totals.pendingDebts}</div>
-          <div className="stat-label">Deudas Pend.</div>
         </div>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="error-message">
-          ⚠️ {error}
+        <div className="error-banner">
+          <span className="error-icon">⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Table */}
-      <div className="table-container">
-        <table className="associates-table">
+      {/* Tabla */}
+      <div className="table-wrapper">
+        <table className="data-table">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>User ID</th>
-              <th>Usuario</th>
-              <th>Nombre Completo</th>
-              <th>Línea de Crédito</th>
-              <th>Usado</th>
-              <th>Disponible</th>
-              <th>Deuda Total</th>
-              <th>Deudas Pend.</th>
-              <th>Uso %</th>
-              <th>Estado</th>
-              <th>Acciones</th>
+              <th className="col-id">ID</th>
+              <th className="col-name">Asociado</th>
+              <th className="col-money">Línea de Crédito</th>
+              <th className="col-money">Utilizado</th>
+              <th className="col-money">Disponible</th>
+              <th className="col-usage">Uso</th>
+              <th className="col-debt">Deuda</th>
+              <th className="col-status">Estado</th>
+              <th className="col-actions">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {filteredAssociates.length === 0 ? (
               <tr>
-                <td colSpan="12" className="no-data">
-                  No se encontraron asociados
+                <td colSpan="9" className="empty-state">
+                  <div className="empty-content">
+                    <span className="empty-icon">📋</span>
+                    <p>No se encontraron asociados</p>
+                    {filters.search && (
+                      <button
+                        className="btn-link"
+                        onClick={() => setFilters({ ...filters, search: '' })}
+                      >
+                        Limpiar búsqueda
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -216,73 +297,64 @@ export default function AssociatesManagementPage() {
                 const usagePercent = assoc.credit_limit
                   ? (assoc.credit_used / assoc.credit_limit) * 100
                   : 0;
+                const usageLevel = usagePercent > 90 ? 'critical' : usagePercent > 70 ? 'warning' : 'normal';
 
                 return (
                   <tr key={assoc.id}>
-                    <td>{assoc.id}</td>
-                    <td>{assoc.user_id}</td>
-                    <td>
-                      <strong>{assoc.username || 'N/A'}</strong>
+                    <td className="col-id">
+                      <span className="id-badge">{assoc.id}</span>
                     </td>
-                    <td>
-                      {assoc.full_name || 'Sin nombre'}
-                    </td>
-                    <td className="currency">
-                      {formatCurrency(assoc.credit_limit)}
-                    </td>
-                    <td className="currency text-danger">
-                      {formatCurrency(assoc.credit_used)}
-                    </td>
-                    <td className="currency text-success">
-                      {formatCurrency(assoc.credit_available)}
-                    </td>
-                    <td className="currency text-warning">
-                      {formatCurrency(assoc.debt_balance || 0)}
-                    </td>
-                    <td className="text-center">
-                      {assoc.pending_debts_count > 0 ? (
-                        <span className="badge badge-danger">
-                          {assoc.pending_debts_count}
-                        </span>
-                      ) : (
-                        <span className="badge badge-success">0</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="usage-cell">
-                        <div className="usage-bar">
-                          <div
-                            className="usage-fill"
-                            style={{
-                              width: `${Math.min(100, usagePercent)}%`,
-                              backgroundColor:
-                                usagePercent > 90
-                                  ? '#dc2626'
-                                  : usagePercent > 70
-                                    ? '#f59e0b'
-                                    : '#10b981',
-                            }}
-                          />
-                        </div>
-                        <span className="usage-text">
-                          {usagePercent.toFixed(1)}%
-                        </span>
+                    <td className="col-name">
+                      <div className="associate-info">
+                        <span className="associate-name">{assoc.full_name || 'Sin nombre'}</span>
+                        <span className="associate-username">@{assoc.username || 'N/A'}</span>
                       </div>
                     </td>
-                    <td>
-                      <span
-                        className={`status-badge ${assoc.active ? 'status-active' : 'status-inactive'
-                          }`}
-                      >
-                        {assoc.active ? '✓ Activo' : '✗ Inactivo'}
+                    <td className="col-money">
+                      <span className="money-value">{formatCurrency(assoc.credit_limit)}</span>
+                    </td>
+                    <td className="col-money">
+                      <span className="money-value text-used">{formatCurrency(assoc.credit_used)}</span>
+                    </td>
+                    <td className="col-money">
+                      <span className="money-value text-available">{formatCurrency(assoc.credit_available)}</span>
+                    </td>
+                    <td className="col-usage">
+                      <div className="usage-indicator">
+                        <div className={`usage-bar-container usage-bg-${usageLevel}`}>
+                          <div
+                            className={`usage-bar-fill usage-${usageLevel}`}
+                            style={{ width: `${Math.min(100, usagePercent)}%` }}
+                          />
+                          <span className="usage-percent-inside">
+                            {usagePercent.toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="col-debt">
+                      {(assoc.debt_balance || 0) > 0 || (assoc.pending_debts_count || 0) > 0 ? (
+                        <div className="debt-info">
+                          <span className="debt-amount">{formatCurrency(assoc.debt_balance || 0)}</span>
+                          {assoc.pending_debts_count > 0 && (
+                            <span className="debt-count">{assoc.pending_debts_count} período(s)</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="debt-clear">Sin deuda</span>
+                      )}
+                    </td>
+                    <td className="col-status">
+                      <span className={`status-pill ${assoc.active ? 'active' : 'inactive'}`}>
+                        {assoc.active ? 'Activo' : 'Inactivo'}
                       </span>
                     </td>
-                    <td>
+                    <td className="col-actions">
                       <button
-                        className="btn btn-sm btn-secondary"
+                        className="btn-action"
                         onClick={() => handleViewDetail(assoc.id)}
                       >
-                        👁️ Ver
+                        Detalles
                       </button>
                     </td>
                   </tr>
@@ -293,40 +365,76 @@ export default function AssociatesManagementPage() {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Paginación */}
       {totalPages > 1 && (
-        <div className="pagination">
-          <button
-            className="btn btn-sm"
-            disabled={currentPage === 1}
-            onClick={() =>
-              setPagination((prev) => ({
-                ...prev,
-                offset: Math.max(0, prev.offset - prev.limit),
-              }))
-            }
-          >
-            ← Anterior
-          </button>
+        <div className="pagination-bar">
+          <div className="pagination-info">
+            Mostrando {filteredAssociates.length} de {pagination.total} asociados
+          </div>
+          <div className="pagination-controls">
+            <button
+              className="pagination-btn"
+              onClick={() => goToPage(1)}
+              disabled={currentPage === 1}
+              title="Primera página"
+            >
+              «
+            </button>
+            <button
+              className="pagination-btn"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              ‹ Anterior
+            </button>
 
-          <span className="page-info">
-            Página {currentPage} de {totalPages}
-          </span>
+            <div className="pagination-pages">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage < 3) {
+                  pageNum = i + 1;
+                } else if (currentPage > totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => goToPage(pageNum)}
+                    className={`pagination-page ${currentPage === pageNum ? 'active' : ''}`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
 
-          <button
-            className="btn btn-sm"
-            disabled={currentPage === totalPages}
-            onClick={() =>
-              setPagination((prev) => ({
-                ...prev,
-                offset: prev.offset + prev.limit,
-              }))
-            }
-          >
-            Siguiente →
-          </button>
+            <button
+              className="pagination-btn"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Siguiente ›
+            </button>
+            <button
+              className="pagination-btn"
+              onClick={() => goToPage(totalPages)}
+              disabled={currentPage === totalPages}
+              title="Última página"
+            >
+              »
+            </button>
+          </div>
         </div>
       )}
+
+      {/* Footer info */}
+      <div className="page-footer">
+        Página {currentPage} de {totalPages}
+      </div>
     </div>
   );
 }

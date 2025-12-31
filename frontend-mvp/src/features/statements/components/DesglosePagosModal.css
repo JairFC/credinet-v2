@@ -1,0 +1,603 @@
+/**
+ * DesglosePagosModal.css - Estilos para modal de desglose de pagos
+ * Diseño profesional con tabla interactiva y totales destacados
+ */
+
+/* Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal Container */
+.desglose-modal {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.25),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  animation: slideUp 0.3s ease;
+  overflow: hidden;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Modal Header */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: white;
+}
+
+.header-info h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.header-icon {
+  font-size: 1.5rem;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  flex-wrap: wrap;
+}
+
+.meta-item strong {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+
+.meta-divider {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.close-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+/* Toolbar */
+.modal-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #6B7280;
+}
+
+.filter-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  background: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+  background: #F3F4F6;
+  border-color: #9CA3AF;
+}
+
+.btn-export:hover {
+  background: #ECFDF5;
+  border-color: #10B981;
+  color: #059669;
+}
+
+.btn-print:hover {
+  background: #EFF6FF;
+  border-color: #3B82F6;
+  color: #2563EB;
+}
+
+/* Modal Body */
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+}
+
+/* Table Container */
+.table-container {
+  overflow-x: auto;
+}
+
+/* Payments Table */
+.payments-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.payments-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.payments-table th {
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  background: linear-gradient(180deg, #F9FAFB 0%, #F3F4F6 100%);
+  border-bottom: 2px solid #E5E7EB;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.payments-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.payments-table th.sortable:hover {
+  background: #E5E7EB;
+}
+
+.sort-icon {
+  margin-left: 0.25rem;
+  font-size: 0.7rem;
+}
+
+.payments-table td {
+  padding: 0.875rem 0.75rem;
+  border-bottom: 1px solid #F3F4F6;
+  color: #374151;
+  vertical-align: middle;
+}
+
+.payments-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.payments-table tbody tr:hover {
+  background: #FAFAFA;
+}
+
+.payments-table tbody tr:nth-child(even) {
+  background: #FCFCFC;
+}
+
+.payments-table tbody tr:nth-child(even):hover {
+  background: #F5F5F5;
+}
+
+/* Payment Number */
+.payment-number {
+  width: 60px;
+}
+
+.number-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 28px;
+  padding: 0 0.5rem;
+  background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+  color: #4F46E5;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Client Cell */
+.client-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.client-name {
+  font-weight: 500;
+  color: #1F2937;
+}
+
+.client-phone {
+  font-size: 0.8rem;
+  color: #9CA3AF;
+}
+
+/* Loan Cell */
+.loan-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.loan-id {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-weight: 600;
+  color: #4F46E5;
+}
+
+.loan-type {
+  font-size: 0.75rem;
+  color: #9CA3AF;
+}
+
+/* Amount Cells */
+.amount {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-weight: 500;
+}
+
+.amount.commission {
+  color: #059669;
+}
+
+.amount.to-pay {
+  color: #1F2937;
+  font-weight: 600;
+}
+
+.amount.paid {
+  color: #2563EB;
+}
+
+/* Status Pill */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-pill.pending {
+  background: #F3F4F6;
+  color: #6B7280;
+}
+
+.status-pill.paid {
+  background: #D1FAE5;
+  color: #059669;
+}
+
+.status-pill.partial {
+  background: #FEF3C7;
+  color: #D97706;
+}
+
+.status-pill.overdue {
+  background: #FEE2E2;
+  color: #DC2626;
+}
+
+.status-icon {
+  font-size: 0.8rem;
+}
+
+/* Text Alignment */
+.text-right {
+  text-align: right;
+}
+
+.text-center {
+  text-align: center;
+}
+
+/* Modal Footer */
+.modal-footer {
+  padding: 1.5rem 2rem;
+  background: linear-gradient(180deg, #F9FAFB 0%, #F3F4F6 100%);
+  border-top: 1px solid #E5E7EB;
+}
+
+.totals-grid {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.total-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  padding: 0.75rem 1.25rem;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #E5E7EB;
+  min-width: 120px;
+}
+
+.total-item.highlight {
+  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+  border-color: #A7F3D0;
+}
+
+.total-item.final {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: none;
+}
+
+.total-item.final .total-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.total-item.final .total-value {
+  color: white;
+}
+
+.total-label {
+  font-size: 0.75rem;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.total-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  color: #1F2937;
+}
+
+.total-value.success {
+  color: #059669;
+}
+
+.total-value.info {
+  color: #2563EB;
+}
+
+.total-value.danger {
+  color: #DC2626;
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #E5E7EB;
+  border-top-color: #6366F1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-state p {
+  margin-top: 1rem;
+  color: #6B7280;
+  font-size: 0.95rem;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  margin: 0 0 0.5rem 0;
+  color: #374151;
+  font-size: 1.25rem;
+}
+
+.empty-state p {
+  margin: 0;
+  color: #6B7280;
+  font-size: 0.95rem;
+  max-width: 300px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .desglose-modal {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .modal-header {
+    padding: 1rem 1.5rem;
+  }
+
+  .header-info h2 {
+    font-size: 1.25rem;
+  }
+
+  .modal-toolbar {
+    padding: 0.75rem 1.5rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-right {
+    justify-content: flex-end;
+  }
+
+  .modal-footer {
+    padding: 1rem 1.5rem;
+  }
+
+  .totals-grid {
+    justify-content: center;
+  }
+
+  .total-item {
+    min-width: 100px;
+    padding: 0.5rem 1rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .modal-header {
+    padding: 1rem;
+  }
+
+  .header-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .meta-divider {
+    display: none;
+  }
+
+  .payments-table th,
+  .payments-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  /* Ocultar columnas menos importantes en móvil */
+  .payments-table th:nth-child(4),
+  .payments-table td:nth-child(4),
+  .payments-table th:nth-child(6),
+  .payments-table td:nth-child(6) {
+    display: none;
+  }
+
+  .totals-grid {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .total-item {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+  }
+}

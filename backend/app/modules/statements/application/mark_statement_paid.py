@@ -56,14 +56,14 @@ class MarkStatementPaidUseCase:
         )
         
         # Update status based on payment amount
-        total_owed = statement.total_commission_owed + statement.late_fee_amount
+        total_owed = statement.total_to_credicuenta + statement.late_fee_amount
         
         if dto.paid_amount >= total_owed:
             # Fully paid
             status_id = 3  # PAID
         else:
             # Partially paid
-            status_id = 4  # PARTIAL_PAID
+            status_id = 4  # PARTIAL
         
         # Update status
         updated_statement = self.statement_repository.update_status(

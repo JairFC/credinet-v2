@@ -250,15 +250,18 @@ def get_rate_profile(
     )
 
 
-@router.post("/rate-profiles/calculate", response_model=LoanCalculationDTO)
+@router.post("/calculate", response_model=LoanCalculationDTO)
 def calculate_loan_payment(
     request: CalculateLoanRequest,
     service: RateProfileService = Depends(get_rate_profile_service)
 ):
     """
-    Calcula un préstamo usando un perfil específico.
+    Calcula un préstamo usando un perfil específico o tasas custom.
     
-    Usa la función SQL calculate_loan_payment() para calcular:
+    Usa la función SQL calculate_loan_payment() para perfiles estándar
+    o calculate_loan_payment_custom() para profile_code='custom'.
+    
+    Calcula:
     - Pago quincenal (cliente)
     - Pago total e intereses
     - Comisión por pago y total
@@ -266,19 +269,22 @@ def calculate_loan_payment(
     
     Args:
         request: Datos del préstamo (monto, plazo, código perfil)
+                 Para custom: también requiere interest_rate y commission_rate
         
     Returns:
         Cálculo completo con 14 campos
         
     Raises:
-        400: Si el perfil no aplica (monto/plazo fuera de rango)
+        400: Si el perfil no aplica (monto/plazo fuera de rango) o custom sin tasas
         404: Si el perfil no existe
     """
     try:
         calculation = service.calculate_loan(
             amount=request.amount,
             term_biweeks=request.term_biweeks,
-            profile_code=request.profile_code
+            profile_code=request.profile_code,
+            interest_rate=request.interest_rate,
+            commission_rate=request.commission_rate
         )
     except ValueError as e:
         raise HTTPException(
@@ -305,7 +311,7 @@ def calculate_loan_payment(
     )
 
 
-@router.post("/rate-profiles/compare", response_model=CompareProfilesResponse)
+@router.post("/compare", response_model=CompareProfilesResponse)
 def compare_rate_profiles(
     request: CompareProfilesRequest,
     service: RateProfileService = Depends(get_rate_profile_service)

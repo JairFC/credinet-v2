@@ -3,8 +3,8 @@
    ============================================================================= */
 
 .navbar {
-  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
-  box-shadow: 0 4px 20px rgba(196, 37, 45, 0.25);
+  background: linear-gradient(135deg, #9B2028 0%, #7B1A20 100%);
+  box-shadow: 0 4px 20px rgba(123, 26, 32, 0.3);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -118,7 +118,7 @@
   height: 52px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.95);
-  color: #C4252D;
+  color: #9B2028;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -211,7 +211,7 @@
     top: 70px;
     left: 0;
     right: 0;
-    background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
+    background: linear-gradient(135deg, #9B2028 0%, #7B1A20 100%);
     flex-direction: column;
     padding: 2rem;
     gap: 1.5rem;
@@ -319,7 +319,7 @@
 
 .dropdown-menu li a:hover {
   background: #f3f4f6;
-  color: #C4252D;
+  color: #9B2028;
 }
 
 /* Responsive dropdown */

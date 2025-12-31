@@ -1,15 +1,27 @@
 /**
  * AssociateDetailPage - Vista detallada de un asociado con desglose de deuda
  * 
+ * OPTIMIZADO: Secciones colapsables con lazy loading
+ * 
  * Muestra:
- * - Información general del asociado
- * - Estado de crédito (límite, usado, disponible)
- * - DesgloseDeuda con sistema FIFO
+ * - Información general del asociado (siempre visible)
+ * - Estado de crédito (siempre visible)
+ * - Préstamos del asociado (colapsable, lazy load)
+ * - Clientes del asociado (colapsable, lazy load)
+ * - Desglose de deuda (colapsable, lazy load)
+ * - Historial de deudas (colapsable, lazy load)
+ * - Auditoría (colapsable, lazy load)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import CollapsibleSection from '../../../shared/components/CollapsibleSection';
 import DesgloseDeuda from '../../../shared/components/DesgloseDeuda';
+import HistorialDeudas from '../../../shared/components/HistorialDeudas';
+import AuditHistory from '../../../shared/components/AuditHistory';
+import PrestamosAsociado from '../../../shared/components/PrestamosAsociado';
+import RegistrarAbonoDeudaModal from '../components/RegistrarAbonoDeudaModal';
+import ClientesAsociado from '../components/ClientesAsociado';
 import { apiClient } from '../../../shared/api/apiClient';
 import ENDPOINTS from '../../../shared/api/endpoints';
 import './AssociateDetailPage.css';
@@ -19,14 +31,14 @@ const AssociateDetailPage = () => {
   const [associate, setAssociate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showAbonoModal, setShowAbonoModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    if (associateId) {
-      fetchAssociateData();
-    }
-  }, [associateId]);
+  // Estados para contadores de badges (cargados bajo demanda)
+  const [loansCount, setLoansCount] = useState(null);
+  const [clientsCount, setClientsCount] = useState(null);
 
-  const fetchAssociateData = async () => {
+  const fetchAssociateData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -39,6 +51,43 @@ const AssociateDetailPage = () => {
     } finally {
       setLoading(false);
     }
+  }, [associateId]);
+
+  useEffect(() => {
+    if (associateId) {
+      fetchAssociateData();
+    }
+  }, [associateId, fetchAssociateData]);
+
+  // Cargar contadores de badges (ligero, para mostrar en headers colapsados)
+  const fetchBadgeCounts = useCallback(async () => {
+    if (!associate?.user_id) return;
+
+    try {
+      // Obtener conteo de préstamos
+      const loansRes = await apiClient.get(`${ENDPOINTS.loans.list}?associate_user_id=${associate.user_id}&limit=1`);
+      setLoansCount(loansRes.data?.total || 0);
+
+      // Obtener conteo de clientes
+      const clientsRes = await apiClient.get(`/api/v1/associates/${associateId}/clients?limit=1`);
+      setClientsCount(clientsRes.data?.data?.total || 0);
+    } catch (err) {
+      console.error('Error fetching badge counts:', err);
+    }
+  }, [associate?.user_id, associateId]);
+
+  useEffect(() => {
+    if (associate) {
+      fetchBadgeCounts();
+    }
+  }, [associate, fetchBadgeCounts]);
+
+  const handleAbonoSuccess = (data) => {
+    console.log('✅ Abono registrado:', data);
+    // Refrescar datos del asociado
+    fetchAssociateData();
+    // Forzar refresh de componentes hijos
+    setRefreshKey(prev => prev + 1);
   };
 
   if (loading) {
@@ -139,7 +188,7 @@ const AssociateDetailPage = () => {
           </div>
         </div>
 
-        {/* Estado de Crédito */}
+        {/* Estado de Crédito - Siempre visible */}
         <div className="credit-section">
           <h2>💳 Estado de Crédito</h2>
 
@@ -170,10 +219,18 @@ const AssociateDetailPage = () => {
               <div className="stat-value stat-danger">
                 ${debtBalance.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
               </div>
+              {debtBalance > 0 && (
+                <button
+                  onClick={() => setShowAbonoModal(true)}
+                  className="btn-abono-inline"
+                >
+                  💰 Abonar
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Métricas adicionales */}
+          {/* Métricas */}
           <div className="metrics-grid">
             <div className="metric-item">
               <span className="metric-label">Períodos con crédito completo:</span>
@@ -189,7 +246,7 @@ const AssociateDetailPage = () => {
             </div>
           </div>
 
-          {/* Barra de progreso de crédito */}
+          {/* Barra de progreso */}
           <div className="credit-progress-container">
             <div className="credit-progress-bar">
               <div
@@ -207,17 +264,120 @@ const AssociateDetailPage = () => {
         </div>
       </div>
 
-      {/* Desglose de Deuda */}
-      <div className="debt-section">
-        <h2>📊 Desglose de Deuda (FIFO)</h2>
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECCIONES COLAPSABLES (Lazy Loading)
+          ═══════════════════════════════════════════════════════════════════ */}
+
+      {/* Préstamos del Asociado */}
+      <CollapsibleSection
+        title="Préstamos del Asociado"
+        icon="📋"
+        subtitle="Préstamos gestionados por este asociado • Click para expandir"
+        badge={loansCount}
+        badgeColor={loansCount > 0 ? 'primary' : 'info'}
+        defaultExpanded={false}
+        persistKey={`associate_${associateId}_loans`}
+      >
+        {associate.user_id ? (
+          <PrestamosAsociado associateUserId={associate.user_id} key={`prestamos-${refreshKey}`} />
+        ) : (
+          <div className="alert alert-warning">
+            No se puede cargar préstamos sin ID de usuario del asociado.
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Clientes del Asociado */}
+      <CollapsibleSection
+        title="Clientes del Asociado"
+        icon="👥"
+        subtitle="Personas que han solicitado préstamos a través de este asociado"
+        badge={clientsCount}
+        badgeColor={clientsCount > 0 ? 'success' : 'info'}
+        defaultExpanded={false}
+        persistKey={`associate_${associateId}_clients`}
+      >
         {associateId ? (
-          <DesgloseDeuda associateId={associateId} />
+          <ClientesAsociado associateId={parseInt(associateId)} key={`clientes-${refreshKey}`} />
+        ) : (
+          <div className="alert alert-warning">
+            No se puede cargar clientes sin ID de asociado.
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Desglose de Deuda */}
+      <CollapsibleSection
+        title="Desglose de Deuda"
+        icon="📊"
+        subtitle="Sistema FIFO: Abonos se aplican a deudas más antiguas primero"
+        badge={debtBalance > 0 ? `$${debtBalance.toLocaleString('es-MX')}` : '✓ Sin deuda'}
+        badgeColor={debtBalance > 0 ? 'danger' : 'success'}
+        defaultExpanded={debtBalance > 0}
+        persistKey={`associate_${associateId}_debt`}
+      >
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+          {debtBalance > 0 && (
+            <button
+              onClick={() => setShowAbonoModal(true)}
+              className="btn btn-success"
+            >
+              💰 Registrar Abono a Deuda
+            </button>
+          )}
+        </div>
+        {associateId ? (
+          <DesgloseDeuda associateId={associateId} key={`desglose-${refreshKey}`} />
         ) : (
           <div className="alert alert-info">
             No se puede cargar el desglose de deuda sin un ID de asociado válido.
           </div>
         )}
-      </div>
+      </CollapsibleSection>
+
+      {/* Historial de Deudas Acumuladas */}
+      <CollapsibleSection
+        title="Historial de Deudas Acumuladas"
+        icon="📜"
+        subtitle="Deudas transferidas de períodos cerrados (statements no pagados completamente)"
+        defaultExpanded={false}
+        persistKey={`associate_${associateId}_history`}
+      >
+        {associateId ? (
+          <HistorialDeudas associateId={associateId} key={`historial-${refreshKey}`} />
+        ) : (
+          <div className="alert alert-info">
+            No se puede cargar el historial de deudas sin un ID de asociado válido.
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Historial de Auditoría */}
+      {associate?.user_id && (
+        <CollapsibleSection
+          title="Historial de Cambios"
+          icon="🔍"
+          subtitle="Quién creó y modificó este registro"
+          defaultExpanded={false}
+          persistKey={`associate_${associateId}_audit`}
+        >
+          <AuditHistory
+            tableName="users"
+            recordId={associate.user_id}
+            title=""
+          />
+        </CollapsibleSection>
+      )}
+
+      {/* Modal de Abono a Deuda */}
+      <RegistrarAbonoDeudaModal
+        isOpen={showAbonoModal}
+        onClose={() => setShowAbonoModal(false)}
+        associateId={parseInt(associateId)}
+        associateName={associate?.full_name || `${associate?.first_name || ''} ${associate?.last_name || ''}`.trim()}
+        currentDebt={debtBalance}
+        onSuccess={handleAbonoSuccess}
+      />
     </div>
   );
 };

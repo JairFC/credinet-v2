@@ -14,9 +14,12 @@ class CutPeriod:
     Entidad Periodo de Corte.
     
     Los periodos de corte son ventanas quincenales para el cobro de pagos.
+    El cut_code representa la fecha de corte en formato MesDD-YYYY (ej: Dec08-2025)
+    donde MesDD es el día siguiente al period_end_date.
     """
     id: Optional[int]
     cut_number: int
+    cut_code: Optional[str]  # Ej: Dec08-2025 - El día de corte real
     period_start_date: date
     period_end_date: date
     status_id: int

@@ -57,11 +57,14 @@ const TablaDesglosePagos = ({ statementId }) => {
   const getStatusBadge = (status) => {
     const badges = {
       'PAID': { color: '#28a745', label: '✅ PAGADO' },
-      'PARTIAL_PAID': { color: '#ffc107', label: '⚠️ PARCIAL' },
-      'PENDING': { color: '#6c757d', label: '⏳ PENDIENTE' }
+      'PARTIAL': { color: '#ffc107', label: '⚠️ PARCIAL' },
+      'COLLECTING': { color: '#3B82F6', label: '💰 EN COBRO' },
+      'DRAFT': { color: '#6c757d', label: '📝 BORRADOR' },
+      'OVERDUE': { color: '#dc3545', label: '⚠️ VENCIDO' },
+      'ABSORBED': { color: '#607D8B', label: '📦 ABSORBIDO' }
     };
 
-    const badge = badges[status] || badges['PENDING'];
+    const badge = badges[status] || badges['COLLECTING'];
 
     return (
       <span style={{

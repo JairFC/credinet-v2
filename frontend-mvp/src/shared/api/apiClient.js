@@ -52,7 +52,12 @@ apiClient.interceptors.response.use(
 
       const refreshToken = auth.getRefreshToken();
 
-      if (refreshToken) {
+      // Don't try to refresh if we're calling /auth/me or /auth/login
+      const isAuthEndpoint = originalRequest.url?.includes('/auth/me') ||
+        originalRequest.url?.includes('/auth/login') ||
+        originalRequest.url?.includes('/auth/refresh');
+
+      if (refreshToken && !isAuthEndpoint) {
         try {
           // Try to refresh the token
           const { data } = await axios.post(`${API_BASE_URL}/api/v1/auth/refresh`, {
@@ -69,13 +74,21 @@ apiClient.interceptors.response.use(
         } catch (refreshError) {
           // Refresh failed - clear auth and redirect to login
           auth.clearAuth();
-          window.location.href = '/login';
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
           return Promise.reject(refreshError);
         }
-      } else {
-        // No refresh token - redirect to login
+      } else if (isAuthEndpoint) {
+        // Auth endpoint failed - just clear and reject (don't redirect)
         auth.clearAuth();
-        window.location.href = '/login';
+        return Promise.reject(error);
+      } else {
+        // No refresh token - redirect to login if not already there
+        auth.clearAuth();
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
     }
 

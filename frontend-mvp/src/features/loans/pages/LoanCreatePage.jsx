@@ -20,13 +20,19 @@ const LoanCreatePage = () => {
   const [legacyAmounts, setLegacyAmounts] = useState([]);
   const [selectedProfile, setSelectedProfile] = useState(null);
 
+  // Estados para preview de cálculos
+  const [calculation, setCalculation] = useState(null);
+  const [calculatingPreview, setCalculatingPreview] = useState(false);
+
   const [formData, setFormData] = useState({
     amount: '',
     term_biweeks: '12',
     profile_code: 'legacy',
     interest_rate: '',
     commission_rate: '',
-    notes: ''
+    notes: '',
+    useCustomAmount: false,
+    customAmount: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -35,6 +41,64 @@ const LoanCreatePage = () => {
   useEffect(() => {
     loadRateProfiles();
   }, []);
+
+  // Calcular preview cuando cambian amount, term, profile o tasas custom
+  useEffect(() => {
+    const calculatePreview = async () => {
+      // Solo calcular si hay monto y plazo válidos
+      const amount = parseFloat(formData.amount);
+      const term = parseInt(formData.term_biweeks);
+
+      if (!amount || amount <= 0 || !term || term < 1) {
+        setCalculation(null);
+        return;
+      }
+
+      // Para custom, necesitamos ambas tasas
+      if (formData.profile_code === 'custom') {
+        const interestRate = parseFloat(formData.interest_rate);
+        const commissionRate = parseFloat(formData.commission_rate);
+        if (!interestRate || interestRate < 0 || !commissionRate || commissionRate < 0) {
+          setCalculation(null);
+          return;
+        }
+      }
+
+      try {
+        setCalculatingPreview(true);
+
+        const payload = {
+          amount,
+          term_biweeks: term,
+          profile_code: formData.profile_code
+        };
+
+        // Si es custom, agregar las tasas
+        if (formData.profile_code === 'custom') {
+          payload.interest_rate = parseFloat(formData.interest_rate);
+          payload.commission_rate = parseFloat(formData.commission_rate);
+        }
+
+        const response = await rateProfilesService.calculate(payload);
+        setCalculation(response.data);
+      } catch (err) {
+        console.error('Error calculando preview:', err);
+        setCalculation(null);
+      } finally {
+        setCalculatingPreview(false);
+      }
+    };
+
+    // Debounce de 500ms para no saturar la API
+    const timeoutId = setTimeout(calculatePreview, 500);
+    return () => clearTimeout(timeoutId);
+  }, [
+    formData.amount,
+    formData.term_biweeks,
+    formData.profile_code,
+    formData.interest_rate,
+    formData.commission_rate
+  ]);
 
   const loadRateProfiles = async () => {
     try {
@@ -77,12 +141,13 @@ const LoanCreatePage = () => {
           amount: ''
         }));
       } else if (value === 'custom') {
-        // Custom requiere tasas manuales
+        // Custom requiere tasas manuales - establecer plazo válido por defecto
         setFormData(prev => ({
           ...prev,
           profile_code: value,
+          term_biweeks: '12',  // Valor válido por defecto
           interest_rate: '',
-          commission_rate: '2.50' // Sugerencia por defecto
+          commission_rate: '1.6' // Igual que Standard
         }));
       } else {
         setFormData(prev => ({
@@ -126,7 +191,7 @@ const LoanCreatePage = () => {
       const amount = parseFloat(formData.amount);
       const available = parseFloat(selectedAssociate.credit_available) || 0;
       if (amount > available) {
-        newErrors.associate = `El asociado solo tiene L.${available.toFixed(2)} disponibles`;
+        newErrors.associate = `El asociado solo tiene $${available.toFixed(2)} disponibles`;
       }
     }
 
@@ -142,10 +207,10 @@ const LoanCreatePage = () => {
 
       // Validar rangos de montos
       if (selectedProfile.min_amount && parseFloat(formData.amount) < parseFloat(selectedProfile.min_amount)) {
-        newErrors.amount = `El monto mínimo es L.${selectedProfile.min_amount}`;
+        newErrors.amount = `El monto mínimo es $${selectedProfile.min_amount}`;
       }
       if (selectedProfile.max_amount && parseFloat(formData.amount) > parseFloat(selectedProfile.max_amount)) {
-        newErrors.amount = `El monto máximo es L.${selectedProfile.max_amount}`;
+        newErrors.amount = `El monto máximo es $${selectedProfile.max_amount}`;
       }
 
       // Validar legacy: solo montos predefinidos
@@ -192,14 +257,12 @@ const LoanCreatePage = () => {
         associate_user_id: selectedAssociate.user_id,
         amount: parseFloat(formData.amount),
         term_biweeks: parseInt(formData.term_biweeks),
-        notes: formData.notes.trim() || null
+        notes: formData.notes.trim() || null,
+        profile_code: formData.profile_code  // Siempre enviar profile_code
       };
 
-      // Si usa perfil de tasa (no custom)
-      if (formData.profile_code && formData.profile_code !== 'custom') {
-        payload.profile_code = formData.profile_code;
-      } else if (formData.profile_code === 'custom') {
-        // Si usa tasas manuales (custom)
+      // Si usa tasas manuales (custom): agregar las tasas personalizadas
+      if (formData.profile_code === 'custom') {
         payload.interest_rate = parseFloat(formData.interest_rate);
         payload.commission_rate = parseFloat(formData.commission_rate);
       }
@@ -212,7 +275,10 @@ const LoanCreatePage = () => {
 
     } catch (err) {
       console.error('Error creando préstamo:', err);
-      alert(err.response?.data?.detail || 'Error al crear préstamo');
+      console.error('Error response:', err.response);
+      console.error('Error detail:', err.response?.data?.detail);
+      const errorMsg = err.response?.data?.detail || err.response?.data?.message || 'Error al crear préstamo';
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -278,45 +344,88 @@ const LoanCreatePage = () => {
             </div>
 
             <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="amount">Monto (L) *</label>
+              <div className="form-group amount-group-full-width">
+                <label htmlFor="amount">Monto ($) *</label>
+
                 {selectedProfile?.code === 'legacy' ? (
                   // Para legacy: dropdown de montos predefinidos
-                  <select
-                    id="amount"
-                    name="amount"
-                    value={formData.amount}
-                    onChange={handleChange}
-                    className={errors.amount ? 'error' : ''}
-                    required
-                  >
-                    <option value="">-- Selecciona un monto --</option>
-                    {legacyAmounts.map(la => (
-                      <option key={la.amount} value={la.amount}>
-                        L.{parseFloat(la.amount).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        {' → '}L.{parseFloat(la.biweekly_payment).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/quinc.
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      id="amount"
+                      name="amount"
+                      value={formData.amount}
+                      onChange={handleChange}
+                      className={errors.amount ? 'error' : ''}
+                      required
+                    >
+                      <option value="">-- Selecciona un monto --</option>
+                      {legacyAmounts.map(la => (
+                        <option key={la.amount} value={la.amount}>
+                          ${parseFloat(la.amount).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {' → '}${parseFloat(la.biweekly_payment).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/quinc.
+                        </option>
+                      ))}
+                    </select>
+                    {errors.amount && <span className="error-message">{errors.amount}</span>}
+                    <small className="form-hint">
+                      💡 Montos predefinidos de la tabla histórica
+                    </small>
+                  </>
                 ) : (
-                  // Para otros perfiles: input numérico
-                  <input
-                    type="number"
-                    id="amount"
-                    name="amount"
-                    value={formData.amount}
-                    onChange={handleChange}
-                    placeholder="Ej: 5000.00"
-                    step="0.01"
-                    min="0"
-                    className={errors.amount ? 'error' : ''}
-                  />
-                )}
-                {errors.amount && <span className="error-message">{errors.amount}</span>}
-                {selectedProfile?.code === 'legacy' && (
-                  <small className="form-hint">
-                    💡 Montos predefinidos de la tabla histórica
-                  </small>
+                  // Para Standard y Custom: botones + "Otro monto"
+                  <>
+                    <div className="amount-buttons-grid">
+                      {[3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 18000, 20000, 22000, 25000, 28000, 30000].map(amt => (
+                        <button
+                          key={amt}
+                          type="button"
+                          className={`amount-btn ${formData.amount === amt && !formData.useCustomAmount ? 'active' : ''}`}
+                          onClick={() => {
+                            setFormData(prev => ({ ...prev, amount: amt, useCustomAmount: false, customAmount: '' }));
+                            if (errors.amount) setErrors(prev => ({ ...prev, amount: '' }));
+                          }}
+                          disabled={loading}
+                        >
+                          ${(amt / 1000)}k
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className={`amount-btn custom-btn ${formData.useCustomAmount ? 'active' : ''}`}
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, useCustomAmount: !prev.useCustomAmount, amount: prev.useCustomAmount ? 10000 : (parseInt(prev.customAmount) || 0) }));
+                        }}
+                        disabled={loading}
+                      >
+                        Otro monto
+                      </button>
+                    </div>
+
+                    {formData.useCustomAmount && (
+                      <div className="custom-amount-input">
+                        <input
+                          type="number"
+                          name="customAmount"
+                          value={formData.customAmount}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setFormData(prev => ({ ...prev, customAmount: value, amount: parseInt(value) || 0 }));
+                            if (errors.amount) setErrors(prev => ({ ...prev, amount: '' }));
+                          }}
+                          placeholder="Ingresa el monto personalizado"
+                          step="1000"
+                          min="3000"
+                          max="30000"
+                          className={errors.amount ? 'error' : ''}
+                        />
+                      </div>
+                    )}
+
+                    {errors.amount && <span className="error-message">{errors.amount}</span>}
+                    <small className="form-hint">
+                      💡 Selecciona un monto predefinido o ingresa uno personalizado
+                    </small>
+                  </>
                 )}
               </div>
 
@@ -331,8 +440,9 @@ const LoanCreatePage = () => {
                     disabled
                     className="disabled-input"
                   />
-                ) : selectedProfile?.valid_terms && selectedProfile.valid_terms.length > 0 ? (
-                  // Perfiles con términos restringidos
+                ) : (
+                  // Standard, Custom y otros: siempre usar select con términos válidos
+                  // Fallback a términos por defecto si no hay valid_terms
                   <select
                     id="term_biweeks"
                     name="term_biweeks"
@@ -342,7 +452,10 @@ const LoanCreatePage = () => {
                     required
                   >
                     <option value="">-- Selecciona un plazo --</option>
-                    {selectedProfile.valid_terms.map(term => {
+                    {(selectedProfile?.valid_terms?.length > 0
+                      ? selectedProfile.valid_terms
+                      : [3, 6, 9, 12, 15, 18, 21, 24, 30, 36]  // Fallback por defecto
+                    ).map(term => {
                       const months = Math.round(term / 2);
                       return (
                         <option key={term} value={term}>
@@ -351,19 +464,6 @@ const LoanCreatePage = () => {
                       );
                     })}
                   </select>
-                ) : (
-                  // Custom: cualquier plazo
-                  <input
-                    type="number"
-                    id="term_biweeks"
-                    name="term_biweeks"
-                    value={formData.term_biweeks}
-                    onChange={handleChange}
-                    placeholder="Ej: 12"
-                    min="1"
-                    max="52"
-                    className={errors.term_biweeks ? 'error' : ''}
-                  />
                 )}
                 {errors.term_biweeks && <span className="error-message">{errors.term_biweeks}</span>}
                 {selectedProfile?.code === 'legacy' && (
@@ -399,7 +499,6 @@ const LoanCreatePage = () => {
                         {profile.code === 'legacy' ? ' (Solo 12 quincenas)' : ''}
                       </option>
                     ))}
-                    <option value="custom">Custom (Tasas Manuales)</option>
                   </>
                 )}
               </select>
@@ -410,7 +509,7 @@ const LoanCreatePage = () => {
                 <div className="profile-info">
                   {selectedProfile.calculation_type === 'formula' && selectedProfile.interest_rate_percent && (
                     <small className="profile-rates">
-                      📊 Tasas: {selectedProfile.interest_rate_percent}% interés, {selectedProfile.commission_rate_percent}% comisión
+                      📊 Interés: {selectedProfile.interest_rate_percent}% por quincena | Comisión: {selectedProfile.commission_rate_percent}% del monto prestado
                     </small>
                   )}
                   {selectedProfile.valid_terms && selectedProfile.valid_terms.length > 0 && (
@@ -425,41 +524,132 @@ const LoanCreatePage = () => {
             {formData.profile_code === 'custom' && (
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="interest_rate">Tasa de Interés (%) *</label>
+                  <label htmlFor="interest_rate">Tasa de Interés por Quincena (%) *</label>
                   <input
                     type="number"
                     id="interest_rate"
                     name="interest_rate"
                     value={formData.interest_rate}
                     onChange={handleChange}
-                    placeholder="Ej: 4.25"
-                    step="0.01"
-                    min="0"
-                    max="100"
+                    placeholder="Ej: 4.25 (Standard)"
+                    step="0.25"
+                    min="0.5"
+                    max="10"
                     className={errors.interest_rate ? 'error' : ''}
                   />
+                  <small className="form-hint">
+                    💡 Interés que se suma al préstamo por cada quincena. Rango típico: 3-5%
+                  </small>
                   {errors.interest_rate && <span className="error-message">{errors.interest_rate}</span>}
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="commission_rate">Tasa de Comisión (%) *</label>
+                  <label htmlFor="commission_rate">Comisión del Asociado (% del Monto Prestado) *</label>
                   <input
                     type="number"
                     id="commission_rate"
                     name="commission_rate"
                     value={formData.commission_rate}
                     onChange={handleChange}
-                    placeholder="Ej: 2.50"
-                    step="0.01"
+                    placeholder="Ej: 1.6 (Standard)"
+                    step="0.1"
                     min="0"
-                    max="100"
+                    max="5"
                     className={errors.commission_rate ? 'error' : ''}
                   />
+                  <small className="form-hint">
+                    💡 Ganancia del asociado por quincena = Monto × este %. Ejemplo: $10,000 × 1.6% = $160/quincena. Rango típico: 1-2%
+                  </small>
                   {errors.commission_rate && <span className="error-message">{errors.commission_rate}</span>}
                 </div>
               </div>
             )}
           </div>
+
+          {/* Sección: Preview de Cálculos */}
+          {calculation && (
+            <div className="form-section">
+              <h2 className="preview-title">📋 Resumen del Préstamo</h2>
+
+              <div className="loan-summary-grid">
+                {/* Columna 1: Información */}
+                <div className="summary-card info-card">
+                  <h3><span className="icon">ℹ️</span> Información</h3>
+
+                  <div className="summary-item">
+                    <span className="label">Monto solicitado:</span>
+                    <span className="value">${calculation.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  </div>
+
+                  <div className="summary-item">
+                    <span className="label">Plazo:</span>
+                    <span className="value">{calculation.term_biweeks} quincenas ({Math.round(calculation.term_biweeks / 2)} meses)</span>
+                  </div>
+
+                  <div className="summary-item">
+                    <span className="label">Perfil:</span>
+                    <span className="value">{formData.profile_code === 'custom' ? 'Personalizado' : calculation.profile_name}</span>
+                  </div>
+
+                  <div className="summary-item highlight">
+                    <span className="label">Tasa de interés:</span>
+                    <span className="value badge">{calculation.interest_rate_percent}% por quincena</span>
+                  </div>
+
+                  <div className="summary-item highlight">
+                    <span className="label">Comisión del asociado:</span>
+                    <span className="value badge-commission">{calculation.commission_rate_percent}% del monto (${calculation.commission_per_payment.toLocaleString('es-MX', { minimumFractionDigits: 2 })}/quincena)</span>
+                  </div>
+                </div>
+
+                {/* Columna 2: Totales del Cliente */}
+                <div className="summary-card client-card">
+                  <h3><span className="icon">👤</span> Totales del Cliente</h3>
+
+                  <div className="summary-item primary">
+                    <span className="label">Pago quincenal:</span>
+                    <span className="value highlight-amount">${calculation.biweekly_payment.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  </div>
+
+                  <div className="summary-item">
+                    <span className="label">Total a pagar:</span>
+                    <span className="value">${calculation.total_payment.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  </div>
+
+                  <div className="summary-item">
+                    <span className="label">Total de intereses:</span>
+                    <span className="value">${calculation.total_interest.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+
+                {/* Columna 3: Totales del Asociado */}
+                <div className="summary-card associate-card">
+                  <h3><span className="icon">💼</span> Totales del Asociado</h3>
+
+                  <div className="summary-item primary">
+                    <span className="label">Pago quincenal:</span>
+                    <span className="value highlight-amount">${calculation.associate_payment.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  </div>
+
+                  <div className="summary-item">
+                    <span className="label">Total a pagar a CrediCuenta:</span>
+                    <span className="value">${calculation.associate_total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  </div>
+
+                  <div className="summary-item success">
+                    <span className="label">Comisión total ganada:</span>
+                    <span className="value success-amount">${calculation.total_commission.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {calculatingPreview && (
+            <div className="form-section calculation-loading">
+              <p>⏳ Calculando preview...</p>
+            </div>
+          )}
 
           {/* Sección: Notas */}
           <div className="form-section">

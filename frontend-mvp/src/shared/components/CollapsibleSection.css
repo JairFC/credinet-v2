@@ -1,0 +1,187 @@
+/**
+ * CollapsibleSection - Estilos para sección colapsable con lazy loading
+ */
+
+.collapsible-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
+}
+
+.collapsible-section:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.collapsible-section.expanded {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Header clickeable */
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--color-surface);
+  transition: background-color 0.2s ease;
+}
+
+.collapsible-header:hover {
+  background: var(--color-surface-secondary);
+}
+
+.collapsible-header:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.expand-icon {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  transition: transform 0.3s ease;
+  display: inline-block;
+}
+
+.expand-icon.rotated {
+  transform: rotate(90deg);
+}
+
+.section-icon {
+  font-size: 20px;
+}
+
+.header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.section-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  opacity: 0.8;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Contenido colapsable */
+.collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.collapsible-content.show {
+  max-height: 5000px;
+  /* Valor grande para permitir contenido variable */
+  transition: max-height 0.5s ease-in;
+}
+
+.collapsible-content.animating {
+  overflow: hidden;
+}
+
+.content-inner {
+  padding: 0 20px 20px 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Variantes de badge */
+.section-badge.badge-info {
+  background: var(--color-info-bg, #e3f2fd);
+  color: var(--color-info, #1976d2);
+}
+
+.section-badge.badge-success {
+  background: var(--color-success-bg, #e8f5e9);
+  color: var(--color-success, #388e3c);
+}
+
+.section-badge.badge-warning {
+  background: var(--color-warning-bg, #fff3e0);
+  color: var(--color-warning, #f57c00);
+}
+
+.section-badge.badge-danger {
+  background: var(--color-danger-bg, #ffebee);
+  color: var(--color-danger, #d32f2f);
+}
+
+.section-badge.badge-primary {
+  background: var(--color-primary-bg, #e8eaf6);
+  color: var(--color-primary, #3f51b5);
+}
+
+/* Estado colapsado - indicador visual sutil */
+.collapsible-section.collapsed .collapsible-header {
+  border-bottom: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .collapsible-header {
+    padding: 12px 16px;
+  }
+
+  .section-title {
+    font-size: 14px;
+  }
+
+  .section-subtitle {
+    font-size: 11px;
+  }
+
+  .section-icon {
+    font-size: 18px;
+  }
+
+  .content-inner {
+    padding: 0 16px 16px 16px;
+  }
+}
+
+/* Loading state dentro de sección */
+.collapsible-section .loading-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.collapsible-section .loading-placeholder .spinner {
+  margin-right: 8px;
+}

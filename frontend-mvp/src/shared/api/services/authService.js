@@ -29,7 +29,20 @@ export const authService = {
    * @returns {Promise} Response with user data
    */
   me: () => {
-    return apiClient.get(ENDPOINTS.auth.me);
+    // Special handling: suppress console errors for 401 responses
+    // This is expected when token expires or doesn't exist
+    return apiClient.get(ENDPOINTS.auth.me).catch(error => {
+      // Re-throw the error but prevent it from logging to console
+      // if it's a 401 (expected during token validation)
+      if (error.response?.status === 401) {
+        // Create a new error without the noisy console output
+        const cleanError = new Error('Unauthorized');
+        cleanError.response = error.response;
+        cleanError.config = error.config;
+        throw cleanError;
+      }
+      throw error;
+    });
   },
 
   /**

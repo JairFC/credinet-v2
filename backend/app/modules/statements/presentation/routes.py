@@ -289,7 +289,7 @@ def get_period_stats(
             COUNT(DISTINCT s.user_id) AS total_associates,
             COALESCE(SUM(s.total_payments_count), 0) AS total_payments,
             COALESCE(SUM(s.total_amount_collected), 0) AS total_collected,
-            COALESCE(SUM(s.total_commission_owed), 0) AS total_commissions,
+            COALESCE(SUM(s.commission_earned), 0) AS total_commissions,
             COUNT(DISTINCT CASE WHEN st.code = 'PAID' THEN s.id END) AS paid_statements,
             COUNT(DISTINCT CASE WHEN s.is_overdue = true THEN s.id END) AS overdue_statements,
             COUNT(DISTINCT CASE WHEN st.code IN ('GENERATED', 'SENT') THEN s.id END) AS pending_statements
@@ -360,10 +360,11 @@ async def register_statement_payment(
     **Permissions:** admin, auxiliar_administrativo
     """
     from datetime import date
+    from sqlalchemy import text
     
     # Validar que el statement existe
     statement = db.execute(
-        "SELECT id, total_amount_collected, total_commission_owed, paid_amount, status_id FROM associate_payment_statements WHERE id = :id",
+        text("SELECT id, total_amount_collected, total_to_credicuenta, paid_amount, status_id FROM associate_payment_statements WHERE id = :id"),
         {"id": statement_id}
     ).fetchone()
     
@@ -371,12 +372,12 @@ async def register_statement_payment(
         raise HTTPException(status_code=404, detail=f"Statement {statement_id} no encontrado")
     
     # Insertar abono (trigger hace el resto)
-    result = db.execute("""
+    result = db.execute(text("""
         INSERT INTO associate_statement_payments 
         (statement_id, payment_amount, payment_date, payment_method_id, payment_reference, registered_by, notes)
         VALUES (:statement_id, :payment_amount, :payment_date, :payment_method_id, :payment_reference, :registered_by, :notes)
         RETURNING id, created_at
-    """, {
+    """), {
         "statement_id": statement_id,
         "payment_amount": payment_amount,
         "payment_date": payment_date,
@@ -390,14 +391,14 @@ async def register_statement_payment(
     payment = result.fetchone()
     
     # Obtener estado actualizado del statement
-    updated_statement = db.execute("""
+    updated_statement = db.execute(text("""
         SELECT 
             paid_amount,
-            total_amount_collected - total_commission_owed AS total_adeudado,
+            total_to_credicuenta AS total_adeudado,
             status_id
         FROM associate_payment_statements
         WHERE id = :id
-    """, {"id": statement_id}).fetchone()
+    """), {"id": statement_id}).fetchone()
     
     return {
         "success": True,
@@ -407,7 +408,7 @@ async def register_statement_payment(
             "payment_amount": payment_amount,
             "paid_amount_total": float(updated_statement[0]) if updated_statement[0] else 0.0,
             "remaining_amount": max(0, float(updated_statement[1]) - (float(updated_statement[0]) if updated_statement[0] else 0.0)),
-            "status": "PAID" if updated_statement[2] == 2 else "PARTIAL_PAID" if updated_statement[2] == 3 else "PENDING",
+            "status": "PAID" if updated_statement[2] == 3 else "PARTIAL" if updated_statement[2] == 4 else "COLLECTING",
             "registered_at": payment[1].isoformat()
         }
     }
@@ -428,25 +429,27 @@ async def list_statement_payments(
     
     **Permissions:** admin, auxiliar_administrativo, asociado (solo sus statements)
     """
+    from sqlalchemy import text
+    
     # Obtener statement
-    statement = db.execute("""
+    statement = db.execute(text("""
         SELECT 
             aps.id,
             aps.total_amount_collected,
-            aps.total_commission_owed,
+            aps.total_to_credicuenta,
             aps.paid_amount,
             aps.status_id,
             ss.name AS status_name
         FROM associate_payment_statements aps
         JOIN statement_statuses ss ON ss.id = aps.status_id
         WHERE aps.id = :id
-    """, {"id": statement_id}).fetchone()
+    """), {"id": statement_id}).fetchone()
     
     if not statement:
         raise HTTPException(status_code=404, detail=f"Statement {statement_id} no encontrado")
     
     # Obtener abonos
-    payments = db.execute("""
+    payments = db.execute(text("""
         SELECT 
             asp.id,
             asp.payment_amount,
@@ -461,9 +464,9 @@ async def list_statement_payments(
         JOIN users u ON u.id = asp.registered_by
         WHERE asp.statement_id = :statement_id
         ORDER BY asp.payment_date DESC, asp.created_at DESC
-    """, {"statement_id": statement_id}).fetchall()
+    """), {"statement_id": statement_id}).fetchall()
     
-    total_owed = float(statement[1]) - float(statement[2])  # collected - commission
+    total_owed = float(statement[2])  # total_to_credicuenta (ya es el adeudo directo)
     paid_amount = float(statement[3]) if statement[3] else 0.0
     
     return {
@@ -487,5 +490,105 @@ async def list_statement_payments(
                 }
                 for p in payments
             ]
+        }
+    }
+
+@router.delete(
+    "/{statement_id}/payments/{payment_id}",
+    summary="Eliminar un abono del statement",
+    description="Elimina un abono registrado. Solo permitido en períodos EN COBRO."
+)
+async def delete_statement_payment(
+    statement_id: int,
+    payment_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Elimina un abono de un statement.
+    
+    **Restricciones:**
+    - Solo se pueden eliminar abonos de statements en períodos EN COBRO (status 4)
+    - Se actualiza automáticamente el paid_amount del statement
+    
+    **Permissions:** admin, auxiliar_administrativo
+    """
+    from sqlalchemy import text
+    
+    # Verificar que el abono existe y obtener info
+    payment = db.execute(text("""
+        SELECT 
+            asp.id,
+            asp.statement_id,
+            asp.payment_amount,
+            aps.status_id AS statement_status,
+            cp.status_id AS period_status
+        FROM associate_statement_payments asp
+        JOIN associate_payment_statements aps ON aps.id = asp.statement_id
+        JOIN cut_periods cp ON cp.id = aps.cut_period_id
+        WHERE asp.id = :payment_id AND asp.statement_id = :statement_id
+    """), {"payment_id": payment_id, "statement_id": statement_id}).fetchone()
+    
+    if not payment:
+        raise HTTPException(
+            status_code=404, 
+            detail=f"Abono {payment_id} no encontrado en statement {statement_id}"
+        )
+    
+    # Solo permitir eliminar en períodos EN COBRO (4) o LIQUIDACIÓN (6)
+    if payment.period_status not in [4, 6]:  # COLLECTING or SETTLING
+        raise HTTPException(
+            status_code=400,
+            detail="Solo se pueden eliminar abonos de períodos EN COBRO o LIQUIDACIÓN"
+        )
+    
+    # Obtener el monto antes de eliminar
+    payment_amount = float(payment.payment_amount)
+    
+    # Eliminar el abono
+    db.execute(text("""
+        DELETE FROM associate_statement_payments
+        WHERE id = :payment_id
+    """), {"payment_id": payment_id})
+    
+    # Actualizar paid_amount del statement (restar el monto eliminado)
+    db.execute(text("""
+        UPDATE associate_payment_statements
+        SET 
+            paid_amount = GREATEST(0, COALESCE(paid_amount, 0) - :amount),
+            updated_at = NOW()
+        WHERE id = :statement_id
+    """), {"statement_id": statement_id, "amount": payment_amount})
+    
+    # Verificar si el statement debe cambiar de estado
+    # Si paid_amount = 0 y estaba en PARTIAL, volver a COLLECTING
+    db.execute(text("""
+        UPDATE associate_payment_statements
+        SET status_id = CASE
+            WHEN paid_amount = 0 AND status_id = 4 THEN 7  -- PARTIAL → COLLECTING
+            WHEN paid_amount > 0 AND paid_amount < total_to_credicuenta AND status_id = 3 THEN 4  -- PAID → PARTIAL
+            ELSE status_id
+        END
+        WHERE id = :statement_id
+    """), {"statement_id": statement_id})
+    
+    db.commit()
+    
+    # Obtener estado actualizado
+    updated = db.execute(text("""
+        SELECT paid_amount, total_to_credicuenta, status_id
+        FROM associate_payment_statements
+        WHERE id = :id
+    """), {"id": statement_id}).fetchone()
+    
+    return {
+        "success": True,
+        "message": f"Abono de ${payment_amount:.2f} eliminado correctamente",
+        "data": {
+            "deleted_payment_id": payment_id,
+            "deleted_amount": payment_amount,
+            "new_paid_amount": float(updated[0]) if updated[0] else 0.0,
+            "total_owed": float(updated[1]) if updated[1] else 0.0,
+            "new_status_id": updated[2]
         }
     }

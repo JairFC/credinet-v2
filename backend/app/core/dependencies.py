@@ -109,7 +109,7 @@ def require_admin(
     Raises:
         HTTPException: If user is not admin
     """
-    if "admin" not in roles and "desarrollador" not in roles:
+    if "admin" not in roles and "desarrollador" not in roles and "administrador" not in roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Requiere permisos de administrador",
@@ -133,7 +133,7 @@ def require_associate_or_admin(
     Raises:
         HTTPException: If user is not associate or admin
     """
-    allowed_roles = ["associate", "admin", "desarrollador"]
+    allowed_roles = ["asociado", "admin", "desarrollador", "administrador"]
     if not any(role in roles for role in allowed_roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -157,7 +157,7 @@ def require_role(required_role: str):
         Callable dependency that validates role
     """
     def _require_role(roles: List[str] = Depends(get_current_user_roles)) -> None:
-        if required_role not in roles and "admin" not in roles and "desarrollador" not in roles:
+        if required_role not in roles and "admin" not in roles and "desarrollador" not in roles and "administrador" not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Requiere rol: {required_role}",

@@ -14,7 +14,8 @@ export const simulatorService = {
    * @param {number} params.term_biweeks - Plazo en quincenas
    * @param {string} params.profile_code - Código del perfil de tasa
    * @param {string} params.approval_date - Fecha de aprobación (YYYY-MM-DD)
-   * @param {number} [params.custom_interest_rate] - Tasa personalizada (solo para custom)
+   * @param {number} [params.custom_interest_rate] - Tasa de interés personalizada (solo para profile_code='custom')
+   * @param {number} [params.custom_commission_rate] - Tasa de comisión personalizada (solo para profile_code='custom')
    * 
    * @returns {Promise<Object>} Objeto con summary y amortization_table
    */

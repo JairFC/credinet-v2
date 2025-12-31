@@ -20,18 +20,19 @@
 
   /* ============================================================
      CREDICUENTA BRAND COLORS - Based on Logo
-     Red/Burgundy + Black/Gray palette
+     Red/Burgundy/Guinda + Black/Gray palette
+     Ajustado a tonos guinda más elegantes
      ============================================================ */
 
-  /* Primary Brand Colors (Red/Burgundy from logo) */
-  --brand-primary: #C4252D;
-  /* Rojo intenso del logo */
-  --brand-primary-dark: #9B1C22;
-  /* Guinda/Burgundy oscuro */
-  --brand-primary-light: #E63946;
-  /* Rojo más claro */
-  --brand-accent: #DC2F3A;
-  /* Acento rojo medio */
+  /* Primary Brand Colors (Guinda/Burgundy - más elegante) */
+  --brand-primary: #A12830;
+  /* Guinda principal - menos brilloso */
+  --brand-primary-dark: #7B1E24;
+  /* Guinda oscuro profundo */
+  --brand-primary-light: #C43E47;
+  /* Guinda medio */
+  --brand-accent: #8B2129;
+  /* Acento guinda */
 
   /* Neutral Colors (Black/Gray from logo) */
   --brand-black: #1A1A1A;

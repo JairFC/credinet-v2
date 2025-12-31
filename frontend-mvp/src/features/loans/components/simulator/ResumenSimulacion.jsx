@@ -47,11 +47,13 @@ export default function ResumenSimulacion({ summary }) {
           </div>
           <div className="resumen-item">
             <span className="label">Tasa de interés:</span>
-            <span className="value highlight-rate">{summary.interest_rate_percent}%</span>
+            <span className="value highlight-rate">{summary.interest_rate_percent}% por quincena</span>
           </div>
           <div className="resumen-item">
             <span className="label">Comisión del asociado:</span>
-            <span className="value highlight-rate">{summary.commission_rate_percent}%</span>
+            <span className="value highlight-rate">
+              {summary.commission_rate_percent}% del monto ({formatCurrency(summary.loan_amount * summary.commission_rate_percent / 100)}/quincena)
+            </span>
           </div>
           <div className="resumen-item">
             <span className="label">Fecha de aprobación:</span>

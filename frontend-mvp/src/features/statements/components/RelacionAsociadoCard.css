@@ -1,0 +1,803 @@
+/**
+ * RelacionAsociadoCard.css - Estilos para tarjetas de estado de cuenta por asociado
+ * Diseño profesional con gradientes, animaciones y microinteracciones
+ */
+
+.asociado-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.asociado-card:hover {
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.asociado-card.expanded {
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.asociado-card.preview-mode {
+  border: 2px dashed #3B82F6;
+  background: linear-gradient(135deg, #F8FAFF 0%, #EFF6FF 100%);
+}
+
+/* Card Header */
+.asociado-card .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  gap: 1rem;
+  transition: background 0.2s ease;
+  background: white;
+}
+
+.asociado-card .card-header:hover {
+  background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%) !important;
+}
+
+/* Tarjeta Simplificada - Sin hover de fondo */
+.asociado-card.simple .card-header {
+  cursor: default;
+  background: white;
+}
+
+.asociado-card.simple .card-header:hover {
+  background: white !important;
+}
+
+/* Associate Info */
+.associate-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.associate-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+.avatar-initials {
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.associate-details {
+  min-width: 0;
+}
+
+.associate-name {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1F2937 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.associate-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: #6B7280 !important;
+}
+
+.associate-meta .code {
+  color: #9CA3AF !important;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
+.associate-meta .payment-count {
+  color: #6B7280 !important;
+}
+
+.payment-count {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Card Summary */
+.card-summary {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.summary-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+}
+
+.amount-label {
+  font-size: 0.75rem;
+  color: #9CA3AF !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.amount-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1F2937 !important;
+}
+
+.balance-amount.pending .amount-value {
+  color: #DC2626 !important;
+}
+
+.balance-amount.clear .amount-value {
+  color: #059669 !important;
+}
+
+.summary-amount.commission-amount .amount-value.success {
+  color: #059669 !important;
+}
+
+/* Status Badge */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.status-badge.generated {
+  background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%);
+  color: #6B7280;
+  border: 1px solid #D1D5DB;
+}
+
+.status-badge.sent {
+  background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+  color: #2563EB;
+  border: 1px solid #93C5FD;
+}
+
+.status-badge.paid {
+  background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+  color: #059669;
+  border: 1px solid #6EE7B7;
+}
+
+.status-badge.partial {
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  color: #D97706;
+  border: 1px solid #FCD34D;
+}
+
+.status-badge.overdue {
+  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+  color: #DC2626;
+  border: 1px solid #FCA5A5;
+}
+
+.status-badge.draft {
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  color: #B45309;
+  border: 1px solid #FCD34D;
+}
+
+.status-badge.collecting {
+  background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+  color: #2563EB;
+  border: 1px solid #93C5FD;
+}
+
+.status-badge.settling {
+  background: linear-gradient(135deg, #E9D5FF 0%, #DDD6FE 100%);
+  color: #7C3AED;
+  border: 1px solid #C4B5FD;
+}
+
+.status-badge.closed {
+  background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+  color: #059669;
+  border: 1px solid #6EE7B7;
+}
+
+.status-badge.absorbed {
+  background: linear-gradient(135deg, #E5E7EB 0%, #D1D5DB 100%);
+  color: #6B7280;
+  border: 1px solid #9CA3AF;
+}
+
+.status-icon {
+  font-size: 0.9rem;
+}
+
+/* Expand Toggle */
+.expand-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #F3F4F6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.expand-toggle:hover {
+  background: #E5E7EB;
+}
+
+.toggle-icon {
+  font-size: 0.8rem;
+  color: #6B7280;
+  transition: transform 0.3s ease;
+}
+
+.toggle-icon.rotated {
+  transform: rotate(180deg);
+}
+
+/* Progress Section */
+.progress-section {
+  padding: 0 1.5rem 0.75rem;
+}
+
+.progress-bar {
+  height: 6px;
+  background: #E5E7EB;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.6s ease;
+}
+
+.progress-fill.generated {
+  background: linear-gradient(90deg, #9CA3AF 0%, #6B7280 100%);
+}
+
+.progress-fill.sent {
+  background: linear-gradient(90deg, #3B82F6 0%, #2563EB 100%);
+}
+
+.progress-fill.collecting {
+  background: linear-gradient(90deg, #3B82F6 0%, #1D4ED8 100%);
+}
+
+.progress-fill.draft {
+  background: linear-gradient(90deg, #9CA3AF 0%, #6B7280 100%);
+}
+
+.progress-fill.paid {
+  background: linear-gradient(90deg, #10B981 0%, #059669 100%);
+}
+
+.progress-fill.partial {
+  background: linear-gradient(90deg, #F59E0B 0%, #D97706 100%);
+}
+
+.progress-fill.overdue {
+  background: linear-gradient(90deg, #EF4444 0%, #DC2626 100%);
+}
+
+.progress-fill.absorbed {
+  background: linear-gradient(90deg, #8B5CF6 0%, #7C3AED 100%);
+}
+
+.progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: #9CA3AF;
+}
+
+.progress-percent {
+  font-weight: 600;
+  color: #6B7280;
+}
+
+/* Card Body (Expandible) - SOLO para RelacionAsociadoCard */
+.relacion-asociado-card .card-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease, padding 0.4s ease;
+  padding: 0 1.5rem;
+  background: linear-gradient(180deg, #FAFAFA 0%, white 100%);
+}
+
+.relacion-asociado-card .card-body.show {
+  max-height: 800px;
+  padding: 1.5rem;
+  border-top: 1px solid #F3F4F6;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.metric-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #E5E7EB;
+  transition: all 0.2s ease;
+}
+
+.metric-item:hover {
+  border-color: #D1D5DB;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.metric-item.highlight {
+  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+  border-color: #A7F3D0;
+}
+
+.metric-item.warning {
+  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+  border-color: #FCD34D;
+}
+
+.metric-item.alert {
+  background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+  border-color: #FECACA;
+}
+
+.metric-item.success-bg {
+  background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+  border-color: #6EE7B7;
+}
+
+.metric-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.metric-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.metric-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.metric-value.success {
+  color: #059669;
+}
+
+.metric-value.info {
+  color: #2563EB;
+}
+
+.metric-value.danger {
+  color: #DC2626;
+}
+
+.metric-value.warning {
+  color: #D97706;
+}
+
+/* Card Actions */
+.card-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn-view {
+  background: linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%);
+  color: #4B5563;
+  border: 1px solid #D1D5DB;
+}
+
+.btn-view:hover {
+  background: linear-gradient(135deg, #E5E7EB 0%, #D1D5DB 100%);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-pay {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: white;
+}
+
+.btn-pay:hover {
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.btn-pdf {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  color: white;
+}
+
+.btn-pdf:hover {
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.btn-icon {
+  font-size: 1rem;
+}
+
+/* Preview Notice */
+.preview-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #1E40AF;
+  font-weight: 500;
+  flex: 1;
+}
+
+.preview-icon {
+  font-size: 1.25rem;
+}
+
+/* Payments List Section */
+.payments-list-section {
+  border-top: 1px solid #E5E7EB;
+  padding-top: 1.25rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+/* Mini Table */
+.payments-mini-table {
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  overflow: hidden;
+  background: white;
+}
+
+.mini-table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #F9FAFB;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.mini-table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid #F3F4F6;
+  transition: background 0.2s ease;
+}
+
+.mini-table-row:last-child {
+  border-bottom: none;
+}
+
+.mini-table-row:hover {
+  background: #F9FAFB;
+}
+
+.client-name {
+  color: #1F2937;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loan-ref {
+  color: #6B7280;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.8rem;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-right.success {
+  color: #059669;
+  font-weight: 600;
+}
+
+.more-payments {
+  padding: 0.75rem 1rem;
+  background: #F9FAFB;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #6B7280;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.more-payments.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.more-payments.clickable:hover {
+  background: #E5E7EB;
+  color: #9B2028;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.more-payments .view-all-icon {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.more-payments.clickable:hover .view-all-icon {
+  opacity: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .asociado-card .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .card-summary {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mini-table-header,
+  .mini-table-row {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+
+  .mini-table-header span:nth-child(4),
+  .mini-table-header span:nth-child(5),
+  .mini-table-row span:nth-child(4),
+  .mini-table-row span:nth-child(5) {
+    display: none;
+  }
+
+  .card-actions {
+    flex-direction: column;
+  }
+
+  .action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .associate-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .associate-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-summary {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .summary-amount {
+    min-width: 80px;
+  }
+}
+
+/* ================================
+   NO PAYMENTS CARD STYLES
+   ================================ */
+
+.asociado-card.no-payments {
+  background: linear-gradient(135deg, #FAFAFA 0%, #F5F5F5 100%);
+  border: 1px dashed #D4D4D4;
+  opacity: 0.8;
+}
+
+.asociado-card.no-payments:hover {
+  transform: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.asociado-card.no-payments .card-header {
+  cursor: default;
+  padding: 1rem 1.5rem;
+}
+
+.asociado-card.no-payments .card-header:hover {
+  background: transparent;
+}
+
+.asociado-card.no-payments .associate-avatar.inactive {
+  background: linear-gradient(135deg, #E5E5E5 0%, #D4D4D4 100%);
+  opacity: 0.7;
+}
+
+.no-payments-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #F5F5F5;
+  border: 1px solid #E5E5E5;
+  border-radius: 20px;
+  color: #737373;
+  font-size: 0.8rem;
+}
+
+.no-payments-badge .badge-icon {
+  font-size: 1rem;
+}
+
+.no-payments-badge .badge-text {
+  font-weight: 500;
+}
+
+/* Botón Ver Detalles - Diseño elegante tipo outline */
+.btn-view-details {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  background: white;
+  color: #4F46E5;
+  border: 2px solid #4F46E5;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.3px;
+}
+
+.btn-view-details:hover {
+  background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.35);
+  border-color: transparent;
+}
+
+.btn-view-details:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+/* Botón Abonar - Diseño destacado */
+.btn-make-payment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.9rem;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-make-payment:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.btn-make-payment:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Comisión destacada */
+.summary-amount.commission-amount .amount-value.success {
+  color: #059669;
+  font-weight: 700;
+}

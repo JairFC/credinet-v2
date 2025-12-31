@@ -71,6 +71,17 @@ const Navbar = () => {
                   </li>
                   <li>
                     <Link
+                      to="/prestamos/nuevo"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setLoansMenuOpen(false);
+                      }}
+                    >
+                      ➕ Nuevo Préstamo
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
                       to="/prestamos/simulador"
                       onClick={() => {
                         setMenuOpen(false);
@@ -84,11 +95,6 @@ const Navbar = () => {
               )}
             </li>
 
-            <li>
-              <Link to="/pagos" onClick={() => setMenuOpen(false)}>
-                💳 Pagos
-              </Link>
-            </li>
             <li>
               <Link to="/estados-cuenta" onClick={() => setMenuOpen(false)}>
                 📊 Estados de Cuenta

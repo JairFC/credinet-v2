@@ -1,0 +1,716 @@
+/**
+ * RegistrarAbonoModal.css - Estilos para el modal de registro de abonos
+ * Diseño profesional con buena UX
+ */
+
+/* Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  /* backdrop-filter eliminado por rendimiento */
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 1000;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal Container */
+.abono-modal {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.3s ease;
+  margin: auto 0;
+  flex-shrink: 0;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header */
+.abono-modal .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #E5E7EB;
+  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+  border-radius: 16px 16px 0 0;
+}
+
+.modal-header .header-info h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.modal-header .statement-ref {
+  font-size: 0.8rem;
+  color: #6B7280;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.modal-header .close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #F3F4F6;
+  color: #6B7280;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.modal-header .close-btn:hover {
+  background: #E5E7EB;
+  color: #374151;
+}
+
+/* Associate Info Banner */
+.associate-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: #EEF2FF;
+  border-bottom: 1px solid #E0E7FF;
+}
+
+.associate-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.associate-details h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1F2937;
+}
+
+.associate-details .period-info {
+  font-size: 0.85rem;
+  color: #6B7280;
+}
+
+/* Balance Summary */
+.balance-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: #F9FAFB;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.balance-item {
+  text-align: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #E5E7EB;
+}
+
+.balance-item.highlight {
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  border-color: #FCD34D;
+}
+
+.balance-label {
+  display: block;
+  font-size: 0.7rem;
+  color: #6B7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.25rem;
+}
+
+.balance-value {
+  display: block;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.balance-value.paid {
+  color: #059669;
+}
+
+.balance-value.pending {
+  color: #D97706;
+}
+
+/* Messages */
+.abono-modal .message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.message.error {
+  background: #FEE2E2;
+  color: #DC2626;
+  border: 1px solid #FCA5A5;
+}
+
+.message.success {
+  background: #D1FAE5;
+  color: #059669;
+  border: 1px solid #6EE7B7;
+}
+
+.message .icon {
+  font-size: 1rem;
+}
+
+/* Form */
+.abono-form {
+  padding: 1.25rem 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.form-group label .required {
+  color: #DC2626;
+  margin-left: 0.25rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 10px;
+  font-size: 1rem;
+  color: #1F2937;
+  background: white;
+  transition: all 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.form-group input:disabled,
+.form-group textarea:disabled {
+  background: #F3F4F6;
+  cursor: not-allowed;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* Input with Prefix */
+.input-with-prefix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-prefix .prefix {
+  position: absolute;
+  left: 1rem;
+  color: #6B7280;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.input-with-prefix input {
+  padding-left: 2rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Pay Full Button */
+.btn-pay-full {
+  background: none;
+  border: none;
+  color: #4F46E5;
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.btn-pay-full:hover {
+  color: #3730A3;
+}
+
+/* Payment Methods Grid */
+.payment-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.5rem;
+}
+
+.method-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem 0.5rem;
+  border: 2px solid #E5E7EB;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.method-btn:hover {
+  border-color: #A5B4FC;
+  background: #F5F3FF;
+}
+
+.method-btn.selected {
+  border-color: #6366F1;
+  background: #EEF2FF;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.method-btn .method-icon {
+  font-size: 1.25rem;
+}
+
+.method-btn .method-name {
+  font-size: 0.7rem;
+  color: #374151;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.method-btn.selected .method-name {
+  color: #4F46E5;
+  font-weight: 600;
+}
+
+.loading-methods {
+  text-align: center;
+  padding: 1rem;
+  color: #6B7280;
+  font-size: 0.875rem;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.btn-cancel,
+.btn-submit {
+  flex: 1;
+  padding: 0.875rem 1.5rem;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-cancel {
+  background: #F3F4F6;
+  border: 1px solid #D1D5DB;
+  color: #4B5563;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #E5E7EB;
+}
+
+.btn-submit {
+  background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-submit:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-submit .spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Footer Info */
+.modal-footer-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: #F3F4F6;
+  border-radius: 0 0 16px 16px;
+  border-top: 1px solid #E5E7EB;
+}
+
+.modal-footer-info .info-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.modal-footer-info .info-text {
+  font-size: 0.75rem;
+  color: #6B7280;
+  line-height: 1.4;
+}
+
+/* ===========================================
+   CONFIRMATION OVERLAY
+   =========================================== */
+.confirmation-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  z-index: 10;
+  padding: 1.5rem;
+}
+
+.confirmation-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 400px;
+  border: 2px solid #F59E0B;
+}
+
+.confirmation-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  border-radius: 10px 10px 0 0;
+  border-bottom: 1px solid #F59E0B;
+}
+
+.confirmation-header .confirmation-icon {
+  font-size: 1.5rem;
+}
+
+.confirmation-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #92400E;
+}
+
+.confirmation-body {
+  padding: 1.25rem;
+}
+
+.confirmation-warning {
+  text-align: center;
+  font-weight: 600;
+  color: #1F2937;
+  margin: 0 0 1rem 0;
+}
+
+.confirmation-details {
+  background: #F9FAFB;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-size: 0.85rem;
+  color: #6B7280;
+}
+
+.detail-value {
+  font-weight: 600;
+  color: #1F2937;
+}
+
+.detail-value.amount {
+  color: #059669;
+  font-size: 1.1rem;
+}
+
+.confirmation-note {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #DC2626;
+  margin: 0;
+  font-weight: 500;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #E5E7EB;
+  background: #F9FAFB;
+  border-radius: 0 0 10px 10px;
+}
+
+.confirmation-actions button {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirmation-actions .btn-cancel {
+  background: white;
+  border: 1px solid #D1D5DB;
+  color: #4B5563;
+}
+
+.confirmation-actions .btn-cancel:hover:not(:disabled) {
+  background: #F3F4F6;
+}
+
+.confirmation-actions .btn-confirm {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  border: none;
+  color: white;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.confirmation-actions .btn-confirm:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.confirmation-actions .btn-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .modal-overlay {
+    padding: 0.5rem;
+    align-items: flex-start;
+    padding-top: 1rem;
+  }
+
+  .abono-modal {
+    max-height: calc(100vh - 2rem);
+    border-radius: 12px;
+    max-width: 100%;
+  }
+
+  .modal-header .header-info h2 {
+    font-size: 1.1rem;
+  }
+
+  .balance-summary {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .balance-item.highlight {
+    grid-column: span 2;
+  }
+
+  .payment-methods-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+
+  .method-btn {
+    padding: 0.5rem;
+  }
+
+  .method-name {
+    font-size: 0.7rem;
+  }
+
+  .abono-form {
+    padding: 1rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+}
+
+/* Para cuando el viewport es muy pequeño (mucho zoom) */
+@media (max-height: 500px) {
+  .modal-overlay {
+    align-items: flex-start;
+    padding: 0.5rem;
+  }
+
+  .abono-modal {
+    max-height: calc(100vh - 1rem);
+    border-radius: 8px;
+  }
+
+  .associate-info-banner {
+    padding: 0.75rem 1rem;
+  }
+
+  .associate-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 0.8rem;
+  }
+
+  .balance-summary {
+    padding: 0.5rem 1rem;
+    gap: 0.5rem;
+  }
+
+  .balance-item {
+    padding: 0.5rem;
+  }
+
+  .balance-value {
+    font-size: 1rem;
+  }
+
+  .abono-form {
+    padding: 0.75rem 1rem;
+  }
+
+  .form-group {
+    margin-bottom: 0.75rem;
+  }
+
+  .payment-methods-grid {
+    gap: 0.5rem;
+  }
+
+  .method-btn {
+    padding: 0.4rem;
+  }
+
+  .modal-footer-info {
+    padding: 0.75rem 1rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .balance-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .balance-item.highlight {
+    grid-column: span 1;
+  }
+
+  .payment-methods-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

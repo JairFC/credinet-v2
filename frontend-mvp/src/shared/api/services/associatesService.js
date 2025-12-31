@@ -39,6 +39,13 @@ export const associatesService = {
   },
 
   /**
+   * Obtiene historial de deudas por periodo (Phase 6)
+   */
+  getDebtHistory: (associateId) => {
+    return apiClient.get(ENDPOINTS.associates.debtHistory(associateId));
+  },
+
+  /**
    * Obtiene todos los pagos de un asociado (Phase 6)
    */
   getAllPayments: (associateId, params = {}) => {
@@ -49,6 +56,12 @@ export const associatesService = {
 
   /**
    * Registra un abono de deuda (Phase 6)
+   * @param {number} associateId - ID del perfil del asociado
+   * @param {Object} data - Datos del pago
+   * @param {number} data.payment_amount - Monto del abono
+   * @param {number} data.payment_method_id - ID del método de pago
+   * @param {string} [data.payment_reference] - Referencia del pago
+   * @param {string} [data.notes] - Notas adicionales
    */
   registerDebtPayment: (associateId, data) => {
     return apiClient.post(ENDPOINTS.associates.debtPayments(associateId), data);

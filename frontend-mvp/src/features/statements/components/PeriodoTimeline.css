@@ -1,0 +1,473 @@
+/**
+ * PeriodoTimeline.css - Estilos profesionales para línea de tiempo de períodos
+ * Inspirado en NU Bank con diseño moderno y animaciones suaves
+ */
+
+.periodo-timeline-container {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Efecto de brillo sutil */
+.periodo-timeline-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent);
+}
+
+/* Loading State */
+.timeline-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+}
+
+.timeline-skeleton {
+  width: 60%;
+  height: 60px;
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0.05) 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0.05) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 12px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Empty State */
+.timeline-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.timeline-empty .empty-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Navigator Principal */
+.timeline-navigator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* Flechas de Navegación */
+.nav-arrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 140px;
+  backdrop-filter: blur(10px);
+}
+
+.nav-arrow:hover:not(.disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateX(-4px);
+}
+
+.nav-arrow.nav-next:hover:not(.disabled) {
+  transform: translateX(4px);
+}
+
+.nav-arrow.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  min-width: 60px;
+}
+
+.arrow-icon {
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.nav-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.nav-prev {
+  justify-content: flex-start;
+}
+
+.nav-next {
+  justify-content: flex-end;
+}
+
+/* Centro - Período Activo */
+.timeline-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 500px;
+}
+
+.center-period {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  backdrop-filter: blur(10px);
+  width: 100%;
+  justify-content: space-between;
+}
+
+.period-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+.status-dot.status-pending {
+  background: #9CA3AF;
+  box-shadow: 0 0 10px rgba(156, 163, 175, 0.5);
+}
+
+.status-dot.status-active {
+  background: #10B981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.status-dot.status-cutoff {
+  background: #F59E0B;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+}
+
+.status-dot.status-collecting {
+  background: #3B82F6;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.status-dot.status-settling {
+  background: #8B5CF6;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
+}
+
+.status-dot.status-closed {
+  background: #6366F1;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+}
+
+.period-main-info {
+  flex: 1;
+  text-align: center;
+}
+
+.period-number {
+  display: block;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.25rem;
+}
+
+.period-code {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  margin: 0 0 0.25rem 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.period-dates-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.date-range {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Status Chip */
+.period-status-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.period-status-chip.status-pending {
+  background: rgba(156, 163, 175, 0.2);
+  color: #D1D5DB;
+  border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.period-status-chip.status-active {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6EE7B7;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.period-status-chip.status-cutoff {
+  background: rgba(245, 158, 11, 0.2);
+  color: #FCD34D;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.period-status-chip.status-collecting {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93C5FD;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.period-status-chip.status-settling {
+  background: rgba(139, 92, 246, 0.2);
+  color: #C4B5FD;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.period-status-chip.status-closed {
+  background: rgba(99, 102, 241, 0.2);
+  color: #A5B4FC;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.status-icon {
+  font-size: 0.9rem;
+}
+
+/* Progress Timeline */
+.timeline-progress {
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.progress-line {
+  position: relative;
+  padding: 0.5rem 0;
+}
+
+.progress-line::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-50%);
+}
+
+.progress-nodes {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.progress-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: all 0.3s ease;
+}
+
+.progress-node:hover {
+  transform: scale(1.1);
+}
+
+.progress-node .node-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.progress-node.active .node-dot {
+  width: 14px;
+  height: 14px;
+  background: white;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+.progress-node.past .node-dot {
+  background: rgba(99, 102, 241, 0.6);
+}
+
+.node-dot.status-active {
+  background: #10B981 !important;
+}
+
+.node-dot.status-closed {
+  background: #6366F1 !important;
+}
+
+.progress-node .node-label {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.progress-node.active .node-label {
+  color: white;
+  font-weight: 600;
+}
+
+/* Quick Stats */
+.timeline-quick-stats {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quick-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+}
+
+.stat-icon {
+  font-size: 1rem;
+}
+
+.stat-text {
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .timeline-navigator {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .nav-arrow {
+    width: 100%;
+    justify-content: center;
+    min-width: unset;
+  }
+
+  .nav-prev {
+    order: 2;
+  }
+
+  .nav-next {
+    order: 3;
+  }
+
+  .timeline-center {
+    order: 1;
+    max-width: 100%;
+  }
+
+  .center-period {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+
+  .period-indicator {
+    display: none;
+  }
+
+  .timeline-quick-stats {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .periodo-timeline-container {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .period-code {
+    font-size: 1.25rem;
+  }
+
+  .progress-nodes {
+    gap: 0.75rem;
+  }
+
+  .progress-node .node-label {
+    display: none;
+  }
+}

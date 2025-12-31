@@ -73,8 +73,8 @@ export const isValidPhone = (phone) => {
 };
 
 /**
- * Genera CURP (simplificado)
- * Basado en el generador existente
+ * Genera CURP con dígito verificador aproximado
+ * Nota: La homoclave real la asigna RENAPO, este es un cálculo aproximado
  */
 export const generateCurp = ({
   firstName,
@@ -91,7 +91,8 @@ export const generateCurp = ({
   const vocales = 'AEIOU';
   const consonantes = 'BCDFGHJKLMNPQRSTVWXYZ';
 
-  const estados = {
+  // Mapeo de nombre de estado a código CURP
+  const estadosPorNombre = {
     'AGUASCALIENTES': 'AS', 'BAJA CALIFORNIA': 'BC', 'BAJA CALIFORNIA SUR': 'BS',
     'CAMPECHE': 'CC', 'COAHUILA': 'CL', 'COLIMA': 'CM', 'CHIAPAS': 'CS',
     'CHIHUAHUA': 'CH', 'CIUDAD DE MEXICO': 'DF', 'DURANGO': 'DG',
@@ -102,6 +103,14 @@ export const generateCurp = ({
     'SONORA': 'SR', 'TABASCO': 'TC', 'TAMAULIPAS': 'TS', 'TLAXCALA': 'TL',
     'VERACRUZ': 'VZ', 'YUCATAN': 'YN', 'ZACATECAS': 'ZS'
   };
+
+  // Códigos válidos de estado (para cuando el valor ya viene como código)
+  const codigosValidos = ['AS', 'BC', 'BS', 'CC', 'CL', 'CM', 'CS', 'CH', 'DF', 'DG',
+    'GT', 'GR', 'HG', 'JC', 'MC', 'MN', 'MS', 'NT', 'NL', 'OC', 'PL', 'QT', 'QR',
+    'SP', 'SL', 'SR', 'TC', 'TS', 'TL', 'VZ', 'YN', 'ZS', 'NE'];
+
+  // Tabla para cálculo del dígito verificador
+  const tablaValores = '0123456789ABCDEFGHIJKLMN&OPQRSTUVWXYZ';
 
   const getPrimeraVocalInterna = (str) => {
     for (let i = 1; i < str.length; i++) {
@@ -121,27 +130,67 @@ export const generateCurp = ({
     return 'X';
   };
 
-  const sanitizedNombre = firstName.toUpperCase().trim();
-  const sanitizedAP = paternalLastName.toUpperCase().trim();
-  const sanitizedAM = (maternalLastName || '').toUpperCase().trim();
+  // Limpiar y normalizar nombres (quitar acentos)
+  const normalizarTexto = (str) => {
+    return str
+      .toUpperCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/Ñ/g, 'X'); // Ñ se maneja especialmente
+  };
+
+  // Obtener código de estado (puede venir como código o como nombre)
+  const getCodigoEstado = (estado) => {
+    const estadoUpper = estado.toUpperCase().trim();
+    // Si ya es un código válido, usarlo directamente
+    if (codigosValidos.includes(estadoUpper)) {
+      return estadoUpper;
+    }
+    // Si no, buscar por nombre
+    return estadosPorNombre[estadoUpper] || 'NE';
+  };
+
+  const sanitizedNombre = normalizarTexto(firstName);
+  const sanitizedAP = normalizarTexto(paternalLastName);
+  const sanitizedAM = normalizarTexto(maternalLastName || '');
 
   const fecha = new Date(birthDate + 'T00:00:00');
   const anio = fecha.getFullYear().toString().slice(-2);
   const mes = ('0' + (fecha.getMonth() + 1)).slice(-2);
   const dia = ('0' + fecha.getDate()).slice(-2);
 
-  let curp = '';
-  curp += sanitizedAP.charAt(0);
-  curp += getPrimeraVocalInterna(sanitizedAP);
-  curp += (sanitizedAM ? sanitizedAM.charAt(0) : 'X');
-  curp += sanitizedNombre.charAt(0);
-  curp += anio + mes + dia;
-  curp += (gender === 'H' || gender === 'HOMBRE' ? 'H' : 'M');
-  curp += estados[birthState.toUpperCase()] || 'NE';
-  curp += getPrimeraConsonanteInterna(sanitizedAP);
-  curp += getPrimeraConsonanteInterna(sanitizedAM);
-  curp += getPrimeraConsonanteInterna(sanitizedNombre);
-  curp += '00';
+  // Construir los primeros 16 caracteres
+  let curp16 = '';
+  curp16 += sanitizedAP.charAt(0);
+  curp16 += getPrimeraVocalInterna(sanitizedAP);
+  curp16 += (sanitizedAM ? sanitizedAM.charAt(0) : 'X');
+  curp16 += sanitizedNombre.charAt(0);
+  curp16 += anio + mes + dia;
+  // H = Hombre, M = Mujer (estándar CURP)
+  const genderUpper = gender.toUpperCase();
+  const curpGender = (genderUpper === 'H' || genderUpper === 'HOMBRE' || genderUpper === 'MASCULINO') ? 'H' : 'M';
+  curp16 += curpGender;
+  curp16 += getCodigoEstado(birthState);
+  curp16 += getPrimeraConsonanteInterna(sanitizedAP);
+  curp16 += getPrimeraConsonanteInterna(sanitizedAM || 'X');
+  curp16 += getPrimeraConsonanteInterna(sanitizedNombre);
 
-  return curp.slice(0, 18);
+  // Homoclave: Para nacidos antes del 2000 usa 0-9, después del 2000 usa A-Z
+  // El primer dígito de homoclave lo asigna RENAPO, usamos '0' como default
+  const yearFull = fecha.getFullYear();
+  const homoclaveChar = yearFull < 2000 ? '0' : 'A';
+
+  // Calcular dígito verificador usando el algoritmo oficial
+  const curp17 = curp16 + homoclaveChar;
+  let suma = 0;
+  for (let i = 0; i < 17; i++) {
+    const char = curp17.charAt(i);
+    const valor = tablaValores.indexOf(char);
+    suma += valor * (18 - i);
+  }
+  const residuo = suma % 10;
+  const digitoVerificador = residuo === 0 ? 0 : (10 - residuo);
+
+  return curp16 + homoclaveChar + digitoVerificador;
 };
