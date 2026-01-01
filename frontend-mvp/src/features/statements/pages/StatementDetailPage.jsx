@@ -58,7 +58,15 @@ const PAYMENT_STATUS = {
   'partial': { label: 'Parcial', class: 'partial', icon: '⚡' },
   'PARTIAL': { label: 'Parcial', class: 'partial', icon: '⚡' },
   'overdue': { label: 'Vencido', class: 'overdue', icon: '⚠️' },
-  'OVERDUE': { label: 'Vencido', class: 'overdue', icon: '⚠️' }
+  'OVERDUE': { label: 'Vencido', class: 'overdue', icon: '⚠️' },
+  'paid_by_associate': { label: 'Absorbido', class: 'absorbed', icon: '🔄' },
+  'PAID_BY_ASSOCIATE': { label: 'Absorbido', class: 'absorbed', icon: '🔄' },
+  'paid_not_reported': { label: 'No Reportado', class: 'not-reported', icon: '📋' },
+  'PAID_NOT_REPORTED': { label: 'No Reportado', class: 'not-reported', icon: '📋' },
+  'forgiven': { label: 'Perdonado', class: 'forgiven', icon: '💝' },
+  'FORGIVEN': { label: 'Perdonado', class: 'forgiven', icon: '💝' },
+  'cancelled': { label: 'Cancelado', class: 'cancelled', icon: '❌' },
+  'CANCELLED': { label: 'Cancelado', class: 'cancelled', icon: '❌' }
 };
 
 // Estados de statement

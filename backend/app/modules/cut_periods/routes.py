@@ -1102,6 +1102,35 @@ async def _transfer_pending_debts(db: AsyncSession, period_id: int) -> int:
                     }
                 )
             
+            # ⭐ Marcar los pagos de clientes como PAID_BY_ASSOCIATE
+            # Estos son los pagos que el asociado absorbió al no reportarlos
+            # El cliente ya no debe pagar a CrediCuenta, pero puede que aún deba al asociado
+            client_payments_result = await db.execute(
+                text("""
+                UPDATE payments p
+                SET status_id = 9,  -- PAID_BY_ASSOCIATE
+                    marking_notes = CONCAT(
+                        COALESCE(marking_notes, ''),
+                        CASE WHEN marking_notes IS NOT NULL THEN ' | ' ELSE '' END,
+                        'Absorbido por asociado al cierre del período ', :period_code
+                    ),
+                    updated_at = NOW()
+                FROM loans l
+                WHERE p.loan_id = l.id
+                  AND l.associate_user_id = :associate_user_id
+                  AND p.cut_period_id = :period_id
+                  AND p.status_id = 1  -- Solo los PENDING
+                RETURNING p.id
+                """),
+                {
+                    "associate_user_id": stmt.user_id,
+                    "period_id": period_id,
+                    "period_code": period_code
+                }
+            )
+            marked_payments = client_payments_result.fetchall()
+            print(f"   📌 {len(marked_payments)} pagos de clientes marcados como PAID_BY_ASSOCIATE")
+            
             debts_created += 1
             print(f"💰 Deuda transferida: {stmt.associate_name} - ${float(pending_amount):.2f} ({stmt.statement_number})")
     

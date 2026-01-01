@@ -380,6 +380,26 @@
   color: #DC2626;
 }
 
+.status-pill.absorbed {
+  background: #EDE9FE;
+  color: #7C3AED;
+}
+
+.status-pill.not-reported {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.status-pill.forgiven {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.status-pill.cancelled {
+  background: #E5E7EB;
+  color: #4B5563;
+}
+
 .status-icon {
   font-size: 0.8rem;
 }
