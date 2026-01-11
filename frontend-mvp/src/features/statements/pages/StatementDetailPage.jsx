@@ -320,9 +320,11 @@ export default function StatementDetailPage() {
   // Total abonado a CrediCuenta (desde el backend o calculado)
   const realPaidAmount = statement?.paid_amount || statement?.total_paid || 0;
 
-  // Saldo pendiente = Lo que debe a CrediCuenta - Lo que ha abonado
+  // Saldo pendiente = Lo que debe a CrediCuenta (calculado en tiempo real) - Lo que ha abonado
+  // IMPORTANTE: Usar totals.toCredicuenta (calculado de payments reales) en lugar de 
+  // statement.total_to_credicuenta que puede estar desactualizado
   const pendingBalance = statement
-    ? (statement.total_to_credicuenta || totals.toCredicuenta || 0) + (statement.late_fee || 0) - realPaidAmount
+    ? (totals.toCredicuenta || 0) + (statement.late_fee || 0) - realPaidAmount
     : 0;
 
   if (loading) {
