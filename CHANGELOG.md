@@ -4,6 +4,43 @@ Registro de cambios significativos del proyecto.
 
 ---
 
+## [2.0.7] - 2026-01-11
+
+### 🔧 Corrección Crítica de Lógica de Asignación de Períodos
+
+**Problema:** La lógica de asignación de períodos estaba "movida" - asignaba al período siguiente en lugar del correcto.
+
+**Análisis Forense:**
+Comparación entre préstamo 84 (correcto) y préstamo 93 (incorrecto):
+
+| Préstamo | payment_due_date | Período Asignado | period_end_date | days_after_cut |
+|----------|-----------------|------------------|-----------------|----------------|
+| 84 ✅ | 2025-12-15 | Dec08-2025 | 2025-12-07 | +8 |
+| 84 ✅ | 2025-12-31 | Dec23-2025 | 2025-12-22 | +9 |
+| 93 ❌ | 2026-01-31 | Feb08-2026 | 2026-02-07 | -7 |
+| 93 ❌ | 2026-02-15 | Feb23-2026 | 2026-02-22 | -7 |
+
+**Causa Raíz:**
+- La lógica anterior buscaba el período donde la fecha **cae dentro** del rango
+- La lógica correcta busca el período cuyo `period_end_date` sea **INMEDIATAMENTE ANTERIOR** a la fecha de pago
+
+**Lógica Correcta:**
+```sql
+SELECT id INTO v_period_id FROM cut_periods
+WHERE period_end_date < v_amortization_row.fecha_pago
+ORDER BY period_end_date DESC LIMIT 1;
+```
+
+**Cambios:**
+- ✅ **Corregida:** Función `generate_payment_schedule()` con lógica correcta
+- ✅ **Reasignados:** 109 pagos de préstamos afectados (93, 94, 97, 98, 99, 100, 101 + 23, 39)
+- ✅ **Verificación:** Todos los 1038 pagos de 73 préstamos ahora tienen días positivos (+6 a +9)
+
+**Archivos:**
+- `db/v2.0/migrations/migration_029_fix_period_assignment_logic.sql`
+
+---
+
 ## [2.0.6] - 2026-01-11
 
 ### 🔧 Correcciones Críticas
