@@ -26,10 +26,12 @@ const formatMoney = (amount) => {
   }).format(amount);
 };
 
-// Formatea fecha
+// Formatea fecha (evita problemas de timezone parseando como fecha local)
 const formatDate = (dateStr) => {
   if (!dateStr) return '-';
-  const date = new Date(dateStr);
+  // Si es formato ISO sin hora (YYYY-MM-DD), agregar T12:00:00 para evitar timezone issues
+  const normalizedDate = dateStr.length === 10 ? `${dateStr}T12:00:00` : dateStr;
+  const date = new Date(normalizedDate);
   return date.toLocaleDateString('es-MX', {
     day: '2-digit',
     month: 'short',
