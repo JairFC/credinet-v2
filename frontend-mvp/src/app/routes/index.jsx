@@ -19,6 +19,9 @@ import ClientDetailPage from "../../features/users/clients/pages/ClientDetailPag
 import AssociatesManagementPage from "../../features/users/associates/pages/AssociatesManagementPage";
 import AssociateCreatePage from "../../features/users/associates/pages/AssociateCreatePage";
 
+// Agreements Module (Convenios y Reportes de Morosos)
+import { AgreementsPage, DefaultedReportsPage, CreateDefaultedReportPage, CreateAgreementPage, AgreementDetailPage, NuevoConvenioPage } from "../../features/agreements";
+
 import MainLayout from '@/shared/components/layout/MainLayout';
 
 const AppRoutes = () => {
@@ -182,6 +185,68 @@ const AppRoutes = () => {
             <AdminRoute>
               <MainLayout>
                 <AssociateCreatePage />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* ====== AGREEMENTS MODULE (Convenios y Morosos) ====== */}
+        
+        {/* Lista de convenios */}
+        <Route
+          path="/convenios"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <AgreementsPage />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Lista de reportes de morosos */}
+        <Route
+          path="/convenios/reportes"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <DefaultedReportsPage />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Crear nuevo reporte de moroso */}
+        <Route
+          path="/convenios/nuevo-reporte"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <CreateDefaultedReportPage />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Crear nuevo convenio (desde préstamos activos) */}
+        <Route
+          path="/convenios/nuevo"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <NuevoConvenioPage />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Detalle de convenio */}
+        <Route
+          path="/convenios/:agreementId"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <AgreementDetailPage />
               </MainLayout>
             </AdminRoute>
           }

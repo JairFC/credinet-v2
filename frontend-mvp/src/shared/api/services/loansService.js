@@ -89,6 +89,26 @@ export const loansService = {
   getAmortization: (id) => {
     return apiClient.get(ENDPOINTS.loans.amortization(id));
   },
+
+  // ========== RENOVACIÓN DE PRÉSTAMOS ==========
+
+  /**
+   * Get client's active loans for renewal consideration
+   * @param {number} clientUserId - Client user ID
+   * @returns {Promise} Response with active loans info
+   */
+  getClientActiveLoans: (clientUserId) => {
+    return apiClient.get(ENDPOINTS.loans.clientActiveLoans(clientUserId));
+  },
+
+  /**
+   * Create a renewal loan (liquidates previous loan)
+   * @param {Object} renewalData - Renewal data including original_loan_id
+   * @returns {Promise} Response with new loan
+   */
+  renew: (renewalData) => {
+    return apiClient.post(ENDPOINTS.loans.renew, renewalData);
+  },
 };
 
 export default loansService;

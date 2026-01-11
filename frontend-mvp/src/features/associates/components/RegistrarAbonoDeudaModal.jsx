@@ -1,10 +1,12 @@
 /**
- * RegistrarAbonoDeudaModal - Modal para registrar abonos a deuda acumulada
+ * RegistrarAbonoDeudaModal - Modal para registrar abonos del ASOCIADO a su deuda
+ * 
+ * ⚠️ IMPORTANTE: Este es el ASOCIADO pagando a CrediCuenta, NO un cliente.
  * 
  * Usa el sistema FIFO v2:
  * - Aplica abonos desde associate_accumulated_balances
  * - Liquida deudas más antiguas primero
- * - Actualiza debt_balance y libera crédito
+ * - Actualiza consolidated_debt y libera crédito (available_credit)
  */
 
 import React, { useState, useEffect } from 'react';

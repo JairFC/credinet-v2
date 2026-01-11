@@ -40,8 +40,8 @@ class AssociateRepository(ABC):
     async def update_credit(
         self,
         associate_id: int,
-        credit_used: Decimal,
-        credit_available: Decimal
+        pending_payments_total: Decimal,
+        available_credit: Decimal
     ) -> Associate:
         """Actualiza el crédito usado y disponible"""
         pass

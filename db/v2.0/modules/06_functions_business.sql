@@ -330,6 +330,7 @@ BEGIN
     
     -- PASO 5: Acumular deuda en associate_debt_breakdown
     -- Por cada pago PAID_NOT_REPORTED, crear registro de deuda
+    -- ⚠️ CRÍTICO: Debe ser expected_amount, NO amount_paid (que es 0)
     INSERT INTO associate_debt_breakdown (
         associate_profile_id,
         cut_period_id,
@@ -346,7 +347,7 @@ BEGIN
         'UNREPORTED_PAYMENT',
         l.id,
         l.user_id,
-        p.amount_paid,
+        p.expected_amount,  -- ✅ CORRECCIÓN: expected_amount (lo que debía pagar), no amount_paid (0)
         'Pago no reportado al cierre del período',
         false
     FROM payments p

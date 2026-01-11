@@ -214,7 +214,7 @@ const ModalRegistrarAbono = ({
               marginBottom: '16px',
               fontSize: '14px'
             }}>
-              <div><strong>Deuda Total:</strong> ${debtSummary.current_debt_balance?.toFixed(2) || '0.00'}</div>
+              <div><strong>Deuda Consolidada:</strong> ${debtSummary.current_consolidated_debt?.toFixed(2) || debtSummary.current_debt_balance?.toFixed(2) || '0.00'}</div>
               <div><strong>Items Pendientes:</strong> {debtSummary.pending_debt_items || 0}</div>
               <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.8 }}>
                 ℹ️ Se aplicará FIFO (más antiguos primero)

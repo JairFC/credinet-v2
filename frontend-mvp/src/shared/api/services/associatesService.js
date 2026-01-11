@@ -8,6 +8,18 @@ import { ENDPOINTS } from '../endpoints';
 
 export const associatesService = {
   /**
+   * Busca asociados por nombre, email o username
+   * @param {string} q - Término de búsqueda (mínimo 2 caracteres)
+   * @param {number} minCredit - Crédito disponible mínimo (default 0)
+   * @param {number} limit - Máximo resultados (default 10)
+   */
+  searchAvailable: async (q, minCredit = 0, limit = 10) => {
+    return apiClient.get(ENDPOINTS.associates.searchAvailable, {
+      params: { q, min_credit: minCredit, limit }
+    });
+  },
+
+  /**
    * Obtiene lista paginada de asociados
    */
   getAll: async (params = {}) => {

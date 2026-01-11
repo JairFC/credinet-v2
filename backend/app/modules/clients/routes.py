@@ -146,7 +146,7 @@ async def search_eligible_clients(
                 # Contar préstamos activos
                 func.count(
                     case(
-                        (LoanModel.status_id.in_([2, 3, 4]), LoanModel.id),  # APPROVED, ACTIVE o IN_COLLECTION
+                        (LoanModel.status_id.in_([2, 4]), LoanModel.id),  # ACTIVE o COMPLETED
                         else_=None
                     )
                 ).label('active_loans'),

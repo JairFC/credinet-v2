@@ -34,7 +34,7 @@ class PgDebtPaymentRepository:
         
         El trigger `trigger_apply_debt_payment_fifo` se ejecuta automáticamente:
         1. Aplica FIFO para liquidar items de deuda (oldest first)
-        2. Actualiza debt_balance en associate_profiles
+        2. Actualiza consolidated_debt en associate_profiles
         3. Llena applied_breakdown_items con el detalle
         
         Args:
@@ -99,7 +99,7 @@ class PgDebtPaymentRepository:
             SELECT 
                 associate_profile_id,
                 associate_name,
-                current_debt_balance,
+                current_consolidated_debt,
                 pending_debt_items,
                 liquidated_debt_items,
                 total_pending_debt,
@@ -107,7 +107,7 @@ class PgDebtPaymentRepository:
                 oldest_debt_date,
                 last_payment_date,
                 total_debt_payments_count,
-                credit_available,
+                available_credit,
                 credit_limit
             FROM v_associate_debt_summary
             WHERE associate_profile_id = :associate_id
@@ -119,14 +119,14 @@ class PgDebtPaymentRepository:
         return {
             "associate_profile_id": result[0],
             "associate_name": result[1],
-            "current_debt_balance": float(result[2]) if result[2] else 0.0,
+            "current_consolidated_debt": float(result[2]) if result[2] else 0.0,
             "pending_debt_items": result[3] or 0,
             "liquidated_debt_items": result[4] or 0,
             "total_paid_to_debt": float(result[6]) if result[6] else 0.0,
             "oldest_debt_date": result[7],
             "last_payment_date": result[8],
             "total_payments_count": result[9] or 0,
-            "credit_available": float(result[10]) if result[10] else 0.0,
+            "available_credit": float(result[10]) if result[10] else 0.0,
             "credit_limit": float(result[11]) if result[11] else 0.0
         }
     

@@ -1102,6 +1102,22 @@ async def _transfer_pending_debts(db: AsyncSession, period_id: int) -> int:
                     }
                 )
             
+            # ⭐ IMPORTANTE: Actualizar consolidated_debt del associate_profile
+            # La deuda del statement no pagado se suma al consolidated_debt
+            await db.execute(
+                text("""
+                UPDATE associate_profiles
+                SET consolidated_debt = COALESCE(consolidated_debt, 0) + :amount,
+                    updated_at = NOW()
+                WHERE user_id = :user_id
+                """),
+                {
+                    "user_id": stmt.user_id,
+                    "amount": float(pending_amount)
+                }
+            )
+            print(f"   📊 consolidated_debt actualizado: +${float(pending_amount):.2f}")
+            
             # ⭐ Marcar los pagos de clientes como PAID_BY_ASSOCIATE
             # Estos son los pagos que el asociado absorbió al no reportarlos
             # El cliente ya no debe pagar a CrediCuenta, pero puede que aún deba al asociado
@@ -1112,7 +1128,8 @@ async def _transfer_pending_debts(db: AsyncSession, period_id: int) -> int:
                     marking_notes = CONCAT(
                         COALESCE(marking_notes, ''),
                         CASE WHEN marking_notes IS NOT NULL THEN ' | ' ELSE '' END,
-                        'Absorbido por asociado al cierre del período ', :period_code
+                        'Absorbido por asociado al cierre del período ',
+                        CAST(:period_code AS TEXT)
                     ),
                     updated_at = NOW()
                 FROM loans l

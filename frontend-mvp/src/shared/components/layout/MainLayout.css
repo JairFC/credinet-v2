@@ -1,56 +1,59 @@
 /* =============================================================================
-   MAIN LAYOUT - PROFESSIONAL DESKTOP DESIGN
+   MAIN LAYOUT - PROFESSIONAL DESIGN V2.0
+   Application shell with theme support
    ============================================================================= */
 
 .main-layout {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: linear-gradient(135deg, #f0f4f8 0%, #e9ecef 100%);
+  background: var(--surface-ground);
+  transition: background-color var(--transition-slow);
 }
 
 .main-content {
   flex: 1;
-  max-width: 1800px;
+  max-width: 1600px;
   width: 100%;
   margin: 0 auto;
-  padding: 3.5rem 4.5rem;
+  padding: var(--space-8);
 }
 
 .main-footer {
-  background: linear-gradient(to right, #ffffff 0%, #f8f9fa 100%);
-  border-top: 2px solid #e8eef5;
-  padding: 2.5rem 4.5rem;
+  background: var(--surface-card);
+  border-top: 1px solid var(--border-subtle);
+  padding: var(--space-6) var(--space-8);
   text-align: center;
-  color: #6b7c93;
-  font-size: 1rem;
-  font-weight: 500;
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal);
+  transition: all var(--transition-slow);
 }
 
 .main-footer p {
   margin: 0;
-  letter-spacing: 0.2px;
 }
 
-/* Tablets */
+/* =============================================================================
+   RESPONSIVE
+   ============================================================================= */
 @media (max-width: 1024px) {
   .main-content {
-    padding: 2rem 2rem;
+    padding: var(--space-6);
   }
 
   .main-footer {
-    padding: 1.75rem 2rem;
+    padding: var(--space-4) var(--space-6);
   }
 }
 
-/* Móviles */
 @media (max-width: 768px) {
   .main-content {
-    padding: 1.5rem 1rem;
+    padding: var(--space-4);
   }
 
   .main-footer {
-    padding: 1.5rem 1rem;
-    font-size: 0.85rem;
+    padding: var(--space-4);
+    font-size: var(--text-xs);
   }
 }

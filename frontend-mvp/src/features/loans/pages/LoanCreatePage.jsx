@@ -4,6 +4,7 @@ import { loansService } from '@/shared/api/services/loansService';
 import { rateProfilesService } from '@/shared/api/services/rateProfilesService';
 import ClientSelector from '../../../shared/components/ClientSelector/ClientSelector';
 import AssociateSelector from '../../../shared/components/AssociateSelector/AssociateSelector';
+import LoanSummaryPreview from '../components/LoanSummaryPreview';
 import './LoanCreatePage.css';
 
 const LoanCreatePage = () => {
@@ -24,6 +25,15 @@ const LoanCreatePage = () => {
   const [calculation, setCalculation] = useState(null);
   const [calculatingPreview, setCalculatingPreview] = useState(false);
 
+  // ⭐ ESTADOS PARA RENOVACIÓN
+  const [clientActiveLoans, setClientActiveLoans] = useState([]);
+  const [loadingActiveLoans, setLoadingActiveLoans] = useState(false);
+  const [isRenewal, setIsRenewal] = useState(false);
+  const [selectedLoanToRenew, setSelectedLoanToRenew] = useState(null);
+  const [renewalExpanded, setRenewalExpanded] = useState(false); // Colapsado por defecto
+  const [renewalPage, setRenewalPage] = useState(1);
+  const LOANS_PER_PAGE = 3;
+
   const [formData, setFormData] = useState({
     amount: '',
     term_biweeks: '12',
@@ -41,6 +51,43 @@ const LoanCreatePage = () => {
   useEffect(() => {
     loadRateProfiles();
   }, []);
+
+  // ⭐ Verificar si el cliente tiene préstamos activos cuando se selecciona
+  useEffect(() => {
+    const checkActiveLoans = async () => {
+      if (!selectedClient?.id) {
+        setClientActiveLoans([]);
+        setIsRenewal(false);
+        setSelectedLoanToRenew(null);
+        setRenewalExpanded(false);
+        setRenewalPage(1);
+        return;
+      }
+
+      try {
+        setLoadingActiveLoans(true);
+        // Resetear estados de UI al cambiar cliente
+        setRenewalExpanded(false);
+        setRenewalPage(1);
+        
+        const response = await loansService.getClientActiveLoans(selectedClient.id);
+        setClientActiveLoans(response.data.active_loans || []);
+
+        // Si no hay préstamos activos, resetear renovación
+        if (!response.data.has_active_loans) {
+          setIsRenewal(false);
+          setSelectedLoanToRenew(null);
+        }
+      } catch (err) {
+        console.error('Error verificando préstamos activos:', err);
+        setClientActiveLoans([]);
+      } finally {
+        setLoadingActiveLoans(false);
+      }
+    };
+
+    checkActiveLoans();
+  }, [selectedClient]);
 
   // Calcular preview cuando cambian amount, term, profile o tasas custom
   useEffect(() => {
@@ -189,7 +236,7 @@ const LoanCreatePage = () => {
     // Validar que el asociado tenga crédito suficiente
     if (selectedAssociate && formData.amount) {
       const amount = parseFloat(formData.amount);
-      const available = parseFloat(selectedAssociate.credit_available) || 0;
+      const available = parseFloat(selectedAssociate.available_credit) || 0;
       if (amount > available) {
         newErrors.associate = `El asociado solo tiene $${available.toFixed(2)} disponibles`;
       }
@@ -220,6 +267,15 @@ const LoanCreatePage = () => {
         if (!validAmount) {
           newErrors.amount = 'Debe seleccionar un monto de la lista predefinida';
         }
+      }
+    }
+
+    // ⭐ Validar monto mínimo para renovación
+    if (isRenewal && selectedLoanToRenew) {
+      const amount = parseFloat(formData.amount) || 0;
+      const minRequired = parseFloat(selectedLoanToRenew.total_pending_amount) || 0;
+      if (amount < minRequired) {
+        newErrors.amount = `Para renovar, el monto mínimo es $${minRequired.toLocaleString('es-MX', { minimumFractionDigits: 2 })} (saldo pendiente)`;
       }
     }
 
@@ -267,10 +323,35 @@ const LoanCreatePage = () => {
         payload.commission_rate = parseFloat(formData.commission_rate);
       }
 
-      const response = await loansService.create(payload);
+      let response;
+
+      // ⭐ Si es renovación, usar endpoint de renovación
+      if (isRenewal && selectedLoanToRenew) {
+        payload.original_loan_id = selectedLoanToRenew.loan_id;
+        response = await loansService.renew(payload);
+
+        const renewalInfo = response.data.renewal_info;
+        const netToClient = renewalInfo?.net_to_client || 0;
+
+        alert(
+          `✅ Préstamo renovado exitosamente!\n\n` +
+          `📋 RESUMEN DE RENOVACIÓN:\n` +
+          `─────────────────────────────\n` +
+          `• Préstamo anterior (#${selectedLoanToRenew.loan_id}) liquidado\n` +
+          `• Saldo liquidado: $${renewalInfo?.amount_liquidated?.toLocaleString('es-MX', { minimumFractionDigits: 2 }) || '0.00'}\n` +
+          `• Comisiones para asociado: $${renewalInfo?.commissions_owed_to_associate?.toLocaleString('es-MX', { minimumFractionDigits: 2 }) || '0.00'}\n` +
+          `─────────────────────────────\n` +
+          `💰 NETO PARA EL CLIENTE: $${netToClient.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n` +
+          `─────────────────────────────\n` +
+          `• Nuevo préstamo: #${response.data.id}\n` +
+          `• Estado: APROBADO (automático)`
+        );
+      } else {
+        response = await loansService.create(payload);
+        alert('Préstamo creado exitosamente');
+      }
 
       console.log('✅ Préstamo creado exitosamente:', response.data);
-      alert('Préstamo creado exitosamente');
       navigate('/prestamos');
 
     } catch (err) {
@@ -282,6 +363,36 @@ const LoanCreatePage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ⭐ Handler para seleccionar préstamo a renovar
+  const handleSelectLoanToRenew = (loan) => {
+    setSelectedLoanToRenew(loan);
+    setIsRenewal(true);
+
+    // Pre-seleccionar el asociado del préstamo original
+    if (loan.associate_user_id) {
+      // El AssociateSelector debería actualizar cuando se establezca
+      // Por ahora, mostrar mensaje
+      console.log('Préstamo a renovar seleccionado:', loan);
+    }
+
+    // Establecer monto mínimo = saldo pendiente
+    const minAmount = loan.total_pending_amount;
+    if (parseFloat(formData.amount) < minAmount) {
+      setFormData(prev => ({
+        ...prev,
+        amount: Math.ceil(minAmount / 1000) * 1000,  // Redondear al siguiente mil
+        useCustomAmount: true,
+        customAmount: Math.ceil(minAmount / 1000) * 1000
+      }));
+    }
+  };
+
+  // ⭐ Handler para cancelar renovación
+  const handleCancelRenewal = () => {
+    setIsRenewal(false);
+    setSelectedLoanToRenew(null);
   };
 
   // Calcular el monto para filtrar asociados
@@ -342,6 +453,155 @@ const LoanCreatePage = () => {
                 />
               </div>
             </div>
+
+            {/* ⭐ SECCIÓN DE RENOVACIÓN - Mostrar si el cliente tiene préstamos activos */}
+            {selectedClient && !loadingActiveLoans && clientActiveLoans.length > 0 && (
+              <div className="renewal-section">
+                {/* Header colapsable con resumen */}
+                <div 
+                  className={`renewal-header-collapsible ${renewalExpanded ? 'expanded' : ''}`}
+                  onClick={() => !isRenewal && setRenewalExpanded(!renewalExpanded)}
+                  style={{ cursor: isRenewal ? 'default' : 'pointer' }}
+                >
+                  <div className="renewal-header-left">
+                    <span className="renewal-icon">{renewalExpanded || isRenewal ? '🔽' : '▶️'}</span>
+                    <h3>🔄 Renovación de Préstamo</h3>
+                    <span className="renewal-badge-count">{clientActiveLoans.length} ACTIVO{clientActiveLoans.length > 1 ? 'S' : ''}</span>
+                  </div>
+                  <div className="renewal-header-summary">
+                    <span className="summary-total">
+                      Deuda total: ${clientActiveLoans.reduce((sum, l) => sum + parseFloat(l.total_pending_amount || 0), 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Contenido expandible */}
+                <div className={`renewal-content ${renewalExpanded || isRenewal ? 'expanded' : 'collapsed'}`}>
+                  {!isRenewal && (
+                    <p className="renewal-hint">
+                      Este cliente tiene {clientActiveLoans.length} préstamo(s) activo(s).
+                      Puedes crear un nuevo préstamo que liquide el anterior.
+                    </p>
+                  )}
+
+                  {!isRenewal ? (
+                    <>
+                      <div className="active-loans-list">
+                        {clientActiveLoans
+                          .slice((renewalPage - 1) * LOANS_PER_PAGE, renewalPage * LOANS_PER_PAGE)
+                          .map(loan => (
+                          <div key={loan.loan_id} className="active-loan-card">
+                            <div className="loan-card-header">
+                              <span className="loan-id">Préstamo #{loan.loan_id}</span>
+                              <span className="loan-status active">ACTIVO</span>
+                            </div>
+                            <div className="loan-card-body">
+                              <div className="loan-detail">
+                                <span className="label">Monto original:</span>
+                                <span className="value">${parseFloat(loan.loan_amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                              </div>
+                              <div className="loan-detail">
+                                <span className="label">Pagos pendientes:</span>
+                                <span className="value">{loan.pending_payments_count} de {loan.total_payments}</span>
+                              </div>
+                              <div className="loan-detail highlight">
+                                <span className="label">Saldo a liquidar:</span>
+                                <span className="value">${parseFloat(loan.total_pending_amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                              </div>
+                              <div className="loan-detail">
+                                <span className="label">Comisiones pendientes (asociado):</span>
+                                <span className="value">${parseFloat(loan.pending_commissions).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-renew"
+                              onClick={() => handleSelectLoanToRenew(loan)}
+                            >
+                              🔄 Renovar este préstamo
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Paginación si hay más de LOANS_PER_PAGE préstamos */}
+                      {clientActiveLoans.length > LOANS_PER_PAGE && (
+                        <div className="renewal-pagination">
+                          <button
+                            type="button"
+                            className="pagination-btn"
+                            disabled={renewalPage === 1}
+                            onClick={() => setRenewalPage(p => p - 1)}
+                          >
+                            ← Anterior
+                          </button>
+                          <span className="pagination-info">
+                            Página {renewalPage} de {Math.ceil(clientActiveLoans.length / LOANS_PER_PAGE)}
+                          </span>
+                          <button
+                            type="button"
+                            className="pagination-btn"
+                            disabled={renewalPage >= Math.ceil(clientActiveLoans.length / LOANS_PER_PAGE)}
+                            onClick={() => setRenewalPage(p => p + 1)}
+                          >
+                            Siguiente →
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                  <div className="renewal-selected-card">
+                    <div className="renewal-header">
+                      <span className="renewal-badge">✅ MODO RENOVACIÓN</span>
+                      <button
+                        type="button"
+                        className="btn-cancel-renewal"
+                        onClick={handleCancelRenewal}
+                      >
+                        ✕ Cancelar renovación
+                      </button>
+                    </div>
+                    <div className="renewal-summary">
+                      <h4>Liquidando Préstamo #{selectedLoanToRenew.loan_id}</h4>
+                      <div className="renewal-detail">
+                        <span className="label">Monto original del préstamo:</span>
+                        <span className="value">${parseFloat(selectedLoanToRenew.loan_amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="renewal-detail">
+                        <span className="label">Pagos restantes:</span>
+                        <span className="value">{selectedLoanToRenew.pending_payments_count} de {selectedLoanToRenew.total_payments}</span>
+                      </div>
+                      <div className="renewal-detail highlight-box">
+                        <span className="label">💰 Saldo a liquidar (capital + intereses):</span>
+                        <span className="value highlight">${parseFloat(selectedLoanToRenew.total_pending_amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="renewal-detail important">
+                        <span className="label">📊 Comisiones pendientes (saldo a favor asociado):</span>
+                        <span className="value">${parseFloat(selectedLoanToRenew.pending_commissions).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                      <div className="renewal-notes">
+                        <p className="renewal-note warning">
+                          ⚠️ <strong>Monto mínimo requerido:</strong> ${parseFloat(selectedLoanToRenew.total_pending_amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className="renewal-note info">
+                          ℹ️ El saldo a liquidar incluye capital + intereses pendientes. No hay descuento por pago anticipado.
+                        </p>
+                        <p className="renewal-note success">
+                          ✅ <strong>Aprobación automática:</strong> Los préstamos de renovación se aprueban automáticamente.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                </div>
+              </div>
+            )}
+
+            {loadingActiveLoans && selectedClient && (
+              <div className="renewal-loading">
+                ⏳ Verificando préstamos activos del cliente...
+              </div>
+            )}
 
             <div className="form-row">
               <div className="form-group amount-group-full-width">
@@ -568,81 +828,10 @@ const LoanCreatePage = () => {
 
           {/* Sección: Preview de Cálculos */}
           {calculation && (
-            <div className="form-section">
-              <h2 className="preview-title">📋 Resumen del Préstamo</h2>
-
-              <div className="loan-summary-grid">
-                {/* Columna 1: Información */}
-                <div className="summary-card info-card">
-                  <h3><span className="icon">ℹ️</span> Información</h3>
-
-                  <div className="summary-item">
-                    <span className="label">Monto solicitado:</span>
-                    <span className="value">${calculation.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                  </div>
-
-                  <div className="summary-item">
-                    <span className="label">Plazo:</span>
-                    <span className="value">{calculation.term_biweeks} quincenas ({Math.round(calculation.term_biweeks / 2)} meses)</span>
-                  </div>
-
-                  <div className="summary-item">
-                    <span className="label">Perfil:</span>
-                    <span className="value">{formData.profile_code === 'custom' ? 'Personalizado' : calculation.profile_name}</span>
-                  </div>
-
-                  <div className="summary-item highlight">
-                    <span className="label">Tasa de interés:</span>
-                    <span className="value badge">{calculation.interest_rate_percent}% por quincena</span>
-                  </div>
-
-                  <div className="summary-item highlight">
-                    <span className="label">Comisión del asociado:</span>
-                    <span className="value badge-commission">{calculation.commission_rate_percent}% del monto (${calculation.commission_per_payment.toLocaleString('es-MX', { minimumFractionDigits: 2 })}/quincena)</span>
-                  </div>
-                </div>
-
-                {/* Columna 2: Totales del Cliente */}
-                <div className="summary-card client-card">
-                  <h3><span className="icon">👤</span> Totales del Cliente</h3>
-
-                  <div className="summary-item primary">
-                    <span className="label">Pago quincenal:</span>
-                    <span className="value highlight-amount">${calculation.biweekly_payment.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                  </div>
-
-                  <div className="summary-item">
-                    <span className="label">Total a pagar:</span>
-                    <span className="value">${calculation.total_payment.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                  </div>
-
-                  <div className="summary-item">
-                    <span className="label">Total de intereses:</span>
-                    <span className="value">${calculation.total_interest.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
-
-                {/* Columna 3: Totales del Asociado */}
-                <div className="summary-card associate-card">
-                  <h3><span className="icon">💼</span> Totales del Asociado</h3>
-
-                  <div className="summary-item primary">
-                    <span className="label">Pago quincenal:</span>
-                    <span className="value highlight-amount">${calculation.associate_payment.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                  </div>
-
-                  <div className="summary-item">
-                    <span className="label">Total a pagar a CrediCuenta:</span>
-                    <span className="value">${calculation.associate_total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                  </div>
-
-                  <div className="summary-item success">
-                    <span className="label">Comisión total ganada:</span>
-                    <span className="value success-amount">${calculation.total_commission.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <LoanSummaryPreview 
+              calculation={calculation} 
+              profileCode={formData.profile_code} 
+            />
           )}
 
           {calculatingPreview && (

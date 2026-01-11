@@ -49,8 +49,8 @@ def register_debt_payment(
     1. Liquida primero los items de deuda más antiguos (created_at ASC)
     2. Si el pago cubre completamente un item → is_liquidated = true
     3. Si el pago es parcial → reduce el amount del item
-    4. Actualiza debt_balance en associate_profiles
-    5. Libera crédito automáticamente (credit_available se recalcula)
+    4. Actualiza consolidated_debt en associate_profiles
+    5. Libera crédito automáticamente (available_credit se recalcula)
     6. Registra el detalle en applied_breakdown_items (JSONB)
     
     **Permissions**: admin, auxiliar_administrativo
@@ -171,7 +171,7 @@ def get_associate_debt_summary(
     Obtiene resumen completo de deuda de un asociado.
     
     Utiliza la vista v_associate_debt_summary que incluye:
-    - Deuda actual (debt_balance)
+    - Deuda actual (consolidated_debt)
     - Items pendientes y liquidados
     - Total pagado a deuda
     - Fechas de deuda más antigua y último pago
@@ -234,13 +234,13 @@ def list_associates_with_debt(
                 COUNT(DISTINCT aab.cut_period_id) as periods_with_debt,
                 MIN(aab.created_at) as oldest_debt_date,
                 MAX(aab.updated_at) as last_update,
-                ap.debt_balance as profile_debt_balance,
+                ap.consolidated_debt as profile_consolidated_debt,
                 ap.credit_limit,
-                ap.credit_available
+                ap.available_credit
             FROM associate_accumulated_balances aab
             JOIN users u ON u.id = aab.user_id
             LEFT JOIN associate_profiles ap ON ap.user_id = aab.user_id
-            GROUP BY aab.user_id, u.first_name, u.last_name, ap.id, ap.debt_balance, ap.credit_limit, ap.credit_available
+            GROUP BY aab.user_id, u.first_name, u.last_name, ap.id, ap.consolidated_debt, ap.credit_limit, ap.available_credit
             {where_clause}
             ORDER BY total_debt DESC
         """)).fetchall()
@@ -257,9 +257,9 @@ def list_associates_with_debt(
                     "periods_with_debt": row[4],
                     "oldest_debt_date": row[5].isoformat() if row[5] else None,
                     "last_update": row[6].isoformat() if row[6] else None,
-                    "profile_debt_balance": float(row[7]) if row[7] else 0.0,
+                    "profile_consolidated_debt": float(row[7]) if row[7] else 0.0,
                     "credit_limit": float(row[8]) if row[8] else 0.0,
-                    "credit_available": float(row[9]) if row[9] else 0.0
+                    "available_credit": float(row[9]) if row[9] else 0.0
                 }
                 for row in result
             ]

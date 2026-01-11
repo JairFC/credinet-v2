@@ -275,7 +275,7 @@ class LoanService:
         
         # Validación 1: Crédito del asociado
         print(f"🔍 DEBUG: Validación 1 - Verificando crédito del asociado {associate_user_id}")
-        has_credit = await self.repository.check_associate_credit_available(
+        has_credit = await self.repository.check_associate_available_credit(
             associate_user_id, amount
         )
         print(f"🔍 DEBUG: has_credit = {has_credit}")
@@ -363,9 +363,9 @@ class LoanService:
         2. Validar que esté en estado PENDING
         3. Validar pre-aprobación (crédito, morosidad, documentos)
         4. Calcular fecha del primer pago (función DB: calculate_first_payment_date)
-        5. Actualizar préstamo a APPROVED
+        5. Actualizar préstamo a ACTIVE (antes APPROVED, ahora unificado)
         6. Trigger genera cronograma de pagos automáticamente
-        7. Actualizar credit_used del asociado (transacción ACID)
+        7. Actualizar pending_payments_total del asociado (transacción ACID)
         
         Args:
             loan_id: ID del préstamo a aprobar
@@ -514,8 +514,8 @@ class LoanService:
             print(f"   - total_payment: {loan.total_payment}")
             print(f"   - commission_per_payment: {loan.commission_per_payment}")
         
-        # 7. Actualizar préstamo a APPROVED
-        loan.status_id = LoanStatusEnum.APPROVED.value
+        # 7. Actualizar préstamo a ACTIVE (antes era APPROVED, ahora unificado)
+        loan.status_id = LoanStatusEnum.ACTIVE.value
         loan.approved_at = datetime.utcnow()
         loan.approved_by = approved_by
         if notes:
@@ -523,7 +523,7 @@ class LoanService:
         
         # 8. Guardar (transacción ACID)
         # NOTA: El trigger generate_payment_schedule() se ejecuta automáticamente
-        # cuando status_id cambia a APPROVED (2)
+        # cuando status_id cambia a ACTIVE (2)
         approved_loan = await self.repository.update(loan)
         
         # 8. Commit de la transacción (incluye trigger)
@@ -558,7 +558,7 @@ class LoanService:
             ValueError: Si alguna validación falla
         """
         # Validación 1: Crédito del asociado
-        has_credit = await self.repository.check_associate_credit_available(
+        has_credit = await self.repository.check_associate_available_credit(
             loan.associate_user_id, loan.amount
         )
         if not has_credit:
@@ -795,7 +795,7 @@ class LoanService:
         
         # 3. Validar cambio de monto (si aplica)
         if amount is not None and amount != loan.amount:
-            has_credit = await self.repository.check_associate_credit_available(
+            has_credit = await self.repository.check_associate_available_credit(
                 loan.associate_user_id, amount
             )
             if not has_credit:
@@ -834,17 +834,17 @@ class LoanService:
         cancellation_reason: str
     ) -> Loan:
         """
-        Cancela un préstamo que está en estado activo (APPROVED o ACTIVE).
+        Cancela un préstamo que está en estado ACTIVE.
         
         Al cancelar un préstamo activo:
         - El préstamo pasa a estado CANCELLED
-        - Se libera el crédito del asociado (credit_used se reduce)
+        - Se libera el crédito del asociado (pending_payments_total se reduce)
         - Se guarda la razón de la cancelación
         - Los pagos ya realizados no se revierten (se mantienen como histórico)
         
         Validaciones:
         - Préstamo existe
-        - Préstamo está en estado activo (APPROVED o ACTIVE)
+        - Préstamo está en estado ACTIVE
         - Razón de cancelación obligatoria (mínimo 10 caracteres)
         
         TODO Sprint 4: Decidir si se requiere liquidación de pagos pendientes
@@ -865,10 +865,10 @@ class LoanService:
         if not loan:
             raise ValueError(f"Préstamo {loan_id} no encontrado")
         
-        # 2. Validar estado activo (APPROVED o ACTIVE)
+        # 2. Validar estado activo
         if not loan.is_active():
             raise ValueError(
-                f"Solo se pueden cancelar préstamos en estado activo (APPROVED o ACTIVE). "
+                f"Solo se pueden cancelar préstamos en estado ACTIVE. "
                 f"El préstamo {loan_id} está en estado {loan.status_id}"
             )
         
@@ -888,7 +888,7 @@ class LoanService:
         loan.cancellation_reason = cancellation_reason.strip()
         
         # 5. Guardar (transacción ACID)
-        # NOTA: El trigger update_credit_used_on_cancel() se ejecuta automáticamente
+        # NOTA: El trigger update_pending_payments_total_on_cancel() se ejecuta automáticamente
         # cuando status_id cambia a CANCELLED (5), liberando el crédito del asociado
         cancelled_loan = await self.repository.update(loan)
         

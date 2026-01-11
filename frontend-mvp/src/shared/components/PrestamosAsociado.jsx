@@ -39,13 +39,13 @@ const PrestamosAsociado = ({ associateUserId }) => {
     try {
       setLoading(true);
 
-      // Mapear filtro a status_id
+      // Mapear filtro a status_id (según loan_statuses table)
+      // 1=PENDING, 2=ACTIVE, 4=COMPLETED, 5=PAID, 6=DEFAULTED, 7=REJECTED, 8=CANCELLED, 9=IN_AGREEMENT
       const statusMap = {
         'all': null,
-        'active': 3,      // ACTIVE
-        'approved': 2,    // APPROVED
-        'completed': 5,   // COMPLETED
-        'cancelled': 6    // CANCELLED
+        'active': 2,      // ACTIVE
+        'completed': 4,   // COMPLETED
+        'cancelled': 8    // CANCELLED
       };
 
       const params = new URLSearchParams({
@@ -77,13 +77,13 @@ const PrestamosAsociado = ({ associateUserId }) => {
   };
 
   const calculateStats = async (items, total) => {
-    // Obtener conteos por estado
+    // Obtener conteos por estado (IDs según loan_statuses table)
+    // 1=PENDING, 2=ACTIVE, 4=COMPLETED, 5=PAID, 6=DEFAULTED, 7=REJECTED, 8=CANCELLED, 9=IN_AGREEMENT
     try {
-      const [activeRes, approvedRes, completedRes, cancelledRes] = await Promise.all([
-        apiClient.get(`${ENDPOINTS.loans.list}?associate_user_id=${associateUserId}&status_id=3&limit=1`),
+      const [activeRes, completedRes, cancelledRes] = await Promise.all([
         apiClient.get(`${ENDPOINTS.loans.list}?associate_user_id=${associateUserId}&status_id=2&limit=1`),
-        apiClient.get(`${ENDPOINTS.loans.list}?associate_user_id=${associateUserId}&status_id=5&limit=1`),
-        apiClient.get(`${ENDPOINTS.loans.list}?associate_user_id=${associateUserId}&status_id=6&limit=1`)
+        apiClient.get(`${ENDPOINTS.loans.list}?associate_user_id=${associateUserId}&status_id=4&limit=1`),
+        apiClient.get(`${ENDPOINTS.loans.list}?associate_user_id=${associateUserId}&status_id=8&limit=1`)
       ]);
 
       const totalAmount = items.reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
@@ -91,7 +91,6 @@ const PrestamosAsociado = ({ associateUserId }) => {
       setStats({
         total: total,
         active: activeRes.data?.total || 0,
-        approved: approvedRes.data?.total || 0,
         completed: completedRes.data?.total || 0,
         cancelled: cancelledRes.data?.total || 0,
         totalAmount
@@ -118,13 +117,17 @@ const PrestamosAsociado = ({ associateUserId }) => {
   };
 
   const getStatusBadge = (statusId) => {
+    // IDs según loan_statuses table:
+    // 1=PENDING, 2=ACTIVE, 4=COMPLETED, 5=PAID, 6=DEFAULTED, 7=REJECTED, 8=CANCELLED, 9=IN_AGREEMENT
     const statuses = {
       1: { label: 'Pendiente', color: '#FFC107', icon: '⏳' },
-      2: { label: 'Aprobado', color: '#17A2B8', icon: '✓' },
-      3: { label: 'Activo', color: '#28A745', icon: '💰' },
-      4: { label: 'Vencido', color: '#DC3545', icon: '⚠️' },
-      5: { label: 'Completado', color: '#6C757D', icon: '✅' },
-      6: { label: 'Cancelado', color: '#343A40', icon: '✗' }
+      2: { label: 'Activo', color: '#28A745', icon: '💰' },
+      4: { label: 'Completado', color: '#00C853', icon: '✅' },
+      5: { label: 'Pagado', color: '#00C853', icon: '✅' },
+      6: { label: 'En Mora', color: '#DC3545', icon: '⚠️' },
+      7: { label: 'Rechazado', color: '#9E9E9E', icon: '✗' },
+      8: { label: 'Cancelado', color: '#757575', icon: '🚫' },
+      9: { label: 'En Convenio', color: '#FF9800', icon: '📋' }
     };
     return statuses[statusId] || { label: 'Desconocido', color: '#9E9E9E', icon: '?' };
   };
@@ -178,22 +181,6 @@ const PrestamosAsociado = ({ associateUserId }) => {
         >
           <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{stats.active}</div>
           <div style={{ fontSize: '11px', opacity: 0.8 }}>💰 Activos</div>
-        </div>
-
-        <div
-          onClick={() => { setFilter('approved'); setPage(0); }}
-          style={{
-            padding: '12px',
-            borderRadius: '8px',
-            backgroundColor: filter === 'approved' ? '#17A2B8' : 'var(--color-surface-secondary)',
-            color: filter === 'approved' ? 'white' : 'inherit',
-            cursor: 'pointer',
-            textAlign: 'center',
-            transition: 'all 0.2s'
-          }}
-        >
-          <div style={{ fontSize: '24px', fontWeight: 'bold' }}>{stats.approved}</div>
-          <div style={{ fontSize: '11px', opacity: 0.8 }}>✓ Aprobados</div>
         </div>
 
         <div

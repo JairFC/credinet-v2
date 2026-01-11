@@ -16,8 +16,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import CollapsibleSection from '../../../shared/components/CollapsibleSection';
-import DesgloseDeuda from '../../../shared/components/DesgloseDeuda';
-import HistorialDeudas from '../../../shared/components/HistorialDeudas';
+import DeudaUnificada from '../../../shared/components/DeudaUnificada';
 import AuditHistory from '../../../shared/components/AuditHistory';
 import PrestamosAsociado from '../../../shared/components/PrestamosAsociado';
 import RegistrarAbonoDeudaModal from '../components/RegistrarAbonoDeudaModal';
@@ -122,13 +121,19 @@ const AssociateDetailPage = () => {
   }
 
   // Convertir valores numéricos que vienen como strings
+  // NOMBRES ACTUALIZADOS (Backend v2.0):
+  // - pending_payments_total: lo que el asociado debe cobrar/entregar
+  // - consolidated_debt: deuda consolidada (statements + convenios)
+  // - available_credit: crédito disponible
   const creditLimit = parseFloat(associate.credit_limit) || 0;
-  const creditUsed = parseFloat(associate.credit_used) || 0;
-  const creditAvailable = parseFloat(associate.credit_available) || 0;
-  const debtBalance = parseFloat(associate.debt_balance) || 0;
+  const pendingPaymentsTotal = parseFloat(associate.pending_payments_total) || 0;
+  const availableCredit = parseFloat(associate.available_credit) || 0;
+  const consolidatedDebt = parseFloat(associate.consolidated_debt) || 0;
 
+  // Uso de crédito = pending_payments_total + consolidated_debt
+  const totalCreditUsed = pendingPaymentsTotal + consolidatedDebt;
   const creditUsagePercent = creditLimit > 0
-    ? (creditUsed / creditLimit) * 100
+    ? (totalCreditUsed / creditLimit) * 100
     : 0;
 
   return (
@@ -201,25 +206,27 @@ const AssociateDetailPage = () => {
             </div>
 
             <div className="credit-stat">
-              <div className="stat-label">Crédito Usado</div>
+              <div className="stat-label">Pagos Pendientes</div>
               <div className="stat-value stat-warning">
-                ${creditUsed.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                ${pendingPaymentsTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
               </div>
+              <div className="stat-hint">Por cobrar a clientes</div>
             </div>
 
             <div className="credit-stat">
               <div className="stat-label">Crédito Disponible</div>
               <div className="stat-value stat-success">
-                ${creditAvailable.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                ${availableCredit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
               </div>
             </div>
 
             <div className="credit-stat">
-              <div className="stat-label">Deuda Total</div>
+              <div className="stat-label">Deuda Consolidada</div>
               <div className="stat-value stat-danger">
-                ${debtBalance.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                ${consolidatedDebt.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
               </div>
-              {debtBalance > 0 && (
+              <div className="stat-hint">Statements + Convenios</div>
+              {consolidatedDebt > 0 && (
                 <button
                   onClick={() => setShowAbonoModal(true)}
                   className="btn-abono-inline"
@@ -306,48 +313,26 @@ const AssociateDetailPage = () => {
         )}
       </CollapsibleSection>
 
-      {/* Desglose de Deuda */}
+      {/* Deuda del Asociado - Vista Unificada */}
       <CollapsibleSection
-        title="Desglose de Deuda"
-        icon="📊"
-        subtitle="Sistema FIFO: Abonos se aplican a deudas más antiguas primero"
-        badge={debtBalance > 0 ? `$${debtBalance.toLocaleString('es-MX')}` : '✓ Sin deuda'}
-        badgeColor={debtBalance > 0 ? 'danger' : 'success'}
-        defaultExpanded={debtBalance > 0}
-        persistKey={`associate_${associateId}_debt`}
-      >
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-          {debtBalance > 0 && (
-            <button
-              onClick={() => setShowAbonoModal(true)}
-              className="btn btn-success"
-            >
-              💰 Registrar Abono a Deuda
-            </button>
-          )}
-        </div>
-        {associateId ? (
-          <DesgloseDeuda associateId={associateId} key={`desglose-${refreshKey}`} />
-        ) : (
-          <div className="alert alert-info">
-            No se puede cargar el desglose de deuda sin un ID de asociado válido.
-          </div>
-        )}
-      </CollapsibleSection>
-
-      {/* Historial de Deudas Acumuladas */}
-      <CollapsibleSection
-        title="Historial de Deudas Acumuladas"
-        icon="📜"
-        subtitle="Deudas transferidas de períodos cerrados (statements no pagados completamente)"
-        defaultExpanded={false}
-        persistKey={`associate_${associateId}_history`}
+        title="Deuda del Asociado"
+        icon="💰"
+        subtitle="Deuda consolidada: statements cerrados + convenios activos"
+        badge={consolidatedDebt > 0 ? `$${consolidatedDebt.toLocaleString('es-MX')}` : '✓ Sin deuda'}
+        badgeColor={consolidatedDebt > 0 ? 'danger' : 'success'}
+        defaultExpanded={consolidatedDebt > 0}
+        persistKey={`associate_${associateId}_debt_unified`}
       >
         {associateId ? (
-          <HistorialDeudas associateId={associateId} key={`historial-${refreshKey}`} />
+          <DeudaUnificada 
+            associateId={associateId} 
+            consolidatedDebt={consolidatedDebt}
+            onAbonarClick={() => setShowAbonoModal(true)}
+            key={`deuda-${refreshKey}`} 
+          />
         ) : (
           <div className="alert alert-info">
-            No se puede cargar el historial de deudas sin un ID de asociado válido.
+            No se puede cargar la deuda sin un ID de asociado válido.
           </div>
         )}
       </CollapsibleSection>
@@ -375,7 +360,7 @@ const AssociateDetailPage = () => {
         onClose={() => setShowAbonoModal(false)}
         associateId={parseInt(associateId)}
         associateName={associate?.full_name || `${associate?.first_name || ''} ${associate?.last_name || ''}`.trim()}
-        currentDebt={debtBalance}
+        currentDebt={consolidatedDebt}
         onSuccess={handleAbonoSuccess}
       />
     </div>

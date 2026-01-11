@@ -126,6 +126,14 @@ const SearchableSelect = ({
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             disabled={disabled || loading}
+            autoComplete="new-password"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck="false"
+            data-form-type="other"
+            name={`searchable-${Math.random().toString(36).substring(7)}`}
+            data-lpignore="true"
+            data-1p-ignore="true"
           />
         )}
       </div>

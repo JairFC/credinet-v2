@@ -14,7 +14,7 @@ class RegisterDebtPaymentUseCase:
     
     La lógica FIFO se ejecuta automáticamente mediante el trigger de BD:
     - Liquida primero los items de deuda más antiguos
-    - Actualiza debt_balance del asociado
+    - Actualiza consolidated_debt del asociado
     - Registra el detalle en applied_breakdown_items
     """
     
@@ -41,14 +41,14 @@ class RegisterDebtPaymentUseCase:
         if not debt_summary:
             raise ValueError(f"Associate profile {dto.associate_profile_id} not found")
         
-        if debt_summary["current_debt_balance"] <= 0:
+        if debt_summary["current_consolidated_debt"] <= 0:
             raise ValueError(
                 f"Associate {debt_summary['associate_name']} has no pending debt. "
-                f"Current debt balance: {debt_summary['current_debt_balance']}"
+                f"Current debt balance: {debt_summary['current_consolidated_debt']}"
             )
         
         # Advertencia si el pago excede la deuda
-        if dto.payment_amount > debt_summary["current_debt_balance"]:
+        if dto.payment_amount > debt_summary["current_consolidated_debt"]:
             # Permitir el pago pero loggear advertencia
             # El trigger solo aplicará hasta la deuda total
             pass

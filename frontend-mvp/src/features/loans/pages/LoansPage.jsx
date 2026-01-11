@@ -10,18 +10,16 @@ import './LoansPage.css';
  * Lógica del Sistema (Backend v2.0):
  * - Estados de préstamo (status_id):
  *   1 = PENDING (pendiente aprobación)
- *   2 = APPROVED/ACTIVO (aprobado, cronograma generado, crédito reservado)
- *   3 = ACTIVE (legacy - funcionalmente igual a APPROVED)
- *   4 = PAID_OFF (liquidado)
- *   5 = DEFAULTED (en mora)
- *   6 = REJECTED (rechazado)
- *   7 = CANCELLED (cancelado)
- * 
- * NOTA: APPROVED (2) y ACTIVE (3) se consideran funcionalmente iguales.
- * Ambos representan un préstamo "activo" con cronograma generado.
+ *   2 = ACTIVE (activo, cronograma generado, crédito reservado)
+ *   4 = COMPLETED (liquidado)
+ *   5 = PAID (pagado)
+ *   6 = DEFAULTED (en mora)
+ *   7 = REJECTED (rechazado)
+ *   8 = CANCELLED (cancelado)
+ *   9 = IN_AGREEMENT (en convenio)
  * 
  * - Solo préstamos en PENDING pueden ser aprobados/rechazados
- * - Al aprobar: trigger genera cronograma automáticamente
+ * - Al aprobar: trigger genera cronograma automáticamente (status → ACTIVE)
  * - Al rechazar: rejection_reason es OBLIGATORIO (min 10 chars)
  */
 
@@ -111,29 +109,25 @@ export default function LoansPage() {
   // ============ MAPEO DE ESTADOS BACKEND → UI ============
   const LOAN_STATUS = {
     PENDING: 1,
-    APPROVED: 2,
-    ACTIVE: 3,
-    PAID_OFF: 4,
-    DEFAULTED: 5,
-    REJECTED: 6,
-    CANCELLED: 7,
-    RESTRUCTURED: 8,
-    OVERDUE: 9,
-    EARLY_PAYMENT: 10
+    ACTIVE: 2,        // Estado para préstamos activos
+    COMPLETED: 4,
+    PAID: 5,
+    DEFAULTED: 6,
+    REJECTED: 7,
+    CANCELLED: 8,
+    IN_AGREEMENT: 9
   };
 
   const getStatusInfo = (status_id) => {
     const statusMap = {
       1: { text: 'Pendiente Aprobación', class: 'badge-warning', filter: 'pending' },
-      2: { text: 'Activo', class: 'badge-success', filter: 'active' },  // APPROVED = Activo funcionalmente
-      3: { text: 'Activo', class: 'badge-success', filter: 'active' },  // ACTIVE (legacy)
-      4: { text: 'Liquidado', class: 'badge-success', filter: 'completed' },
-      5: { text: 'En Mora', class: 'badge-danger', filter: 'active' },
-      6: { text: 'Rechazado', class: 'badge-danger', filter: 'completed' },
-      7: { text: 'Cancelado', class: 'badge-secondary', filter: 'completed' },
-      8: { text: 'Reestructurado', class: 'badge-info', filter: 'active' },
-      9: { text: 'Vencido', class: 'badge-danger', filter: 'active' },
-      10: { text: 'Pago Anticipado', class: 'badge-success', filter: 'completed' }
+      2: { text: 'Activo', class: 'badge-success', filter: 'active' },
+      4: { text: 'Completado', class: 'badge-info', filter: 'completed' },
+      5: { text: 'Pagado', class: 'badge-success', filter: 'completed' },
+      6: { text: 'En Mora', class: 'badge-danger', filter: 'active' },
+      7: { text: 'Rechazado', class: 'badge-danger', filter: 'completed' },
+      8: { text: 'Cancelado', class: 'badge-secondary', filter: 'completed' },
+      9: { text: 'En Convenio', class: 'badge-info', filter: 'active' }
     };
     return statusMap[status_id] || { text: 'Desconocido', class: 'badge-secondary', filter: 'all' };
   };
@@ -450,49 +444,49 @@ export default function LoansPage() {
         )}
       </div>
 
-      {/* Controles de Paginación */}
+      {/* Controles de Paginación - Clases únicas */}
       {totalItems > 0 && (
-        <div className="pagination-container">
-          <div className="pagination-info">
+        <div className="lp-pagination">
+          <span className="lp-pagination-info">
             Mostrando {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} - {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} préstamos
-          </div>
-          <div className="pagination-controls">
+          </span>
+          <div className="lp-pagination-controls">
             <button
-              className="pagination-btn"
+              className="lp-page-btn"
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1 || loading}
               title="Primera página"
             >
-              ⏮️
+              ⏮
             </button>
             <button
-              className="pagination-btn"
+              className="lp-page-btn"
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1 || loading}
               title="Página anterior"
             >
-              ◀️
+              ◀
             </button>
 
-            <span className="pagination-pages">
+            <span className="lp-page-indicator">
               Página {currentPage} de {Math.ceil(totalItems / itemsPerPage)}
             </span>
 
             <button
-              className="pagination-btn"
+              className="lp-page-btn"
               onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalItems / itemsPerPage), prev + 1))}
               disabled={currentPage >= Math.ceil(totalItems / itemsPerPage) || loading}
               title="Página siguiente"
             >
-              ▶️
+              ▶
             </button>
             <button
-              className="pagination-btn"
+              className="lp-page-btn"
               onClick={() => setCurrentPage(Math.ceil(totalItems / itemsPerPage))}
               disabled={currentPage >= Math.ceil(totalItems / itemsPerPage) || loading}
               title="Última página"
             >
-              ⏭️
+              ⏭
             </button>
           </div>
         </div>

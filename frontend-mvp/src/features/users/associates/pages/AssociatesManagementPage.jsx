@@ -104,18 +104,19 @@ export default function AssociatesManagementPage() {
     return filteredAssociates.reduce(
       (acc, assoc) => ({
         creditLimit: acc.creditLimit + (parseFloat(assoc.credit_limit) || 0),
-        creditUsed: acc.creditUsed + (parseFloat(assoc.credit_used) || 0),
-        creditAvailable: acc.creditAvailable + (parseFloat(assoc.credit_available) || 0),
-        debtBalance: acc.debtBalance + (parseFloat(assoc.debt_balance) || 0),
+        pendingPaymentsTotal: acc.pendingPaymentsTotal + (parseFloat(assoc.pending_payments_total) || 0),
+        availableCredit: acc.availableCredit + (parseFloat(assoc.available_credit) || 0),
+        consolidatedDebt: acc.consolidatedDebt + (parseFloat(assoc.consolidated_debt) || 0),
         pendingDebts: acc.pendingDebts + (parseInt(assoc.pending_debts_count) || 0),
       }),
-      { creditLimit: 0, creditUsed: 0, creditAvailable: 0, debtBalance: 0, pendingDebts: 0 }
+      { creditLimit: 0, pendingPaymentsTotal: 0, availableCredit: 0, consolidatedDebt: 0, pendingDebts: 0 }
     );
   }, [filteredAssociates]);
 
-  // Porcentaje de uso global
+  // Porcentaje de uso global (pending_payments_total + consolidated_debt vs credit_limit)
+  const totalUsed = totals.pendingPaymentsTotal + totals.consolidatedDebt;
   const globalUsagePercent = totals.creditLimit > 0
-    ? ((totals.creditUsed / totals.creditLimit) * 100).toFixed(1)
+    ? ((totalUsed / totals.creditLimit) * 100).toFixed(1)
     : 0;
 
   const totalPages = Math.ceil(pagination.total / pagination.limit);
@@ -199,11 +200,11 @@ export default function AssociatesManagementPage() {
           </div>
         </div>
 
-        {(totals.debtBalance > 0 || totals.pendingDebts > 0) && (
+        {(totals.consolidatedDebt > 0 || totals.pendingDebts > 0) && (
           <div className="summary-alert">
             <div className="alert-item">
               <span className="alert-label">Deuda pendiente:</span>
-              <span className="alert-value">{formatCurrency(totals.debtBalance)}</span>
+              <span className="alert-value">{formatCurrency(totals.consolidatedDebt)}</span>
             </div>
             {totals.pendingDebts > 0 && (
               <div className="alert-item">
@@ -266,10 +267,10 @@ export default function AssociatesManagementPage() {
               <th className="col-id">ID</th>
               <th className="col-name">Asociado</th>
               <th className="col-money">Línea de Crédito</th>
-              <th className="col-money">Utilizado</th>
+              <th className="col-money">Pagos Pendientes</th>
               <th className="col-money">Disponible</th>
               <th className="col-usage">Uso</th>
-              <th className="col-debt">Deuda</th>
+              <th className="col-debt">Deuda Consolidada</th>
               <th className="col-status">Estado</th>
               <th className="col-actions">Acciones</th>
             </tr>
@@ -294,8 +295,10 @@ export default function AssociatesManagementPage() {
               </tr>
             ) : (
               filteredAssociates.map((assoc) => {
+                // Calcular uso de crédito: (pending_payments_total + consolidated_debt) / credit_limit
+                const totalUsed = (parseFloat(assoc.pending_payments_total) || 0) + (parseFloat(assoc.consolidated_debt) || 0);
                 const usagePercent = assoc.credit_limit
-                  ? (assoc.credit_used / assoc.credit_limit) * 100
+                  ? (totalUsed / assoc.credit_limit) * 100
                   : 0;
                 const usageLevel = usagePercent > 90 ? 'critical' : usagePercent > 70 ? 'warning' : 'normal';
 
@@ -314,10 +317,10 @@ export default function AssociatesManagementPage() {
                       <span className="money-value">{formatCurrency(assoc.credit_limit)}</span>
                     </td>
                     <td className="col-money">
-                      <span className="money-value text-used">{formatCurrency(assoc.credit_used)}</span>
+                      <span className="money-value text-used">{formatCurrency(assoc.pending_payments_total)}</span>
                     </td>
                     <td className="col-money">
-                      <span className="money-value text-available">{formatCurrency(assoc.credit_available)}</span>
+                      <span className="money-value text-available">{formatCurrency(assoc.available_credit)}</span>
                     </td>
                     <td className="col-usage">
                       <div className="usage-indicator">
@@ -333,9 +336,9 @@ export default function AssociatesManagementPage() {
                       </div>
                     </td>
                     <td className="col-debt">
-                      {(assoc.debt_balance || 0) > 0 || (assoc.pending_debts_count || 0) > 0 ? (
+                      {(assoc.consolidated_debt || 0) > 0 || (assoc.pending_debts_count || 0) > 0 ? (
                         <div className="debt-info">
-                          <span className="debt-amount">{formatCurrency(assoc.debt_balance || 0)}</span>
+                          <span className="debt-amount">{formatCurrency(assoc.consolidated_debt || 0)}</span>
                           {assoc.pending_debts_count > 0 && (
                             <span className="debt-count">{assoc.pending_debts_count} período(s)</span>
                           )}

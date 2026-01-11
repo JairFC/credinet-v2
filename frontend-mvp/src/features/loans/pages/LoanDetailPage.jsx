@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { loansService } from '@/shared/api/services';
 import TablaAmortizacion from '../components/simulator/TablaAmortizacion';
+import LoanSummaryDisplay from '../components/LoanSummaryDisplay';
 import './LoanDetailPage.css';
 
 /**
@@ -83,12 +84,13 @@ export default function LoanDetailPage() {
   const getStatusInfo = (status_id) => {
     const statusMap = {
       1: { text: 'Pendiente Aprobación', class: 'badge-warning', icon: '⏳' },
-      2: { text: 'Activo', class: 'badge-success', icon: '💰' },  // APPROVED = Activo funcionalmente
-      3: { text: 'Activo', class: 'badge-success', icon: '💰' },  // ACTIVE (legacy)
-      4: { text: 'Liquidado', class: 'badge-success', icon: '✔️' },
-      5: { text: 'En Mora', class: 'badge-danger', icon: '⚠️' },
-      6: { text: 'Rechazado', class: 'badge-danger', icon: '❌' },
-      7: { text: 'Cancelado', class: 'badge-secondary', icon: '🚫' },
+      2: { text: 'Activo', class: 'badge-success', icon: '💰' },
+      4: { text: 'Completado', class: 'badge-info', icon: '✔️' },
+      5: { text: 'Pagado', class: 'badge-success', icon: '✅' },
+      6: { text: 'En Mora', class: 'badge-danger', icon: '⚠️' },
+      7: { text: 'Rechazado', class: 'badge-danger', icon: '❌' },
+      8: { text: 'Cancelado', class: 'badge-secondary', icon: '🚫' },
+      9: { text: 'En Convenio', class: 'badge-info', icon: '📋' },
     };
     return statusMap[status_id] || { text: 'Desconocido', class: 'badge-secondary', icon: '❓' };
   };
@@ -287,7 +289,7 @@ export default function LoanDetailPage() {
           </div>
         </div>
         <div className="header-actions">
-          {(loan.status_id === 2 || loan.status_id === 3) && (
+          {loan.status_id === 2 && (
             <button
               className="btn-primary"
               onClick={() => navigate(`/pagos?loan_id=${loan.id}`)}
@@ -417,89 +419,8 @@ export default function LoanDetailPage() {
           </div>
         </div>
 
-        {/* Sección: Resumen del Préstamo (3 columnas) */}
-        <div className="detail-section">
-          <h2 className="preview-title">📋 Resumen del Préstamo</h2>
-
-          <div className="loan-summary-grid">
-            {/* Columna 1: Información */}
-            <div className="summary-card info-card">
-              <h3><span className="icon">ℹ️</span> Información</h3>
-
-              <div className="summary-item">
-                <span className="label">Monto solicitado:</span>
-                <span className="value">{formatCurrency(loan.amount)}</span>
-              </div>
-
-              <div className="summary-item">
-                <span className="label">Plazo:</span>
-                <span className="value">{loan.term_biweeks} quincenas ({Math.round(loan.term_biweeks / 2)} meses)</span>
-              </div>
-
-              <div className="summary-item">
-                <span className="label">Perfil:</span>
-                <span className="value">{loan.profile_code || 'Personalizado'}</span>
-              </div>
-
-              <div className="summary-item highlight">
-                <span className="label">Tasa de interés:</span>
-                <span className="value badge">{formatPercent(loan.interest_rate)} por quincena</span>
-              </div>
-
-              <div className="summary-item highlight">
-                <span className="label">Comisión del asociado:</span>
-                <span className="value badge-commission">{formatPercent(loan.commission_rate)} del monto ({formatCurrency((parseFloat(loan.amount) * parseFloat(loan.commission_rate || 0)) / 100)}/quincena)</span>
-              </div>
-
-              {loan.approved_at && (
-                <div className="summary-item">
-                  <span className="label">Fecha de aprobación:</span>
-                  <span className="value">{formatDate(loan.approved_at)}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Columna 2: Totales del Cliente */}
-            <div className="summary-card client-card">
-              <h3><span className="icon">👤</span> Totales del Cliente</h3>
-
-              <div className="summary-item primary">
-                <span className="label">Pago quincenal:</span>
-                <span className="value highlight-amount">{formatCurrency(loan.payment_amount || loan.biweekly_payment)}</span>
-              </div>
-
-              <div className="summary-item">
-                <span className="label">Total a pagar:</span>
-                <span className="value">{formatCurrency(loan.total_to_pay || loan.total_payment)}</span>
-              </div>
-
-              <div className="summary-item">
-                <span className="label">Total de intereses:</span>
-                <span className="value">{formatCurrency(calculateTotalInterest())}</span>
-              </div>
-            </div>
-
-            {/* Columna 3: Totales del Asociado */}
-            <div className="summary-card associate-card">
-              <h3><span className="icon">💼</span> Totales del Asociado</h3>
-
-              <div className="summary-item primary">
-                <span className="label">Pago quincenal:</span>
-                <span className="value highlight-amount">{formatCurrency(calculateAssociatePayment())}</span>
-              </div>
-
-              <div className="summary-item">
-                <span className="label">Total a pagar a CrediCuenta:</span>
-                <span className="value">{formatCurrency(calculateAssociateTotal())}</span>
-              </div>
-
-              <div className="summary-item success">
-                <span className="label">Comisión total ganada:</span>
-                <span className="value success-amount">{formatCurrency(calculateTotalCommission())}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Sección: Resumen del Préstamo (Componente nuevo) */}
+        <LoanSummaryDisplay loan={loan} />
 
         {/* Sección: Cliente y Asociado */}
         <div className="detail-section">

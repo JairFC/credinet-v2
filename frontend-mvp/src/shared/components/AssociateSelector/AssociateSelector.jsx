@@ -25,7 +25,7 @@ const AssociateSelector = ({
   // Validar que el asociado tenga crédito suficiente
   useEffect(() => {
     if (value && requiredCredit > 0) {
-      const available = parseFloat(value.credit_available) || 0;
+      const available = parseFloat(value.available_credit) || 0;
       if (available < requiredCredit) {
         setValidationWarning(
           `⚠️ El crédito disponible (L.${available.toFixed(2)}) es menor al monto solicitado (L.${requiredCredit.toFixed(2)})`
@@ -57,11 +57,11 @@ const AssociateSelector = ({
 
   const renderOption = (associate) => {
     const creditLimit = parseFloat(associate.credit_limit) || 0;
-    const creditUsed = parseFloat(associate.credit_used) || 0;
-    const creditAvailable = parseFloat(associate.credit_available) || 0;
+    const pendingPayments = parseFloat(associate.pending_payments_total) || 0;
+    const availableCredit = parseFloat(associate.available_credit) || 0;
     const usagePercentage = associate.credit_usage_percentage || 0;
 
-    const canGrant = requiredCredit === 0 || creditAvailable >= requiredCredit;
+    const canGrant = requiredCredit === 0 || availableCredit >= requiredCredit;
 
     return (
       <div className="associate-option">
@@ -87,9 +87,9 @@ const AssociateSelector = ({
               />
             </div>
             <div className="credit-bar-amounts">
-              <span className="credit-used">Usado: L.{creditUsed.toFixed(2)}</span>
+              <span className="credit-used">Pendiente: L.{pendingPayments.toFixed(2)}</span>
               <span className="credit-available">
-                Disponible: <strong>L.{creditAvailable.toFixed(2)}</strong>
+                Disponible: <strong>L.{availableCredit.toFixed(2)}</strong>
               </span>
             </div>
           </div>
@@ -110,7 +110,7 @@ const AssociateSelector = ({
   };
 
   const renderSelected = (associate) => {
-    const creditAvailable = parseFloat(associate.credit_available) || 0;
+    const availableCredit = parseFloat(associate.available_credit) || 0;
     const usagePercentage = associate.credit_usage_percentage || 0;
 
     return (
@@ -120,13 +120,13 @@ const AssociateSelector = ({
           <div className="associate-selected-info">
             <div className="associate-selected-name">{associate.full_name}</div>
             <div className="associate-selected-meta">
-              Disponible: <strong>L.{creditAvailable.toFixed(2)}</strong>
+              Disponible: <strong>L.{availableCredit.toFixed(2)}</strong>
               {' • '}
               Uso: {usagePercentage.toFixed(1)}%
             </div>
           </div>
         </div>
-        {creditAvailable > 0 && (
+        {availableCredit > 0 && (
           <span className="badge badge-sm badge-success">
             ✓ Activo
           </span>

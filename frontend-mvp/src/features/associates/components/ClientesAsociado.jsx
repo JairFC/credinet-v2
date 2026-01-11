@@ -16,7 +16,7 @@ const ClientesAsociado = ({ associateId }) => {
   const [statusFilter, setStatusFilter] = useState('');
   const [pagination, setPagination] = useState({
     total: 0,
-    limit: 20,
+    limit: 5,
     offset: 0
   });
 

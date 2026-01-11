@@ -23,8 +23,8 @@ export const loans = [
     commission_per_payment: 2474.20,
     associate_payment: 671.63,
     // Estado y fechas
-    status_id: 2,  // APPROVED
-    status: "APPROVED",
+    status_id: 2,  // ACTIVE
+    status: "ACTIVE",
     requested_at: "2025-11-01T10:30:00Z",
     approved_at: "2025-11-05T14:15:00Z",
     approved_by: 1,
@@ -85,7 +85,7 @@ export const loans = [
     commission_per_payment: 1953.13,
     associate_payment: 1953.12,
     // Estado y fechas
-    status_id: 3,  // ACTIVE
+    status_id: 2,  // ACTIVE
     status: "ACTIVE",
     requested_at: "2025-10-15T09:00:00Z",
     approved_at: "2025-10-16T11:30:00Z",

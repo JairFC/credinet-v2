@@ -104,6 +104,8 @@ from app.modules.addresses.routes import router as addresses_router
 from app.modules.audit.routes import router as audit_router
 from app.modules.contracts.routes import router as contracts_router
 from app.modules.agreements.routes import router as agreements_router
+from app.modules.agreements.routes import debt_breakdown_router
+from app.modules.agreements.defaulted_reports_routes import router as defaulted_reports_router
 from app.modules.documents.routes import router as documents_router
 from app.modules.dashboard.routes import router as dashboard_router
 from app.modules.statements import router as statements_router
@@ -127,6 +129,8 @@ app.include_router(addresses_router, prefix=settings.api_v1_prefix)
 app.include_router(audit_router, prefix=settings.api_v1_prefix)
 app.include_router(contracts_router, prefix=settings.api_v1_prefix)
 app.include_router(agreements_router, prefix=settings.api_v1_prefix)
+app.include_router(debt_breakdown_router, prefix=settings.api_v1_prefix)
+app.include_router(defaulted_reports_router, prefix=settings.api_v1_prefix)
 app.include_router(documents_router, prefix=settings.api_v1_prefix)
 app.include_router(dashboard_router, prefix=settings.api_v1_prefix)
 app.include_router(scheduler_router, prefix=settings.api_v1_prefix)

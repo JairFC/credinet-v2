@@ -14,6 +14,11 @@ class Associate:
     Entidad Asociado.
     
     Los asociados son users que otorgan préstamos con su propio crédito.
+    
+    MODELO DE DEUDA:
+    - pending_payments_total: Suma de pagos PENDING que el asociado debe cobrar/entregar
+    - consolidated_debt: Deuda consolidada (statements cerrados + convenios - pagos)
+    - available_credit: credit_limit - pending_payments_total - consolidated_debt
     """
     id: Optional[int]
     user_id: int
@@ -26,23 +31,26 @@ class Associate:
     consecutive_on_time_payments: int
     clients_in_agreement: int
     last_level_evaluation_date: Optional[datetime]
-    credit_used: Decimal
+    
+    # Campos de crédito refactorizados
+    pending_payments_total: Decimal  # Antes: credit_used
     credit_limit: Decimal
-    credit_available: Decimal
+    available_credit: Decimal  # Antes: credit_available
     credit_last_updated: Optional[datetime]
-    debt_balance: Decimal
+    consolidated_debt: Decimal  # Antes: debt_balance
+    
     created_at: datetime
     updated_at: datetime
     
     def get_credit_usage_percentage(self) -> float:
-        """Calcula el porcentaje de crédito usado"""
+        """Calcula el porcentaje de crédito usado (pagos pendientes)"""
         if self.credit_limit == 0:
             return 0.0
-        return float(self.credit_used / self.credit_limit * 100)
+        return float(self.pending_payments_total / self.credit_limit * 100)
     
     def has_available_credit(self, amount: Decimal) -> bool:
         """Verifica si tiene crédito disponible para un monto"""
-        return self.credit_available >= amount
+        return self.available_credit >= amount
     
     def is_active(self) -> bool:
         """Verifica si el asociado está activo"""

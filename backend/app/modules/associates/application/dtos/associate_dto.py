@@ -6,7 +6,13 @@ from pydantic import BaseModel, Field
 
 
 class AssociateResponseDTO(BaseModel):
-    """DTO de respuesta con info completa del asociado"""
+    """DTO de respuesta con info completa del asociado
+    
+    MODELO DE DEUDA:
+    - pending_payments_total: Suma de pagos PENDING (lo que debe cobrar/entregar)
+    - consolidated_debt: Deuda consolidada (statements + convenios - pagos)
+    - available_credit: credit_limit - pending_payments_total - consolidated_debt
+    """
     id: int
     user_id: int
     level_id: int
@@ -18,11 +24,14 @@ class AssociateResponseDTO(BaseModel):
     consecutive_on_time_payments: int
     clients_in_agreement: int
     last_level_evaluation_date: Optional[datetime] = None
-    credit_used: Decimal
+    
+    # Campos de crédito refactorizados
+    pending_payments_total: Decimal  # Antes: credit_used
     credit_limit: Decimal
-    credit_available: Decimal
+    available_credit: Decimal  # Antes: credit_available
     credit_last_updated: Optional[datetime] = None
-    debt_balance: Decimal
+    consolidated_debt: Decimal  # Antes: debt_balance
+    
     created_at: datetime
     updated_at: datetime
     
@@ -50,9 +59,9 @@ class AssociateListItemDTO(BaseModel):
     email: Optional[str] = None
     level_id: Optional[int] = None
     credit_limit: Decimal
-    credit_used: Decimal
-    credit_available: Decimal
-    debt_balance: Decimal = Decimal('0.00')
+    pending_payments_total: Decimal  # Antes: credit_used
+    available_credit: Decimal  # Antes: credit_available
+    consolidated_debt: Decimal = Decimal('0.00')  # Antes: debt_balance
     pending_debts_count: int = 0
     active: bool
     
@@ -65,8 +74,8 @@ class AssociateCreditSummaryDTO(BaseModel):
     associate_id: int
     user_id: int
     credit_limit: Decimal
-    credit_used: Decimal
-    credit_available: Decimal
+    pending_payments_total: Decimal  # Antes: credit_used
+    available_credit: Decimal  # Antes: credit_available
     credit_usage_percentage: float
     active_loans_count: int = 0
     total_disbursed: Decimal = Decimal('0')
@@ -85,11 +94,14 @@ class AssociateSearchItemDTO(BaseModel):
     phone_number: Optional[str] = None
     level_id: int
     credit_limit: Decimal
-    credit_used: Decimal
-    credit_available: Decimal
+    pending_payments_total: Decimal  # Antes: credit_used
+    available_credit: Decimal  # Antes: credit_available
     credit_usage_percentage: float
     active: bool
     can_grant_loans: bool = Field(True, description="Puede otorgar préstamos")
+    
+    class Config:
+        from_attributes = True
     
     class Config:
         from_attributes = True

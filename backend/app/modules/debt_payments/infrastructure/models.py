@@ -16,7 +16,7 @@ class DebtPaymentModel(Base):
     Representa un abono realizado para liquidar deuda acumulada.
     El trigger apply_debt_payment_fifo se encarga de:
     - Aplicar FIFO a associate_debt_breakdown
-    - Actualizar debt_balance en associate_profiles
+    - Actualizar consolidated_debt en associate_profiles
     - Llenar applied_breakdown_items con el detalle de items liquidados
     """
     

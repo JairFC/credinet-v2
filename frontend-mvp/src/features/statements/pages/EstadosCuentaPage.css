@@ -1,864 +1,660 @@
 /**
- * EstadosCuentaPage.css - Estilos para la página principal de Estados de Cuenta
- * Diseño profesional inspirado en NU Bank
+ * EstadosCuentaPage.css
+ * Estilos con alta especificidad usando .estados-cuenta-page como scope
  */
 
-/* Container Principal */
+/* === PAGE CONTAINER === */
 .estados-cuenta-page {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1.5rem 2rem;
+  padding: var(--space-6) var(--space-8);
   min-height: 100vh;
-  background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+  background: var(--surface-ground);
 }
 
-/* Page Loading */
-.page-loading {
+/* === LOADING === */
+.estados-cuenta-page .page-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 60vh;
-  color: #64748B;
+  color: var(--text-secondary);
 }
 
-.spinner-large {
-  width: 60px;
-  height: 60px;
-  border: 4px solid #E2E8F0;
-  border-top-color: #6366F1;
+.estados-cuenta-page .spinner-large {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--brand-primary);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 1rem;
+  animation: ecp-spin 0.7s linear infinite;
+  margin-bottom: var(--space-4);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+@keyframes ecp-spin {
+  to { transform: rotate(360deg); }
 }
 
-/* Page Header */
-.page-header {
-  margin-bottom: 1.5rem;
+/* === PAGE HEADER === */
+.estados-cuenta-page .page-header {
+  margin-bottom: var(--space-5);
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
-.header-content h1 {
+.estados-cuenta-page .header-content {
+  padding: 0;
+  background: transparent;
+}
+
+.estados-cuenta-page .header-content h1 {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin: 0 0 0.5rem 0;
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1E293B;
-}
-
-.header-icon {
+  gap: var(--space-3);
+  margin: 0 0 var(--space-2) 0;
   font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: transparent;
+  padding: 0;
 }
 
-.header-subtitle {
+.estados-cuenta-page .header-icon {
+  font-size: 1.3rem;
+}
+
+.estados-cuenta-page .header-subtitle {
   margin: 0;
-  font-size: 0.95rem;
-  color: #64748B;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  background: transparent;
 }
 
-/* Timeline Section */
-.timeline-section {
-  margin-bottom: 1.5rem;
+/* === TIMELINE SECTION === */
+.estados-cuenta-page .timeline-section {
+  margin-bottom: var(--space-5);
 }
 
-/* Preview Banner */
-.preview-banner {
-  background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
-  border: 2px solid #3B82F6;
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1.5rem;
+/* === PREVIEW BANNER === */
+.estados-cuenta-page .preview-banner {
+  background: var(--status-info-bg);
+  border: 1px solid var(--status-info-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
 }
 
-.banner-content {
+.estados-cuenta-page .banner-content {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
-.banner-icon {
-  font-size: 2rem;
+.estados-cuenta-page .banner-icon {
+  font-size: 1.5rem;
   flex-shrink: 0;
 }
 
-.banner-text {
+.estados-cuenta-page .banner-text {
   flex: 1;
 }
 
-.banner-text strong {
+.estados-cuenta-page .banner-text strong {
   display: block;
-  color: #1E40AF;
-  font-size: 1rem;
-  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
 }
 
-.banner-text p {
+.estados-cuenta-page .banner-text p {
   margin: 0;
-  color: #1E3A8A;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
   line-height: 1.5;
 }
 
-/* ========================================
-   PERIOD ACTIONS SECTION
-   ======================================== */
-
-.period-actions-section {
-  background: white;
-  border-radius: 12px;
-  padding: 1rem 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.05),
-    0 1px 2px rgba(0, 0, 0, 0.1);
-  border: 1px solid #E2E8F0;
+/* === PERIOD ACTIONS === */
+.estados-cuenta-page .period-actions-section {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--border-subtle);
 }
 
-.actions-container {
+.estados-cuenta-page .actions-container {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
+  gap: var(--space-4);
   flex-wrap: wrap;
-  gap: 1rem;
 }
 
-.status-info {
+.estados-cuenta-page .status-info {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
-.status-info .status-label {
-  font-size: 0.85rem;
-  color: #64748B;
-  font-weight: 500;
+.estados-cuenta-page .status-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }
 
-.status-badge {
+.estados-cuenta-page .status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.85rem;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
-.status-badge.status-pending {
-  background: #F1F5F9;
-  color: #64748B;
+.estados-cuenta-page .status-badge.status-pending {
+  background: var(--surface-hover);
+  color: var(--text-secondary);
 }
 
-.status-badge.status-cutoff {
-  background: #FEF3C7;
-  color: #B45309;
+.estados-cuenta-page .status-badge.status-cutoff {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
 }
 
-.status-badge.status-collecting {
-  background: #DBEAFE;
-  color: #1D4ED8;
+.estados-cuenta-page .status-badge.status-collecting {
+  background: var(--status-info-bg);
+  color: var(--status-info);
 }
 
-.status-badge.status-settling {
-  background: #EDE9FE;
-  color: #7C3AED;
+.estados-cuenta-page .status-badge.status-settling {
+  background: rgba(139, 92, 246, 0.15);
+  color: #A78BFA;
 }
 
-.status-badge.status-closed {
-  background: #E0E7FF;
-  color: #4338CA;
+.estados-cuenta-page .status-badge.status-closed {
+  background: var(--status-success-bg);
+  color: var(--status-success);
 }
 
-.action-buttons {
+.estados-cuenta-page .action-buttons {
   display: flex;
-  gap: 0.75rem;
+  align-items: center;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
-.action-btn {
+/* === ACTION BUTTONS === */
+.estados-cuenta-page .action-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 10px;
-  border: 2px solid transparent;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  border: none;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 160px;
+  min-width: 140px;
 }
 
-.action-btn:disabled {
-  opacity: 0.6;
+.estados-cuenta-page .action-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.action-btn .btn-icon {
-  font-size: 1.5rem;
-}
-
-.action-btn .btn-text {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.action-btn .btn-hint {
-  font-size: 0.7rem;
-  opacity: 0.8;
-  text-align: center;
-}
-
-/* Primary Action Button - Cerrar Corte */
-.action-btn.primary {
-  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
-  color: white;
-  border-color: #B45309;
-}
-
-.action-btn.primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-}
-
-/* Secondary Action Button - Registrar Pago */
-.action-btn.secondary {
-  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
-  color: white;
-  border-color: #1D4ED8;
-}
-
-.action-btn.secondary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-
-/* Warning Action Button - Pasar a Liquidación */
-.action-btn.warning {
-  background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
-  color: white;
-  border-color: #C2410C;
-}
-
-.action-btn.warning:hover:not(:disabled) {
-  background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
-}
-
-/* Danger Action Button - Cerrar Definitivo */
-.action-btn.danger {
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
-  color: white;
-  border-color: #6D28D9;
-}
-
-.action-btn.danger:hover:not(:disabled) {
-  background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
-}
-
-/* Readonly Notice */
-.readonly-notice {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  background: #F1F5F9;
-  border-radius: 8px;
-  color: #64748B;
-  font-size: 0.9rem;
-}
-
-.readonly-notice .notice-icon {
+.estados-cuenta-page .action-btn .btn-icon {
   font-size: 1.25rem;
 }
 
-/* Stats Section */
-.stats-section {
-  margin-bottom: 2rem;
+.estados-cuenta-page .action-btn .btn-text {
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 1rem;
+.estados-cuenta-page .action-btn .btn-hint {
+  font-size: 0.65rem;
+  opacity: 0.75;
+  text-align: center;
 }
 
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.25rem;
+.estados-cuenta-page .action-btn.primary {
+  background: var(--brand-gradient);
+  color: white;
+}
+
+.estados-cuenta-page .action-btn.primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-brand);
+  transform: translateY(-1px);
+}
+
+.estados-cuenta-page .action-btn.warning {
+  background: linear-gradient(135deg, var(--status-warning) 0%, #D97706 100%);
+  color: white;
+}
+
+.estados-cuenta-page .action-btn.warning:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.estados-cuenta-page .action-btn.danger {
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  color: white;
+}
+
+.estados-cuenta-page .action-btn.danger:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.estados-cuenta-page .action-btn.test-btn {
+  background: var(--status-warning-bg);
+  border: 2px dashed var(--status-warning);
+  color: var(--status-warning);
+  min-width: auto;
+  padding: var(--space-2) var(--space-4);
+}
+
+.estados-cuenta-page .readonly-notice {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.05),
-    0 1px 2px rgba(0, 0, 0, 0.1);
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-hover);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+/* === STATS SECTION === */
+.estados-cuenta-page .stats-section {
+  margin-bottom: var(--space-5);
+}
+
+.estados-cuenta-page .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-3);
+}
+
+.estados-cuenta-page .stat-card {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid;
   transition: all 0.2s ease;
-  border: 1px solid transparent;
 }
 
-.stat-card:hover {
+.estados-cuenta-page .stat-card:hover {
   transform: translateY(-2px);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.1),
-    0 2px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
-.stat-card.primary {
-  border-left: 4px solid #6366F1;
-}
+.estados-cuenta-page .stat-card.primary { border-left-color: var(--brand-primary); }
+.estados-cuenta-page .stat-card.success { border-left-color: var(--status-success); }
+.estados-cuenta-page .stat-card.info { border-left-color: var(--status-info); }
+.estados-cuenta-page .stat-card.warning { border-left-color: var(--status-warning); }
+.estados-cuenta-page .stat-card.danger { border-left-color: var(--status-error); }
+.estados-cuenta-page .stat-card.neutral { border-left-color: var(--text-tertiary); }
 
-.stat-card.success {
-  border-left: 4px solid #10B981;
-}
-
-.stat-card.info {
-  border-left: 4px solid #3B82F6;
-}
-
-.stat-card.warning {
-  border-left: 4px solid #F59E0B;
-}
-
-.stat-card.danger {
-  border-left: 4px solid #EF4444;
-}
-
-.stat-card.neutral {
-  border-left: 4px solid #64748B;
-}
-
-.stat-icon {
-  font-size: 1.75rem;
+.estados-cuenta-page .stat-icon {
+  font-size: 1.5rem;
   flex-shrink: 0;
 }
 
-.stat-content {
+.estados-cuenta-page .stat-content {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
   min-width: 0;
 }
 
-.stat-label {
-  font-size: 0.75rem;
-  color: #64748B;
+.estados-cuenta-page .stat-label {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 500;
 }
 
-.stat-value {
-  font-size: 1.25rem;
+.estados-cuenta-page .stat-value {
+  font-size: 1.1rem;
   font-weight: 700;
-  color: #1E293B;
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  color: var(--text-primary);
+  font-family: 'SF Mono', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* === ERROR BANNER === */
+.estados-cuenta-page .error-banner {
+  background: var(--status-error-bg);
+  border: 1px solid var(--status-error-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-5);
+  color: var(--status-error);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* === STATEMENTS SECTION === */
+.estados-cuenta-page .statements-section {
+  background: var(--surface-card);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.estados-cuenta-page .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.estados-cuenta-page .section-header h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.estados-cuenta-page .section-count {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: var(--surface-hover);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+}
+
+/* === SEARCH & FILTER === */
+.estados-cuenta-page .search-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-card);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.estados-cuenta-page .search-box {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.estados-cuenta-page .search-box:focus-within {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(var(--brand-primary-rgb), 0.15);
+}
+
+.estados-cuenta-page .search-icon {
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
+}
+
+.estados-cuenta-page .search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.estados-cuenta-page .search-input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.estados-cuenta-page .clear-search {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--space-1);
+  line-height: 1;
+}
+
+.estados-cuenta-page .clear-search:hover {
+  color: var(--text-secondary);
+}
+
+.estados-cuenta-page .filter-buttons {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.estados-cuenta-page .filter-btn {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
-/* Error Banner */
-.error-banner {
-  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
-  border: 1px solid #FCA5A5;
-  border-radius: 10px;
-  padding: 1rem 1.5rem;
-  margin-bottom: 1.5rem;
-  color: #DC2626;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.estados-cuenta-page .filter-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
 }
 
-/* Statements Section */
-.statements-section {
-  background: white;
-  border-radius: 16px;
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.08),
-    0 1px 3px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 1.5rem;
-  background: linear-gradient(180deg, #F8FAFC 0%, white 100%);
-  border-bottom: 1px solid #E2E8F0;
-}
-
-.section-header h2 {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1E293B;
-}
-
-.section-count {
-  font-size: 0.85rem;
-  color: #64748B;
-  background: #F1F5F9;
-  padding: 0.35rem 0.75rem;
-  border-radius: 20px;
-  font-weight: 500;
-}
-
-/* Statements List */
-.statements-list {
-  padding: 1rem 1.5rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-/* Loading State */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  color: #64748B;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #E2E8F0;
-  border-top-color: #6366F1;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 1rem;
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: 1rem;
-}
-
-.empty-state h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.25rem;
-  color: #1E293B;
-}
-
-.empty-state p {
-  margin: 0;
-  color: #64748B;
-  font-size: 0.95rem;
-  max-width: 400px;
-}
-
-/* Modal Abono (temporal) */
-.abono-modal {
-  background: white;
-  border-radius: 16px;
-  max-width: 500px;
-  width: 100%;
-  overflow: hidden;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-}
-
-.abono-modal .modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 1.5rem;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+.estados-cuenta-page .filter-btn.active {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
   color: white;
 }
 
-.abono-modal .modal-header h2 {
-  margin: 0;
-  font-size: 1.25rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+/* === STATEMENTS LIST === */
+.estados-cuenta-page .statements-list {
+  padding: var(--space-4) var(--space-5);
 }
 
-.abono-modal .close-btn {
+/* === LOADING STATE === */
+.estados-cuenta-page .loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-12) var(--space-8);
+  color: var(--text-secondary);
+}
+
+.estados-cuenta-page .spinner {
   width: 36px;
   height: 36px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--brand-primary);
   border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  font-size: 1.5rem;
-  cursor: pointer;
+  animation: ecp-spin 0.7s linear infinite;
+  margin-bottom: var(--space-4);
+}
+
+/* === EMPTY STATE === */
+.estados-cuenta-page .empty-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-}
-
-.abono-modal .close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.abono-modal .modal-body {
-  padding: 2rem;
+  padding: var(--space-12) var(--space-8);
   text-align: center;
-  color: #64748B;
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
-  .estados-cuenta-page {
-    padding: 1rem;
-  }
+.estados-cuenta-page .empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-4);
+  opacity: 0.7;
+}
 
-  .stats-grid {
+.estados-cuenta-page .empty-state h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.estados-cuenta-page .empty-state p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  max-width: 360px;
+}
+
+.estados-cuenta-page .btn-clear-filter {
+  margin-top: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background: var(--brand-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.estados-cuenta-page .btn-clear-filter:hover {
+  filter: brightness(1.1);
+}
+
+/* === PAGINATION === */
+.estados-cuenta-page .pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-elevated);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.estados-cuenta-page .pagination-info {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.estados-cuenta-page .pagination-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.estados-cuenta-page .pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  height: 34px;
+}
+
+.estados-cuenta-page .pagination-btn-icon {
+  padding: var(--space-2) var(--space-3);
+  font-size: 1rem;
+  font-weight: 700;
+  min-width: 34px;
+}
+
+.estados-cuenta-page .pagination-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.estados-cuenta-page .pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.estados-cuenta-page .pagination-current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--brand-primary);
+  background: rgba(var(--brand-primary-rgb), 0.1);
+  border-radius: var(--radius-md);
+  height: 34px;
+  white-space: nowrap;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 1200px) {
+  .estados-cuenta-page .stats-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  .header-content h1 {
-    font-size: 1.5rem;
+  .estados-cuenta-page {
+    padding: var(--space-4);
   }
 
-  .stats-grid {
+  .estados-cuenta-page .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .stat-card {
-    padding: 1rem;
-  }
-
-  .stat-value {
-    font-size: 1.1rem;
-  }
-
-  .section-header {
+  .estados-cuenta-page .search-filter-bar {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+    gap: var(--space-3);
   }
 
-  .statements-list {
-    padding: 0.75rem;
+  .estados-cuenta-page .search-box {
+    width: 100%;
+  }
+
+  .estados-cuenta-page .filter-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .estados-cuenta-page .actions-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .estados-cuenta-page .action-buttons {
+    justify-content: center;
+  }
+
+  .estados-cuenta-page .pagination-controls {
+    flex-direction: column;
+    gap: var(--space-3);
   }
 }
 
 @media (max-width: 480px) {
-  .estados-cuenta-page {
-    padding: 0.75rem;
-  }
-
-  .stats-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-  }
-
-  .stat-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-    padding: 0.875rem;
-  }
-
-  .stat-icon {
-    font-size: 1.5rem;
-  }
-
-  .stat-value {
-    font-size: 1rem;
-  }
-
-  .preview-banner {
-    padding: 1rem;
-  }
-
-  .banner-content {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .banner-icon {
-    font-size: 1.5rem;
-  }
-
-  /* Search bar responsive */
-  .search-filter-bar {
-    flex-direction: column;
-    gap: 0.75rem;
-  }
-
-  .filter-buttons {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-/* ================================
-   SEARCH AND FILTER BAR
-   ================================ */
-
-.search-filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: white;
-  border-radius: 12px;
-  margin-bottom: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.search-box {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-.search-box:focus-within {
-  border-color: #6366F1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.search-icon {
-  font-size: 1rem;
-  color: #94A3B8;
-}
-
-.search-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: 0.9rem;
-  color: #1E293B;
-  outline: none;
-}
-
-.search-input::placeholder {
-  color: #94A3B8;
-}
-
-.clear-search {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  color: #94A3B8;
-  cursor: pointer;
-  padding: 0.25rem;
-  line-height: 1;
-  transition: color 0.2s ease;
-}
-
-.clear-search:hover {
-  color: #64748B;
-}
-
-.filter-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.filter-btn {
-  padding: 0.5rem 0.875rem;
-  border: 1px solid #E2E8F0;
-  background: white;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  color: #64748B;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.filter-btn:hover {
-  background: #F8FAFC;
-  border-color: #CBD5E1;
-}
-
-.filter-btn.active {
-  background: #6366F1;
-  border-color: #6366F1;
-  color: white;
-}
-
-.btn-clear-filter {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background: #6366F1;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.875rem;
-}
-
-.btn-clear-filter:hover {
-  background: #4F46E5;
-}
-
-/* Print Styles */
-@media print {
-  .estados-cuenta-page {
-    background: white;
-    padding: 0;
-  }
-
-  .timeline-section,
-  .preview-banner,
-  .action-btn,
-  .search-filter-bar,
-  .test-btn {
-    display: none !important;
-  }
-
-  .stat-card {
-    box-shadow: none;
-    border: 1px solid #E2E8F0;
-  }
-
-  .statements-section {
-    box-shadow: none;
-  }
-}
-
-/* ================================
-   🧪 TEST BUTTON - ELIMINAR DESPUÉS
-   ================================ */
-
-.action-btn.test-btn {
-  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
-  border: 2px dashed #F59E0B;
-  color: #92400E;
-}
-
-.action-btn.test-btn:hover {
-  background: linear-gradient(135deg, #FDE68A 0%, #FCD34D 100%);
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-}
-
-.action-btn.test-btn .btn-hint {
-  color: #B45309;
-  font-weight: 600;
-}
-
-/* ================================
-   PAGINACIÓN
-   ================================ */
-
-.pagination-controls {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  background: white;
-  border-radius: 12px;
-  margin-top: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border: 1px solid #E5E7EB;
-}
-
-.pagination-info {
-  font-size: 0.875rem;
-  color: #6B7280;
-}
-
-.pagination-buttons {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.pagination-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 0.5rem 1rem;
-  border: 1px solid #E5E7EB;
-  background: white;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  color: #374151;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  height: 38px;
-  line-height: 1;
-}
-
-.pagination-btn-icon {
-  padding: 0.5rem 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 700;
-  min-width: 38px;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background: #F3F4F6;
-  border-color: #D1D5DB;
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.pagination-current {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #4F46E5;
-  background: #EEF2FF;
-  border-radius: 8px;
-  height: 38px;
-  white-space: nowrap;
-}
-
-@media (max-width: 768px) {
-  .pagination-controls {
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .pagination-buttons {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .pagination-btn {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.8rem;
+  .estados-cuenta-page .stats-grid {
+    grid-template-columns: 1fr;
   }
 }

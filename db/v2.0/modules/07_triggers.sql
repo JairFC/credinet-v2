@@ -217,6 +217,10 @@ DECLARE
     v_associate_user_id INTEGER;
     v_associate_profile_id INTEGER;
     v_amount_diff DECIMAL(12,2);
+    v_capital_paid DECIMAL(12,2);
+    v_expected_amount DECIMAL(12,2);
+    v_loan_amount DECIMAL(12,2);
+    v_loan_term INTEGER;
 BEGIN
     IF NEW.amount_paid != OLD.amount_paid THEN
         SELECT associate_user_id INTO v_associate_user_id
@@ -231,12 +235,33 @@ BEGIN
             IF v_associate_profile_id IS NOT NULL THEN
                 v_amount_diff := NEW.amount_paid - OLD.amount_paid;
                 
+                -- ✅ CRÍTICO: Calcular proporción de CAPITAL en el pago
+                -- credit_used debe reflejar solo el capital prestado, no intereses/comisiones
+                SELECT l.amount, l.term_biweeks INTO v_loan_amount, v_loan_term
+                FROM loans l
+                WHERE l.id = NEW.loan_id;
+                
+                -- Obtener expected_amount del pago actual
+                v_expected_amount := NEW.expected_amount;
+                
+                -- Si el pago está completo (amount_paid >= expected_amount)
+                IF NEW.amount_paid >= v_expected_amount THEN
+                    -- Calcular capital de este pago: loan_amount / term_biweeks
+                    v_capital_paid := v_loan_amount / v_loan_term;
+                ELSE
+                    -- Pago parcial: calcular proporción de capital
+                    -- capital_paid = (loan_amount / term) * (amount_paid / expected_amount)
+                    v_capital_paid := (v_loan_amount / v_loan_term) * (v_amount_diff / v_expected_amount);
+                END IF;
+                
+                -- Liberar SOLO el capital, no intereses ni comisión
                 UPDATE associate_profiles
-                SET credit_used = GREATEST(credit_used - v_amount_diff, 0),
+                SET credit_used = GREATEST(credit_used - v_capital_paid, 0),
                     credit_last_updated = CURRENT_TIMESTAMP
                 WHERE id = v_associate_profile_id;
                 
-                RAISE NOTICE 'Crédito del asociado % actualizado por pago: -%', v_associate_profile_id, v_amount_diff;
+                RAISE NOTICE 'Crédito del asociado % actualizado: pago total $%, capital liberado $%', 
+                    v_associate_profile_id, v_amount_diff, v_capital_paid;
             END IF;
         END IF;
     END IF;

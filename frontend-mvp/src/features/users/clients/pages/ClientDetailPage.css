@@ -1,30 +1,35 @@
-/* ClientDetailPage.css */
+/**
+ * ClientDetailPage.css - Detalle de Cliente
+ * Todas las clases scopeadas con .client-detail-page
+ */
 
 .client-detail-page {
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+  background: var(--surface-ground, #0f0f0f);
+  min-height: 100vh;
 }
 
-/* Loading & Error States */
-.loading-container {
+/* ===================== LOADING & ERROR STATES ===================== */
+.client-detail-page .loading-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 400px;
 }
 
-.spinner {
+.client-detail-page .spinner {
   font-size: 1.25rem;
-  color: #666;
+  color: var(--text-secondary, #666);
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.error-banner {
-  background: #fee;
-  border: 2px solid #fcc;
+.client-detail-page .error-banner {
+  background: #fee2e2;
+  border: 2px solid #fecaca;
   padding: 1.5rem;
   border-radius: 8px;
   display: flex;
@@ -33,75 +38,76 @@
   margin-bottom: 2rem;
 }
 
-.error-banner span {
-  color: #c00;
+.client-detail-page .error-banner span {
+  color: #dc2626;
   font-weight: 500;
 }
 
-/* Header */
-.page-header {
+/* ===================== HEADER ===================== */
+.client-detail-page .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
   padding-bottom: 1rem;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border-color, #e5e7eb);
 }
 
-.header-left {
+.client-detail-page .header-left {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
-.page-header h1 {
+.client-detail-page .page-header h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--text-primary, #1f2937);
   margin: 0;
 }
 
-.status-badge {
+.client-detail-page .status-badge {
   padding: 0.5rem 1rem;
   border-radius: 20px;
   font-size: 0.875rem;
   font-weight: 600;
 }
 
-.status-badge.active {
+.client-detail-page .status-badge.active {
   background: #d1fae5;
   color: #065f46;
 }
 
-.status-badge.inactive {
+.client-detail-page .status-badge.inactive {
   background: #fee2e2;
   color: #991b1b;
 }
 
-.header-actions {
+.client-detail-page .header-actions {
   display: flex;
   gap: 0.75rem;
 }
 
-/* Detail Container */
-.detail-container {
+/* ===================== DETAIL CONTAINER ===================== */
+.client-detail-page .detail-container {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-/* Info Cards */
+/* ===================== INFO CARDS ===================== */
 .client-detail-page .info-card {
-  background: white;
+  background: var(--surface-card, #1a1a1a);
   border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   overflow: hidden;
+  border: 1px solid var(--border-color, #2a2a2a);
 }
 
 .client-detail-page .info-card .card-header {
-  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
+  background: var(--brand-gradient, linear-gradient(135deg, #C4252D 0%, #9B1C22 100%));
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .client-detail-page .info-card .card-header h2 {
@@ -115,44 +121,44 @@
 }
 
 /* Info Grid */
-.info-grid {
+.client-detail-page .info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
   padding: 1.5rem;
 }
 
-.info-item {
+.client-detail-page .info-item {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.info-item.full-width {
+.client-detail-page .info-item.full-width {
   grid-column: 1 / -1;
 }
 
-.info-item .label {
+.client-detail-page .info-item .label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-secondary, #9ca3af);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.info-item .value {
+.client-detail-page .info-item .value {
   font-size: 1rem;
-  color: #1f2937;
+  color: var(--text-primary, #f3f4f6);
   font-weight: 500;
 }
 
-.profile-picture {
+.client-detail-page .profile-picture {
   width: 120px;
   height: 120px;
   border-radius: 50%;
   object-fit: cover;
   border: 3px solid #C4252D;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 /* Audit Card */
@@ -161,20 +167,20 @@
 }
 
 /* Alert */
-.alert {
+.client-detail-page .alert {
   padding: 1rem 1.5rem;
   border-radius: 8px;
   margin-bottom: 1rem;
 }
 
-.alert-warning {
+.client-detail-page .alert-warning {
   background: #fef3c7;
   color: #92400e;
   border: 1px solid #fde68a;
 }
 
-/* Buttons */
-.btn {
+/* ===================== BUTTONS ===================== */
+.client-detail-page .btn {
   padding: 0.625rem 1.25rem;
   border-radius: 8px;
   font-weight: 600;
@@ -187,49 +193,49 @@
   gap: 0.5rem;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #C4252D 0%, #9B1C22 100%);
+.client-detail-page .btn-primary {
+  background: var(--brand-gradient, linear-gradient(135deg, #C4252D 0%, #9B1C22 100%));
   color: white;
 }
 
-.btn-primary:hover {
+.client-detail-page .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 4px 12px rgba(196, 37, 45, 0.4);
 }
 
-.btn-secondary {
-  background: white;
-  color: #4b5563;
-  border: 2px solid #e5e7eb;
+.client-detail-page .btn-secondary {
+  background: var(--surface-elevated, #2a2a2a);
+  color: var(--text-primary, #f3f4f6);
+  border: 2px solid var(--border-color, #3a3a3a);
 }
 
-.btn-secondary:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
+.client-detail-page .btn-secondary:hover {
+  background: var(--surface-hover, #333);
+  border-color: var(--border-strong, #4a4a4a);
 }
 
-/* Responsive */
+/* ===================== RESPONSIVE ===================== */
 @media (max-width: 768px) {
   .client-detail-page {
     padding: 1rem;
   }
 
-  .page-header {
+  .client-detail-page .page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
 
-  .header-left {
+  .client-detail-page .header-left {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .info-grid {
+  .client-detail-page .info-grid {
     grid-template-columns: 1fr;
   }
 
-  .card-header h2 {
+  .client-detail-page .card-header h2 {
     font-size: 1.1rem;
   }
 }

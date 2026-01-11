@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/providers/AuthProvider';
+import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -9,6 +10,113 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [usersMenuOpen, setUsersMenuOpen] = useState(false);
   const [loansMenuOpen, setLoansMenuOpen] = useState(false);
+  const [agreementsMenuOpen, setAgreementsMenuOpen] = useState(false);
+
+  // Refs para detectar hover
+  const loansMenuRef = useRef(null);
+  const usersMenuRef = useRef(null);
+  const agreementsMenuRef = useRef(null);
+
+  // Timers para auto-cierre
+  const loansTimerRef = useRef(null);
+  const usersTimerRef = useRef(null);
+  const agreementsTimerRef = useRef(null);
+
+  // Auto-cierre de dropdown de préstamos
+  useEffect(() => {
+    if (loansMenuOpen) {
+      const handleMouseEnter = () => {
+        if (loansTimerRef.current) {
+          clearTimeout(loansTimerRef.current);
+        }
+      };
+
+      const handleMouseLeave = () => {
+        loansTimerRef.current = setTimeout(() => {
+          setLoansMenuOpen(false);
+        }, 2500);
+      };
+
+      const menuElement = loansMenuRef.current;
+      if (menuElement) {
+        menuElement.addEventListener('mouseenter', handleMouseEnter);
+        menuElement.addEventListener('mouseleave', handleMouseLeave);
+        handleMouseLeave(); // Iniciar timer inmediatamente
+
+        return () => {
+          menuElement.removeEventListener('mouseenter', handleMouseEnter);
+          menuElement.removeEventListener('mouseleave', handleMouseLeave);
+          if (loansTimerRef.current) {
+            clearTimeout(loansTimerRef.current);
+          }
+        };
+      }
+    }
+  }, [loansMenuOpen]);
+
+  // Auto-cierre de dropdown de usuarios
+  useEffect(() => {
+    if (usersMenuOpen) {
+      const handleMouseEnter = () => {
+        if (usersTimerRef.current) {
+          clearTimeout(usersTimerRef.current);
+        }
+      };
+
+      const handleMouseLeave = () => {
+        usersTimerRef.current = setTimeout(() => {
+          setUsersMenuOpen(false);
+        }, 2500);
+      };
+
+      const menuElement = usersMenuRef.current;
+      if (menuElement) {
+        menuElement.addEventListener('mouseenter', handleMouseEnter);
+        menuElement.addEventListener('mouseleave', handleMouseLeave);
+        handleMouseLeave();
+
+        return () => {
+          menuElement.removeEventListener('mouseenter', handleMouseEnter);
+          menuElement.removeEventListener('mouseleave', handleMouseLeave);
+          if (usersTimerRef.current) {
+            clearTimeout(usersTimerRef.current);
+          }
+        };
+      }
+    }
+  }, [usersMenuOpen]);
+
+  // Auto-cierre de dropdown de convenios
+  useEffect(() => {
+    if (agreementsMenuOpen) {
+      const handleMouseEnter = () => {
+        if (agreementsTimerRef.current) {
+          clearTimeout(agreementsTimerRef.current);
+        }
+      };
+
+      const handleMouseLeave = () => {
+        agreementsTimerRef.current = setTimeout(() => {
+          setAgreementsMenuOpen(false);
+        }, 2500);
+      };
+
+      const menuElement = agreementsMenuRef.current;
+      if (menuElement) {
+        menuElement.addEventListener('mouseenter', handleMouseEnter);
+        menuElement.addEventListener('mouseleave', handleMouseLeave);
+        handleMouseLeave();
+
+        return () => {
+          menuElement.removeEventListener('mouseenter', handleMouseEnter);
+          menuElement.removeEventListener('mouseleave', handleMouseLeave);
+          if (agreementsTimerRef.current) {
+            clearTimeout(agreementsTimerRef.current);
+          }
+        };
+      }
+    }
+  }, [agreementsMenuOpen]);
 
   const handleLogout = () => {
     logout();
@@ -27,12 +135,25 @@ const Navbar = () => {
     setLoansMenuOpen(!loansMenuOpen);
   };
 
+  const toggleAgreementsMenu = () => {
+    setAgreementsMenuOpen(!agreementsMenuOpen);
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-container">
         <div className="navbar-brand">
           <Link to="/dashboard" className="brand-link">
-            CrediNet <span className="version">V2</span>
+            {/* Mini Logo 3D GameCube Style */}
+            <div className="brand-logo-mini">
+              <div className="mini-cube-container">
+                <div className="mini-cube"></div>
+                <div className="mini-cube"></div>
+                <div className="mini-cube"></div>
+                <div className="mini-cube"></div>
+              </div>
+            </div>
+            <span className="brand-text"><span className="brand-credi">Credi</span><span className="brand-cuenta">Cuenta</span></span>
           </Link>
         </div>
 
@@ -49,7 +170,7 @@ const Navbar = () => {
             </li>
 
             {/* Loans Module - Dropdown */}
-            <li className="navbar-dropdown">
+            <li className="navbar-dropdown" ref={loansMenuRef}>
               <button
                 className="dropdown-toggle"
                 onClick={toggleLoansMenu}
@@ -102,7 +223,7 @@ const Navbar = () => {
             </li>
 
             {/* Users Module - Dropdown */}
-            <li className="navbar-dropdown">
+            <li className="navbar-dropdown" ref={usersMenuRef}>
               <button
                 className="dropdown-toggle"
                 onClick={toggleUsersMenu}
@@ -137,11 +258,42 @@ const Navbar = () => {
               )}
             </li>
 
-            <li>
-              <Link to="/reportes" onClick={() => setMenuOpen(false)}>
-                📈 Reportes
-              </Link>
+            {/* Agreements Module (Convenios) - Dropdown */}
+            <li className="navbar-dropdown" ref={agreementsMenuRef}>
+              <button
+                className="dropdown-toggle"
+                onClick={toggleAgreementsMenu}
+              >
+                📋 Convenios {agreementsMenuOpen ? '▲' : '▼'}
+              </button>
+              {agreementsMenuOpen && (
+                <ul className="dropdown-menu">
+                  <li>
+                    <Link
+                      to="/convenios"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setAgreementsMenuOpen(false);
+                      }}
+                    >
+                      📋 Lista de Convenios
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/convenios/nuevo"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setAgreementsMenuOpen(false);
+                      }}
+                    >
+                      ➕ Nuevo Convenio
+                    </Link>
+                  </li>
+                </ul>
+              )}
             </li>
+
           </ul>
 
           <div className="navbar-user">
@@ -158,6 +310,7 @@ const Navbar = () => {
                 </span>
               </div>
             </div>
+            <ThemeToggle />
             <button className="logout-button" onClick={handleLogout}>
               🚪 Salir
             </button>

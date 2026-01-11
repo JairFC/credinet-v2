@@ -116,7 +116,7 @@ async def create_associate(
             user_id=new_user.id,
             level_id=request.level_id,
             credit_limit=request.credit_limit,
-            credit_used=0,
+            pending_payments_total=0,
             contact_person=request.contact_person,
             contact_email=request.contact_email,
             default_commission_rate=request.default_commission_rate,
@@ -199,7 +199,7 @@ async def search_available_associates(
     
     Filtros aplicados:
     - Solo asociados activos
-    - Con credit_available >= min_credit
+    - Con available_credit >= min_credit
     - Búsqueda por: nombre completo, username, email
     
     Args:
@@ -227,8 +227,8 @@ async def search_available_associates(
                 AssociateProfileModel.user_id,
                 AssociateProfileModel.level_id,
                 AssociateProfileModel.credit_limit,
-                AssociateProfileModel.credit_used,
-                AssociateProfileModel.credit_available,
+                AssociateProfileModel.pending_payments_total,
+                AssociateProfileModel.available_credit,
                 AssociateProfileModel.active,
                 UserModel.username,
                 UserModel.first_name,
@@ -240,7 +240,7 @@ async def search_available_associates(
             .where(
                 and_(
                     AssociateProfileModel.active == True,
-                    AssociateProfileModel.credit_available >= min_credit,
+                    AssociateProfileModel.available_credit >= min_credit,
                     or_(
                         func.lower(UserModel.username).like(search_term),
                         func.lower(UserModel.first_name).like(search_term),
@@ -250,7 +250,7 @@ async def search_available_associates(
                     )
                 )
             )
-            .order_by(AssociateProfileModel.credit_available.desc())
+            .order_by(AssociateProfileModel.available_credit.desc())
             .limit(limit)
         )
         
@@ -261,9 +261,9 @@ async def search_available_associates(
         associates = []
         for row in rows:
             credit_limit = float(row.credit_limit)
-            credit_used = float(row.credit_used)
-            credit_available = float(row.credit_available)
-            credit_usage_percentage = (credit_used / credit_limit * 100) if credit_limit > 0 else 0
+            pending_payments_total = float(row.pending_payments_total)
+            available_credit = float(row.available_credit)
+            credit_usage_percentage = (pending_payments_total / credit_limit * 100) if credit_limit > 0 else 0
             
             associates.append(
                 AssociateSearchItemDTO(
@@ -275,11 +275,11 @@ async def search_available_associates(
                     phone_number=row.phone_number,
                     level_id=row.level_id,
                     credit_limit=row.credit_limit,
-                    credit_used=row.credit_used,
-                    credit_available=row.credit_available,
+                    pending_payments_total=row.pending_payments_total,
+                    available_credit=row.available_credit,
                     credit_usage_percentage=credit_usage_percentage,
                     active=row.active,
-                    can_grant_loans=credit_available > 0,
+                    can_grant_loans=available_credit > 0,
                 )
             )
         
@@ -336,9 +336,9 @@ async def list_associates(
                 AssociateProfileModel.id,
                 AssociateProfileModel.user_id,
                 AssociateProfileModel.credit_limit,
-                AssociateProfileModel.credit_used,
-                AssociateProfileModel.credit_available,
-                AssociateProfileModel.debt_balance,
+                AssociateProfileModel.pending_payments_total,
+                AssociateProfileModel.available_credit,
+                AssociateProfileModel.consolidated_debt,
                 pending_debts_subq.label('pending_debts_count'),
                 AssociateProfileModel.active,
                 AssociateProfileModel.level_id,
@@ -369,9 +369,9 @@ async def list_associates(
                 email=row.email,
                 level_id=row.level_id,
                 credit_limit=row.credit_limit,
-                credit_used=row.credit_used,
-                credit_available=row.credit_available,
-                debt_balance=row.debt_balance,
+                pending_payments_total=row.pending_payments_total,
+                available_credit=row.available_credit,
+                consolidated_debt=row.consolidated_debt,
                 pending_debts_count=row.pending_debts_count or 0,
                 active=row.active,
             )
@@ -427,11 +427,11 @@ async def get_associate_detail(
                 AssociateProfileModel.consecutive_on_time_payments,
                 AssociateProfileModel.clients_in_agreement,
                 AssociateProfileModel.last_level_evaluation_date,
-                AssociateProfileModel.credit_used,
+                AssociateProfileModel.pending_payments_total,
                 AssociateProfileModel.credit_limit,
-                AssociateProfileModel.credit_available,
+                AssociateProfileModel.available_credit,
                 AssociateProfileModel.credit_last_updated,
-                AssociateProfileModel.debt_balance,
+                AssociateProfileModel.consolidated_debt,
                 AssociateProfileModel.created_at,
                 AssociateProfileModel.updated_at,
                 UserModel.username,
@@ -456,7 +456,7 @@ async def get_associate_detail(
         # Calcular porcentaje de uso de crédito
         credit_usage_percentage = None
         if row.credit_limit and row.credit_limit > 0:
-            credit_usage_percentage = float((row.credit_used / row.credit_limit) * 100)
+            credit_usage_percentage = float((row.pending_payments_total / row.credit_limit) * 100)
         
         return AssociateResponseDTO(
             id=row.id,
@@ -470,11 +470,11 @@ async def get_associate_detail(
             consecutive_on_time_payments=row.consecutive_on_time_payments,
             clients_in_agreement=row.clients_in_agreement,
             last_level_evaluation_date=row.last_level_evaluation_date,
-            credit_used=row.credit_used,
+            pending_payments_total=row.pending_payments_total,
             credit_limit=row.credit_limit,
-            credit_available=row.credit_available,
+            available_credit=row.available_credit,
             credit_last_updated=row.credit_last_updated,
-            debt_balance=row.debt_balance,
+            consolidated_debt=row.consolidated_debt,
             created_at=row.created_at,
             updated_at=row.updated_at,
             credit_usage_percentage=credit_usage_percentage,
@@ -531,11 +531,11 @@ async def get_associate_by_user_id(
                 AssociateProfileModel.consecutive_on_time_payments,
                 AssociateProfileModel.clients_in_agreement,
                 AssociateProfileModel.last_level_evaluation_date,
-                AssociateProfileModel.credit_used,
+                AssociateProfileModel.pending_payments_total,
                 AssociateProfileModel.credit_limit,
-                AssociateProfileModel.credit_available,
+                AssociateProfileModel.available_credit,
                 AssociateProfileModel.credit_last_updated,
-                AssociateProfileModel.debt_balance,
+                AssociateProfileModel.consolidated_debt,
                 AssociateProfileModel.created_at,
                 AssociateProfileModel.updated_at,
                 UserModel.username,
@@ -575,11 +575,11 @@ async def get_associate_by_user_id(
             consecutive_on_time_payments=row.consecutive_on_time_payments,
             clients_in_agreement=row.clients_in_agreement,
             last_level_evaluation_date=row.last_level_evaluation_date,
-            credit_used=float(row.credit_used) if row.credit_used else 0.0,
+            pending_payments_total=float(row.pending_payments_total) if row.pending_payments_total else 0.0,
             credit_limit=float(row.credit_limit) if row.credit_limit else 0.0,
-            credit_available=float(row.credit_available) if row.credit_available else 0.0,
+            available_credit=float(row.available_credit) if row.available_credit else 0.0,
             credit_last_updated=row.credit_last_updated,
-            debt_balance=float(row.debt_balance) if row.debt_balance else 0.0,
+            consolidated_debt=float(row.consolidated_debt) if row.consolidated_debt else 0.0,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -627,11 +627,11 @@ async def get_associate_credit(
             associate_id=associate.id,
             user_id=associate.user_id,
             credit_limit=associate.credit_limit,
-            credit_used=associate.credit_used,
-            credit_available=associate.credit_available,
+            pending_payments_total=associate.pending_payments_total,
+            available_credit=associate.available_credit,
             credit_usage_percentage=associate.get_credit_usage_percentage(),
             active_loans_count=0,  # TODO: Contar loans activos
-            total_disbursed=associate.credit_used,
+            total_disbursed=associate.pending_payments_total,
         )
     except HTTPException:
         raise
@@ -834,8 +834,8 @@ async def register_debt_payment(
     1. Obtiene items de deuda desde associate_accumulated_balances
     2. Ordena por created_at ASC (más antiguo primero)
     3. Aplica el pago reduciendo accumulated_debt
-    4. Actualiza debt_balance en associate_profiles
-    5. Libera crédito automáticamente (credit_available aumenta)
+    4. Actualiza consolidated_debt en associate_profiles
+    5. Libera crédito automáticamente (available_credit aumenta)
     6. Registra detalle en JSONB applied_breakdown_items
     
     **Returns:** JSON con items liquidados, deuda restante y crédito liberado
@@ -848,7 +848,7 @@ async def register_debt_payment(
     try:
         # Verificar que existe el asociado
         check = await db.execute(
-            text("SELECT id, debt_balance FROM associate_profiles WHERE id = :id"),
+            text("SELECT id, consolidated_debt FROM associate_profiles WHERE id = :id"),
             {"id": associate_id}
         )
         profile = check.fetchone()
@@ -859,7 +859,7 @@ async def register_debt_payment(
                 detail=f"Asociado {associate_id} no encontrado"
             )
         
-        if float(profile.debt_balance) <= 0:
+        if float(profile.consolidated_debt) <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="El asociado no tiene deuda pendiente"
@@ -941,10 +941,10 @@ async def get_debt_summary(
                 periods_with_debt,
                 oldest_debt_date,
                 newest_debt_date,
-                profile_debt_balance,
+                profile_consolidated_debt,
                 credit_limit,
-                credit_available,
-                credit_used,
+                available_credit,
+                pending_payments_total,
                 total_paid_to_debt,
                 total_payments_count,
                 last_payment_date
@@ -972,10 +972,10 @@ async def get_debt_summary(
             "periods_with_debt": row[4],
             "oldest_debt_date": row[5].isoformat() if row[5] else None,
             "newest_debt_date": row[6].isoformat() if row[6] else None,
-            "profile_debt_balance": float(row[7]),
+            "profile_consolidated_debt": float(row[7]),
             "credit_limit": float(row[8]),
-            "credit_available": float(row[9]),
-            "credit_used": float(row[10]),
+            "available_credit": float(row[9]),
+            "pending_payments_total": float(row[10]),
             "total_paid_to_debt": float(row[11]),
             "total_payments_count": row[12],
             "last_payment_date": row[13].isoformat() if row[13] else None

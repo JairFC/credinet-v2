@@ -51,7 +51,7 @@ async def list_loans(
     Lista préstamos con filtros opcionales, búsqueda y paginación.
     
     Parámetros de filtro:
-    - status_id: Estado del préstamo (1=PENDING, 2=APPROVED, 3=ACTIVE, etc.)
+    - status_id: Estado del préstamo (1=PENDING, 2=ACTIVE, 4=COMPLETED, etc.)
     - user_id: ID del cliente
     - associate_user_id: ID del asociado
     - search: Texto para buscar en ID, nombre de cliente o asociado
@@ -313,9 +313,9 @@ async def get_loan_amortization(
     
     loan_status_id = loan[4]
     
-    # Status 2 = Approved (verificar en tu tabla loan_statuses)
+    # Status 2 = ACTIVE (préstamo activo con pagos en curso)
     if loan_status_id == 2:
-        # Préstamo aprobado: obtener pagos reales
+        # Préstamo activo: obtener pagos reales
         # Incluimos total_pending (saldo total pendiente incluyendo intereses)
         payments_query = text("""
             SELECT 
@@ -588,7 +588,7 @@ async def approve_loan(
     1. Validar que esté en estado PENDING
     2. Validar pre-aprobación (crédito, morosidad)
     3. Calcular fecha del primer pago (doble calendario)
-    4. Actualizar préstamo a APPROVED
+    4. Actualizar préstamo a ACTIVE
     5. Trigger genera cronograma de pagos automáticamente
     
     Body:
@@ -835,7 +835,7 @@ async def delete_loan(
     - Están en estado PENDING (no procesados aún)
     - Están en estado REJECTED (ya fueron rechazados)
     
-    NO se pueden eliminar préstamos APPROVED, ACTIVE, PAID_OFF o CANCELLED
+    NO se pueden eliminar préstamos ACTIVE, PAID_OFF o CANCELLED
     (ya tienen historial de negocio).
     
     Proceso:
@@ -908,14 +908,13 @@ async def force_delete_loan(
     
     Solo se permite para préstamos en estado:
     - PENDING (1)
-    - APPROVED (2)
-    - ACTIVE (3)
-    - REJECTED (6)
+    - ACTIVE (2)
+    - REJECTED (7)
     
     NO se permite eliminar préstamos:
-    - PAID_OFF (4) - Ya fueron liquidados
-    - DEFAULTED (5) - Tienen historial de mora
-    - CANCELLED (7) - Ya fueron cancelados
+    - COMPLETED (4) - Ya fueron liquidados
+    - DEFAULTED (6) - Tienen historial de mora
+    - CANCELLED (8) - Ya fueron cancelados
     
     Returns:
         Información del préstamo eliminado
@@ -950,12 +949,12 @@ async def force_delete_loan(
         
         # 4. Si tiene asociado con crédito usado, liberarlo
         credit_released = 0
-        if loan.associate_user_id and loan.status_id in [2, 3]:  # APPROVED o ACTIVE
+        if loan.associate_user_id and loan.status_id == 2:  # ACTIVE
             # Liberar crédito del asociado
             await db.execute(
                 text("""
                     UPDATE associate_profiles 
-                    SET credit_used = GREATEST(0, credit_used - :amount),
+                    SET pending_payments_total = GREATEST(0, pending_payments_total - :amount),
                         updated_at = NOW()
                     WHERE user_id = :associate_id
                 """),
@@ -1008,7 +1007,7 @@ async def cancel_loan(
     
     Al cancelar un préstamo ACTIVE:
     - El préstamo pasa a estado CANCELLED
-    - Se libera el crédito del asociado (credit_used se reduce)
+    - Se libera el crédito del asociado (pending_payments_total se reduce)
     - Se guarda la razón de la cancelación (obligatoria)
     - Los pagos ya realizados se mantienen como histórico
     
@@ -1085,6 +1084,370 @@ async def cancel_loan(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+
+
+# =============================================================================
+# RENOVACIÓN DE PRÉSTAMOS
+# =============================================================================
+
+@router.get("/client/{client_user_id}/active-loans")
+async def get_client_active_loans(
+    client_user_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Obtiene los préstamos activos de un cliente con información para renovación.
+    
+    Retorna para cada préstamo activo:
+    - Información básica del préstamo
+    - Pagos pendientes y su monto total
+    - Comisiones pendientes para el asociado
+    - Información necesaria para calcular la renovación
+    
+    Se usa cuando:
+    - Al crear un nuevo préstamo, verificar si el cliente tiene préstamos activos
+    - Mostrar la opción de "renovar" liquidando el préstamo anterior
+    
+    Ejemplos:
+    - GET /loans/client/5/active-loans → Préstamos activos del cliente 5
+    """
+    query = text("""
+        SELECT 
+            l.id as loan_id,
+            l.amount as original_amount,
+            l.term_biweeks,
+            l.interest_rate,
+            l.commission_rate,
+            l.biweekly_payment,
+            l.commission_per_payment,
+            l.profile_code,
+            l.created_at,
+            l.approved_at,
+            ls.name as status_name,
+            -- Asociado
+            l.associate_user_id,
+            ua.first_name || ' ' || ua.last_name as associate_name,
+            -- Total de pagos del préstamo
+            (SELECT COUNT(*) FROM payments p WHERE p.loan_id = l.id) as total_payments,
+            -- Contar pagos pendientes (status 1 = PENDING)
+            (SELECT COUNT(*) FROM payments p WHERE p.loan_id = l.id AND p.status_id = 1) as pending_payments_count,
+            -- Total a liquidar (suma de expected_amount de pagos pendientes)
+            (SELECT COALESCE(SUM(expected_amount), 0) FROM payments p WHERE p.loan_id = l.id AND p.status_id = 1) as total_pending_amount,
+            -- Comisiones pendientes para el asociado
+            (SELECT COALESCE(SUM(commission_amount), 0) FROM payments p WHERE p.loan_id = l.id AND p.status_id = 1) as pending_commissions,
+            -- Siguiente fecha de pago
+            (SELECT MIN(payment_due_date) FROM payments p WHERE p.loan_id = l.id AND p.status_id = 1) as next_payment_date
+        FROM loans l
+        JOIN loan_statuses ls ON l.status_id = ls.id
+        LEFT JOIN users ua ON l.associate_user_id = ua.id
+        WHERE l.user_id = :client_user_id
+          AND ls.name = 'ACTIVE'
+        ORDER BY l.created_at DESC
+    """)
+    
+    result = await db.execute(query, {"client_user_id": client_user_id})
+    rows = result.fetchall()
+    
+    active_loans = []
+    for row in rows:
+        active_loans.append({
+            "loan_id": row.loan_id,
+            "original_amount": float(row.original_amount),
+            "term_biweeks": row.term_biweeks,
+            "interest_rate": float(row.interest_rate) if row.interest_rate else None,
+            "commission_rate": float(row.commission_rate) if row.commission_rate else None,
+            "biweekly_payment": float(row.biweekly_payment) if row.biweekly_payment else None,
+            "commission_per_payment": float(row.commission_per_payment) if row.commission_per_payment else None,
+            "profile_code": row.profile_code,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+            "approved_at": row.approved_at.isoformat() if row.approved_at else None,
+            "status_name": row.status_name,
+            "associate_user_id": row.associate_user_id,
+            "associate_name": row.associate_name,
+            # Información para renovación
+            "total_payments": row.total_payments,
+            "pending_payments_count": row.pending_payments_count,
+            "total_pending_amount": float(row.total_pending_amount),
+            "pending_commissions": float(row.pending_commissions),
+            "next_payment_date": row.next_payment_date.isoformat() if row.next_payment_date else None,
+            # Resumen para UI - Usamos 'loan_amount' como alias de original_amount para consistencia con el frontend
+            "loan_amount": float(row.original_amount),
+            "can_renew": row.pending_payments_count > 0,
+            "renewal_summary": {
+                "payments_remaining": row.pending_payments_count,
+                "amount_to_liquidate": float(row.total_pending_amount),
+                "commissions_owed_to_associate": float(row.pending_commissions),
+            }
+        })
+    
+    return {
+        "client_user_id": client_user_id,
+        "has_active_loans": len(active_loans) > 0,
+        "active_loans_count": len(active_loans),
+        "active_loans": active_loans
+    }
+
+
+@router.post("/renew", response_model=LoanResponseDTO, status_code=201)
+async def renew_loan(
+    renewal_data: dict,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Crea un nuevo préstamo que liquida uno anterior (renovación).
+    
+    ⭐ IMPORTANTE: Los préstamos renovados se APRUEBAN AUTOMÁTICAMENTE
+    porque el cliente ya tiene un préstamo activo validado.
+    
+    Proceso de renovación:
+    1. Se libera el crédito del asociado (del préstamo original)
+    2. Se crea el nuevo préstamo (status PENDING)
+    3. Se marcan los pagos pendientes del préstamo anterior como PAID_BY_RENEWAL
+    4. Se marca el préstamo anterior como RENEWED
+    5. Se registra en loan_renewals para tracking
+    6. Se APRUEBA AUTOMÁTICAMENTE el nuevo préstamo (genera cronograma de pagos)
+    7. Las comisiones pendientes quedan como "saldo a favor" del asociado
+    
+    REGLA DE NEGOCIO - LIQUIDACIÓN:
+    El cliente debe liquidar TODOS los pagos pendientes completos (capital + interés).
+    NO hay descuento por pago anticipado de intereses.
+    
+    Body Example:
+    ```json
+    {
+        "original_loan_id": 95,
+        "user_id": 1019,
+        "associate_user_id": 10,
+        "amount": 40000.00,
+        "term_biweeks": 12,
+        "profile_code": "standard",
+        "notes": "Renovación de préstamo"
+    }
+    ```
+    
+    Validaciones:
+    - El préstamo original existe y está ACTIVE
+    - El nuevo monto es suficiente para cubrir la suma de pagos pendientes (capital + interés)
+    - El asociado tiene crédito suficiente
+    
+    Returns:
+        LoanResponseDTO: Nuevo préstamo APROBADO con cronograma de pagos generado
+    """
+    from datetime import datetime
+    
+    original_loan_id = renewal_data.get("original_loan_id")
+    
+    if not original_loan_id:
+        raise HTTPException(status_code=400, detail="original_loan_id es requerido para renovación")
+    
+    # 1. Obtener información del préstamo original
+    original_query = text("""
+        SELECT 
+            l.id,
+            l.user_id,
+            l.associate_user_id,
+            l.amount,
+            ls.name as status_name,
+            -- Pagos pendientes
+            (SELECT COUNT(*) FROM payments p WHERE p.loan_id = l.id AND p.status_id = 1) as pending_count,
+            (SELECT COALESCE(SUM(expected_amount), 0) FROM payments p WHERE p.loan_id = l.id AND p.status_id = 1) as pending_amount,
+            (SELECT COALESCE(SUM(commission_amount), 0) FROM payments p WHERE p.loan_id = l.id AND p.status_id = 1) as pending_commissions
+        FROM loans l
+        JOIN loan_statuses ls ON l.status_id = ls.id
+        WHERE l.id = :loan_id
+    """)
+    
+    result = await db.execute(original_query, {"loan_id": original_loan_id})
+    original = result.fetchone()
+    
+    if not original:
+        raise HTTPException(status_code=404, detail=f"Préstamo original {original_loan_id} no encontrado")
+    
+    if original.status_name != 'ACTIVE':
+        raise HTTPException(
+            status_code=400, 
+            detail=f"El préstamo {original_loan_id} no puede renovarse. Estado actual: {original.status_name}"
+        )
+    
+    # Validar que el cliente sea el mismo
+    if renewal_data.get("user_id") != original.user_id:
+        raise HTTPException(
+            status_code=400,
+            detail="El nuevo préstamo debe ser para el mismo cliente que el préstamo original"
+        )
+    
+    new_amount = float(renewal_data.get("amount", 0))
+    pending_amount = float(original.pending_amount)
+    pending_commissions = float(original.pending_commissions)
+    original_loan_amount = float(original.amount)  # Monto del préstamo original
+    
+    # El nuevo monto debe cubrir al menos el saldo pendiente
+    if new_amount < pending_amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El monto del nuevo préstamo (${new_amount:,.2f}) debe ser mayor o igual al saldo pendiente (${pending_amount:,.2f})"
+        )
+    
+    # Capital neto que necesita el asociado = nuevo_monto - monto_original
+    # Porque al cerrar el préstamo original se libera su crédito
+    net_capital_needed = new_amount - original_loan_amount
+    
+    # ⭐ 2. PRIMERO: Liberar el crédito del préstamo original
+    # Esto permite que el asociado tenga crédito disponible para el nuevo préstamo
+    # IMPORTANTE: Si el asociado cambia, el original libera y el nuevo consume
+    # ⚠️ CRÍTICO: Liberar SOLO el capital original (amount), NO el saldo pendiente completo
+    # porque el saldo pendiente incluye intereses y comisión que no ocupan crédito
+    await db.execute(text("""
+        UPDATE associate_profiles 
+        SET pending_payments_total = GREATEST(0, pending_payments_total - :original_amount),
+            credit_last_updated = CURRENT_TIMESTAMP
+        WHERE user_id = :original_associate_id
+    """), {
+        "original_amount": original_loan_amount,  # ✅ CORRECTO: Solo capital, no incluye intereses/comisión
+        "original_associate_id": original.associate_user_id
+    })
+    
+    print(f"✅ Crédito liberado del asociado {original.associate_user_id}: ${original_loan_amount:,.2f} (capital del préstamo original)")
+    print(f"   Nota: Saldo pendiente total (con intereses/comisión): ${pending_amount:,.2f}")
+    
+    # 3. Crear el nuevo préstamo usando el servicio existente
+    service = LoanService(db)
+    
+    try:
+        new_loan = await service.create_loan_request(
+            user_id=renewal_data.get("user_id"),
+            associate_user_id=renewal_data.get("associate_user_id"),
+            amount=new_amount,
+            term_biweeks=renewal_data.get("term_biweeks"),
+            profile_code=renewal_data.get("profile_code"),
+            interest_rate=renewal_data.get("interest_rate"),
+            commission_rate=renewal_data.get("commission_rate"),
+            notes=f"RENOVACIÓN de préstamo #{original_loan_id}. Saldo liquidado: ${pending_amount:,.2f}. {renewal_data.get('notes', '')}"
+        )
+        
+        # ⭐ IMPORTANTE: Hacer las operaciones de renovación ANTES del approve
+        # porque approve hace commit() y queremos todo en una sola transacción
+        
+        # 3. Marcar pagos pendientes del préstamo original como PAID_BY_RENEWAL (status 14)
+        # Primero verificar si existe el status PAID_BY_RENEWAL
+        status_check = await db.execute(text("SELECT id FROM payment_statuses WHERE name = 'PAID_BY_RENEWAL'"))
+        renewal_status = status_check.fetchone()
+        
+        if not renewal_status:
+            # Crear el status si no existe
+            await db.execute(text("""
+                INSERT INTO payment_statuses (id, name, description, is_active, is_real_payment)
+                VALUES (14, 'PAID_BY_RENEWAL', 'Pago liquidado por renovación de préstamo', true, false)
+                ON CONFLICT (id) DO NOTHING
+            """))
+        
+        # Marcar los pagos como liquidados por renovación
+        await db.execute(text("""
+            UPDATE payments 
+            SET status_id = 14,
+                marking_notes = :notes,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE loan_id = :original_loan_id 
+              AND status_id = 1
+        """), {
+            "original_loan_id": original_loan_id,
+            "notes": f"Liquidado por renovación. Nuevo préstamo: #{new_loan.id}"
+        })
+        
+        # 4. Marcar préstamo original como RENEWED (si no existe el status, usar COMPLETED)
+        await db.execute(text("""
+            UPDATE loans 
+            SET status_id = COALESCE(
+                (SELECT id FROM loan_statuses WHERE name = 'RENEWED'),
+                4  -- COMPLETED como fallback
+            ),
+            notes = COALESCE(notes, '') || E'\n[RENOVADO] ' || :renewal_note,
+            updated_at = CURRENT_TIMESTAMP
+            WHERE id = :original_loan_id
+        """), {
+            "original_loan_id": original_loan_id,
+            "renewal_note": f"Renovado como préstamo #{new_loan.id} el {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        })
+        
+        # 5. Registrar en loan_renewals
+        await db.execute(text("""
+            INSERT INTO loan_renewals (
+                original_loan_id,
+                renewed_loan_id,
+                renewal_date,
+                pending_balance,
+                new_amount,
+                reason,
+                created_by
+            ) VALUES (
+                :original_id,
+                :renewed_id,
+                CURRENT_DATE,
+                :pending_balance,
+                :new_amount,
+                :reason,
+                :created_by
+            )
+        """), {
+            "original_id": original_loan_id,
+            "renewed_id": new_loan.id,
+            "pending_balance": pending_amount,
+            "new_amount": new_amount,
+            "reason": f"Renovación estándar. Comisiones pendientes: ${pending_commissions:,.2f}",
+            "created_by": renewal_data.get("associate_user_id")
+        })
+        
+        # ⭐ 6. APROBAR el nuevo préstamo (genera cronograma de pagos via trigger)
+        # El commit de approve_loan incluirá TODAS las operaciones anteriores
+        approved_loan = await service.approve_loan(
+            loan_id=new_loan.id,
+            approved_by=renewal_data.get("associate_user_id"),
+            notes=f"Aprobación automática por renovación de préstamo #{original_loan_id}"
+        )
+        
+        # Usar el préstamo aprobado
+        new_loan = approved_loan
+        
+        # Retornar el nuevo préstamo
+        return LoanResponseDTO(
+            id=new_loan.id,
+            user_id=new_loan.user_id,
+            associate_user_id=new_loan.associate_user_id,
+            amount=new_loan.amount,
+            interest_rate=new_loan.interest_rate,
+            commission_rate=new_loan.commission_rate,
+            term_biweeks=new_loan.term_biweeks,
+            status_id=new_loan.status_id,
+            contract_id=new_loan.contract_id,
+            approved_at=new_loan.approved_at,
+            approved_by=new_loan.approved_by,
+            rejected_at=new_loan.rejected_at,
+            rejected_by=new_loan.rejected_by,
+            rejection_reason=new_loan.rejection_reason,
+            notes=new_loan.notes,
+            created_at=new_loan.created_at,
+            updated_at=new_loan.updated_at,
+            total_to_pay=new_loan.calculate_total_to_pay(),
+            payment_amount=new_loan.calculate_payment_amount(),
+            # Información adicional de renovación
+            renewal_info={
+                "is_renewal": True,
+                "original_loan_id": original_loan_id,
+                "amount_liquidated": pending_amount,  # Capital + intereses liquidados
+                "commissions_owed_to_associate": pending_commissions,  # Saldo a favor del asociado
+                "net_to_client": new_amount - pending_amount,  # Lo que le queda al cliente después de liquidar
+                "original_loan_amount": original_loan_amount  # Monto original del préstamo liquidado
+            }
+        )
+        
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
 
 

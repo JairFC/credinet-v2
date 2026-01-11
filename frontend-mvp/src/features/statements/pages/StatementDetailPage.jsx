@@ -7,12 +7,14 @@
  * - Resumen de totales en tarjetas
  * - Tabla detallada de todos los pagos
  * - Opción de registrar abonos
+ * - Exportación a PDF profesional
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import apiClient from '@/shared/api/apiClient';
 import RegistrarAbonoModal from '../components/RegistrarAbonoModal';
+import { generateStatementPDF } from '../utils/generateStatementPDF';
 import './StatementDetailPage.css';
 
 // Formatea moneda
@@ -69,10 +71,13 @@ const PAYMENT_STATUS = {
   'CANCELLED': { label: 'Cancelado', class: 'cancelled', icon: '❌' }
 };
 
-// Estados de statement
+// Estados de statement (según statement_statuses table)
+// Flujo principal: DRAFT(6) → COLLECTING(7) → SETTLING(9) → CLOSED(10)
 const STATEMENT_STATUS = {
   6: { label: 'BORRADOR', class: 'draft', icon: '📝' },
   7: { label: 'EN COBRO', class: 'collecting', icon: '💰' },
+  9: { label: 'LIQUIDACIÓN', class: 'settling', icon: '⚖️' },
+  10: { label: 'CERRADO', class: 'closed', icon: '✅' },
   3: { label: 'PAGADO', class: 'paid', icon: '✅' },
   4: { label: 'PARCIAL', class: 'partial', icon: '⚡' },
   5: { label: 'VENCIDO', class: 'overdue', icon: '⚠️' },
@@ -467,8 +472,18 @@ export default function StatementDetailPage() {
               <span>💳</span> Registrar Abono
             </button>
           )}
-          <button className="toolbar-btn btn-export">
-            <span>📥</span> Exportar
+          <button 
+            className="toolbar-btn btn-export"
+            onClick={() => generateStatementPDF({
+              statement,
+              payments: sortedPayments,
+              totals,
+              periodInfo,
+              abonos: statementAbonos,
+              pendingBalance
+            })}
+          >
+            <span>📥</span> Exportar PDF
           </button>
           <button className="toolbar-btn btn-print" onClick={() => window.print()}>
             <span>🖨️</span> Imprimir

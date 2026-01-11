@@ -116,14 +116,14 @@ class AssociateDebtSummaryDTO(BaseModel):
     
     associate_profile_id: int
     associate_name: str
-    current_debt_balance: Decimal
+    current_consolidated_debt: Decimal
     pending_debt_items: int
     liquidated_debt_items: int
     total_paid_to_debt: Decimal
     oldest_debt_date: Optional[date]
     last_payment_date: Optional[date]
     total_payments_count: int
-    credit_available: Decimal
+    available_credit: Decimal
     credit_limit: Decimal
     
     class Config:
@@ -131,14 +131,14 @@ class AssociateDebtSummaryDTO(BaseModel):
             "example": {
                 "associate_profile_id": 5,
                 "associate_name": "Juan Pérez",
-                "current_debt_balance": "15000.00",
+                "current_consolidated_debt": "15000.00",
                 "pending_debt_items": 2,
                 "liquidated_debt_items": 5,
                 "total_paid_to_debt": "85000.00",
                 "oldest_debt_date": "2025-09-15",
                 "last_payment_date": "2025-11-13",
                 "total_payments_count": 8,
-                "credit_available": "250000.00",
+                "available_credit": "250000.00",
                 "credit_limit": "300000.00"
             }
         }

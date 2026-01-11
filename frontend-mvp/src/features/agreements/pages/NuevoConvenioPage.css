@@ -1,0 +1,459 @@
+/**
+ * NuevoConvenioPage.css - Crear Convenio desde Préstamos
+ * Todas las clases scopeadas con .nuevo-convenio-page
+ */
+
+.nuevo-convenio-page {
+  padding: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+  background: var(--surface-ground, #0f0f0f);
+  min-height: 100vh;
+}
+
+/* ===================== HEADER ===================== */
+.nuevo-convenio-page .page-header {
+  margin-bottom: 24px;
+}
+
+.nuevo-convenio-page .page-header h1 {
+  font-size: 1.75rem;
+  color: var(--text-primary, #f3f4f6);
+  margin-bottom: 8px;
+}
+
+.nuevo-convenio-page .page-description {
+  color: var(--text-secondary, #9ca3af);
+  font-size: 0.95rem;
+}
+
+/* ===================== ALERTAS ===================== */
+.nuevo-convenio-page .alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nuevo-convenio-page .alert-error {
+  background-color: rgba(244, 67, 54, 0.15);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  color: #f44336;
+}
+
+.nuevo-convenio-page .alert-success {
+  background-color: rgba(76, 175, 80, 0.15);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  color: #4caf50;
+}
+
+.nuevo-convenio-page .alert-icon {
+  font-size: 1.2rem;
+}
+
+/* ===================== STEPS ===================== */
+.nuevo-convenio-page .steps-header {
+  background: var(--surface-card, #1a1a1a);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border-color, #2a2a2a);
+}
+
+.nuevo-convenio-page .steps-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #f3f4f6);
+  margin: 0 0 16px 0;
+}
+
+.nuevo-convenio-page .steps-container {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+}
+
+.nuevo-convenio-page .step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nuevo-convenio-page .step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: var(--surface-elevated, #2a2a2a);
+  color: var(--text-secondary, #9ca3af);
+  border: 2px solid var(--border-color, #3a3a3a);
+}
+
+.nuevo-convenio-page .step.active .step-number {
+  background: var(--brand-gradient, linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%));
+  color: white;
+  border-color: transparent;
+}
+
+.nuevo-convenio-page .step.completed .step-number {
+  background: #4caf50;
+  color: white;
+  border-color: transparent;
+}
+
+.nuevo-convenio-page .step-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #9ca3af);
+}
+
+.nuevo-convenio-page .step.active .step-label {
+  color: var(--text-primary, #f3f4f6);
+  font-weight: 600;
+}
+
+/* ===================== FORM SECTION ===================== */
+.nuevo-convenio-page .form-section {
+  background: var(--surface-card, #1a1a1a);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color, #2a2a2a);
+}
+
+.nuevo-convenio-page .section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary, #f3f4f6);
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Search Associate */
+.nuevo-convenio-page .search-group {
+  margin-bottom: 20px;
+}
+
+.nuevo-convenio-page .search-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary, #9ca3af);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.nuevo-convenio-page .search-input-wrapper {
+  position: relative;
+}
+
+.nuevo-convenio-page .search-input {
+  width: 100%;
+  padding: 12px 40px 12px 16px;
+  border: 1px solid var(--border-color, #2a2a2a);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: var(--surface-elevated, #1a1a1a);
+  color: var(--text-primary, #f3f4f6);
+  transition: all 0.2s;
+}
+
+.nuevo-convenio-page .search-input:focus {
+  outline: none;
+  border-color: var(--brand-primary, #6366F1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.nuevo-convenio-page .search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary, #9ca3af);
+}
+
+/* Associate Card */
+.nuevo-convenio-page .associate-selected-card {
+  background: var(--surface-elevated, #222);
+  padding: 16px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--border-color, #2a2a2a);
+}
+
+.nuevo-convenio-page .associate-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nuevo-convenio-page .associate-name {
+  font-weight: 600;
+  color: var(--text-primary, #f3f4f6);
+  font-size: 1rem;
+}
+
+.nuevo-convenio-page .associate-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #9ca3af);
+}
+
+/* Search Results */
+.nuevo-convenio-page .search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface-card, #1a1a1a);
+  border: 1px solid var(--border-color, #2a2a2a);
+  border-radius: 8px;
+  margin-top: 4px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.nuevo-convenio-page .search-result-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color, #2a2a2a);
+  transition: background 0.15s;
+}
+
+.nuevo-convenio-page .search-result-item:hover {
+  background: var(--surface-hover, #2a2a2a);
+}
+
+.nuevo-convenio-page .search-result-item:last-child {
+  border-bottom: none;
+}
+
+/* Loans List */
+.nuevo-convenio-page .loans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nuevo-convenio-page .loan-card {
+  background: var(--surface-elevated, #222);
+  padding: 16px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.nuevo-convenio-page .loan-card:hover {
+  background: var(--surface-hover, #2a2a2a);
+}
+
+.nuevo-convenio-page .loan-card.selected {
+  border-color: var(--brand-primary, #6366F1);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.nuevo-convenio-page .loan-info {
+  flex: 1;
+}
+
+.nuevo-convenio-page .loan-id {
+  font-weight: 600;
+  color: var(--text-primary, #f3f4f6);
+  margin-bottom: 4px;
+}
+
+.nuevo-convenio-page .loan-client {
+  font-size: 0.9rem;
+  color: var(--text-secondary, #9ca3af);
+}
+
+.nuevo-convenio-page .loan-amounts {
+  text-align: right;
+}
+
+.nuevo-convenio-page .loan-total {
+  font-weight: 600;
+  color: var(--text-primary, #f3f4f6);
+}
+
+.nuevo-convenio-page .loan-pending {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #9ca3af);
+}
+
+/* Summary */
+.nuevo-convenio-page .summary-section {
+  background: var(--surface-elevated, #222);
+  padding: 20px;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.nuevo-convenio-page .summary-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary, #f3f4f6);
+  margin-bottom: 16px;
+}
+
+.nuevo-convenio-page .summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color, #2a2a2a);
+}
+
+.nuevo-convenio-page .summary-row:last-child {
+  border-bottom: none;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 2px solid var(--border-color, #3a3a3a);
+}
+
+.nuevo-convenio-page .summary-label {
+  color: var(--text-secondary, #9ca3af);
+  font-size: 0.9rem;
+}
+
+.nuevo-convenio-page .summary-value {
+  font-weight: 600;
+  color: var(--text-primary, #f3f4f6);
+}
+
+.nuevo-convenio-page .summary-row.total .summary-value {
+  font-size: 1.3rem;
+  color: #f44336;
+}
+
+/* ===================== BUTTONS ===================== */
+.nuevo-convenio-page .form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.nuevo-convenio-page .btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nuevo-convenio-page .btn-primary {
+  background: var(--brand-gradient, linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%));
+  color: white;
+}
+
+.nuevo-convenio-page .btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.nuevo-convenio-page .btn-secondary {
+  background: var(--surface-elevated, #2a2a2a);
+  color: var(--text-primary, #f3f4f6);
+  border: 1px solid var(--border-color, #3a3a3a);
+}
+
+.nuevo-convenio-page .btn-secondary:hover {
+  background: var(--surface-hover, #333);
+}
+
+.nuevo-convenio-page .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===================== LOADING ===================== */
+.nuevo-convenio-page .loading-section {
+  text-align: center;
+  padding: 40px;
+}
+
+.nuevo-convenio-page .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color, #2a2a2a);
+  border-top: 3px solid var(--brand-primary, #6366F1);
+  border-radius: 50%;
+  animation: nuevo-convenio-spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes nuevo-convenio-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.nuevo-convenio-page .loading-text {
+  color: var(--text-secondary, #9ca3af);
+}
+
+/* Empty State */
+.nuevo-convenio-page .empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary, #9ca3af);
+}
+
+.nuevo-convenio-page .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 768px) {
+  .nuevo-convenio-page {
+    padding: 16px;
+  }
+
+  .nuevo-convenio-page .steps-container {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .nuevo-convenio-page .form-section {
+    padding: 16px;
+  }
+
+  .nuevo-convenio-page .loan-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .nuevo-convenio-page .loan-amounts {
+    text-align: left;
+    width: 100%;
+  }
+
+  .nuevo-convenio-page .form-actions {
+    flex-direction: column;
+  }
+
+  .nuevo-convenio-page .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
