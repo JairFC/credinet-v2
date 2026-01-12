@@ -138,9 +138,18 @@ const AssociateDetailPage = () => {
 
   return (
     <div className="associate-detail-page">
-      {/* Header */}
+      {/* Header con nombre del asociado */}
       <div className="page-header">
-        <h1>👤 Detalle del Asociado</h1>
+        <div className="header-info">
+          <h1>{associate.full_name || `${associate.first_name || ''} ${associate.last_name || ''}`.trim() || 'Asociado'}</h1>
+          <div className="header-meta">
+            <span className={`status-badge ${associate.active ? 'active' : 'inactive'}`}>
+              {associate.active ? '● Activo' : '○ Inactivo'}
+            </span>
+            <span className="associate-id">ID: #{associate.id}</span>
+            {associate.username && <span className="username">@{associate.username}</span>}
+          </div>
+        </div>
         <button
           className="btn btn-secondary"
           onClick={() => window.history.back()}
@@ -149,124 +158,61 @@ const AssociateDetailPage = () => {
         </button>
       </div>
 
-      {/* Información General */}
-      <div className="associate-info-card">
-        <div className="info-section">
-          <h2>📋 Información General</h2>
-          <div className="info-grid">
-            <div className="info-item">
-              <span className="label">ID:</span>
-              <span className="value">#{associate.id}</span>
+      {/* Estado de Crédito - SIEMPRE VISIBLE (Hero Section) */}
+      <div className="credit-hero-card">
+        <div className="credit-stats">
+          <div className="credit-stat">
+            <div className="stat-label">Límite de Crédito</div>
+            <div className="stat-value">
+              ${creditLimit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </div>
-            <div className="info-item">
-              <span className="label">Usuario:</span>
-              <span className="value">{associate.username || 'N/A'}</span>
+          </div>
+
+          <div className="credit-stat">
+            <div className="stat-label">Pagos Pendientes</div>
+            <div className="stat-value stat-warning">
+              ${pendingPaymentsTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </div>
-            <div className="info-item">
-              <span className="label">Nombre:</span>
-              <span className="value">{associate.full_name || `${associate.first_name || ''} ${associate.last_name || ''}`.trim() || 'N/A'}</span>
+            <div className="stat-hint">Por cobrar a clientes</div>
+          </div>
+
+          <div className="credit-stat">
+            <div className="stat-label">Crédito Disponible</div>
+            <div className="stat-value stat-success">
+              ${availableCredit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </div>
-            <div className="info-item">
-              <span className="label">Email:</span>
-              <span className="value">{associate.email || 'N/A'}</span>
+          </div>
+
+          <div className="credit-stat">
+            <div className="stat-label">Deuda Consolidada</div>
+            <div className="stat-value stat-danger">
+              ${consolidatedDebt.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </div>
-            <div className="info-item">
-              <span className="label">Teléfono:</span>
-              <span className="value">{associate.phone_number || 'N/A'}</span>
-            </div>
-            <div className="info-item">
-              <span className="label">Nivel:</span>
-              <span className="value badge badge-info">
-                Nivel {associate.level_id || 'N/A'}
-              </span>
-            </div>
-            <div className="info-item">
-              <span className="label">Estado:</span>
-              <span className={`value badge ${associate.active ? 'badge-success' : 'badge-danger'}`}>
-                {associate.active ? '✓ Activo' : '✗ Inactivo'}
-              </span>
-            </div>
-            <div className="info-item">
-              <span className="label">Comisión:</span>
-              <span className="value">{associate.default_commission_rate}%</span>
-            </div>
+            <div className="stat-hint">Statements + Convenios</div>
+            {consolidatedDebt > 0 && (
+              <button
+                onClick={() => setShowAbonoModal(true)}
+                className="btn-abono-inline"
+              >
+                💰 Abonar
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Estado de Crédito - Siempre visible */}
-        <div className="credit-section">
-          <h2>💳 Estado de Crédito</h2>
-
-          <div className="credit-stats">
-            <div className="credit-stat">
-              <div className="stat-label">Límite de Crédito</div>
-              <div className="stat-value">
-                ${creditLimit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-
-            <div className="credit-stat">
-              <div className="stat-label">Pagos Pendientes</div>
-              <div className="stat-value stat-warning">
-                ${pendingPaymentsTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-              <div className="stat-hint">Por cobrar a clientes</div>
-            </div>
-
-            <div className="credit-stat">
-              <div className="stat-label">Crédito Disponible</div>
-              <div className="stat-value stat-success">
-                ${availableCredit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-
-            <div className="credit-stat">
-              <div className="stat-label">Deuda Consolidada</div>
-              <div className="stat-value stat-danger">
-                ${consolidatedDebt.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-              <div className="stat-hint">Statements + Convenios</div>
-              {consolidatedDebt > 0 && (
-                <button
-                  onClick={() => setShowAbonoModal(true)}
-                  className="btn-abono-inline"
-                >
-                  💰 Abonar
-                </button>
-              )}
-            </div>
+        {/* Barra de progreso */}
+        <div className="credit-progress-container">
+          <div className="credit-progress-bar">
+            <div
+              className="credit-progress-fill"
+              style={{
+                width: `${Math.min(creditUsagePercent, 100)}%`,
+                backgroundColor: creditUsagePercent > 90 ? '#ef4444' : creditUsagePercent > 70 ? '#f59e0b' : '#10b981'
+              }}
+            />
           </div>
-
-          {/* Métricas */}
-          <div className="metrics-grid">
-            <div className="metric-item">
-              <span className="metric-label">Períodos con crédito completo:</span>
-              <span className="metric-value">{associate.consecutive_full_credit_periods || 0}</span>
-            </div>
-            <div className="metric-item">
-              <span className="metric-label">Pagos puntuales consecutivos:</span>
-              <span className="metric-value">{associate.consecutive_on_time_payments || 0}</span>
-            </div>
-            <div className="metric-item">
-              <span className="metric-label">Clientes en acuerdo:</span>
-              <span className="metric-value">{associate.clients_in_agreement || 0}</span>
-            </div>
-          </div>
-
-          {/* Barra de progreso */}
-          <div className="credit-progress-container">
-            <div className="credit-progress-bar">
-              <div
-                className="credit-progress-fill"
-                style={{
-                  width: `${Math.min(creditUsagePercent, 100)}%`,
-                  backgroundColor: creditUsagePercent > 90 ? '#dc3545' : creditUsagePercent > 70 ? '#ffc107' : '#28a745'
-                }}
-              />
-            </div>
-            <div className="credit-progress-label">
-              {creditUsagePercent.toFixed(1)}% del crédito utilizado
-            </div>
+          <div className="credit-progress-label">
+            {creditUsagePercent.toFixed(1)}% del crédito utilizado
           </div>
         </div>
       </div>
@@ -275,6 +221,42 @@ const AssociateDetailPage = () => {
           SECCIONES COLAPSABLES (Lazy Loading)
           ═══════════════════════════════════════════════════════════════════ */}
 
+      {/* Información del Asociado */}
+      <CollapsibleSection
+        title="Información del Asociado"
+        icon="📋"
+        subtitle="Datos personales, contacto y métricas"
+        badge={`Nivel ${associate.level_id || '?'}`}
+        badgeColor="info"
+      >
+        <div className="info-grid">
+          <div className="info-item">
+            <span className="label">Email</span>
+            <span className="value">{associate.email || 'N/A'}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Teléfono</span>
+            <span className="value">{associate.phone_number || 'N/A'}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Nivel</span>
+            <span className="value badge badge-info">Nivel {associate.level_id || 'N/A'}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Períodos con crédito completo</span>
+            <span className="value">{associate.consecutive_full_credit_periods || 0}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Pagos puntuales consecutivos</span>
+            <span className="value">{associate.consecutive_on_time_payments || 0}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Clientes en acuerdo</span>
+            <span className="value">{associate.clients_in_agreement || 0}</span>
+          </div>
+        </div>
+      </CollapsibleSection>
+
       {/* Préstamos del Asociado */}
       <CollapsibleSection
         title="Préstamos del Asociado"
@@ -282,8 +264,6 @@ const AssociateDetailPage = () => {
         subtitle="Préstamos gestionados por este asociado • Click para expandir"
         badge={loansCount}
         badgeColor={loansCount > 0 ? 'primary' : 'info'}
-        defaultExpanded={false}
-        persistKey={`associate_${associateId}_loans`}
       >
         {associate.user_id ? (
           <PrestamosAsociado associateUserId={associate.user_id} key={`prestamos-${refreshKey}`} />
@@ -301,8 +281,6 @@ const AssociateDetailPage = () => {
         subtitle="Personas que han solicitado préstamos a través de este asociado"
         badge={clientsCount}
         badgeColor={clientsCount > 0 ? 'success' : 'info'}
-        defaultExpanded={false}
-        persistKey={`associate_${associateId}_clients`}
       >
         {associateId ? (
           <ClientesAsociado associateId={parseInt(associateId)} key={`clientes-${refreshKey}`} />
@@ -320,8 +298,6 @@ const AssociateDetailPage = () => {
         subtitle="Deuda consolidada: statements cerrados + convenios activos"
         badge={consolidatedDebt > 0 ? `$${consolidatedDebt.toLocaleString('es-MX')}` : '✓ Sin deuda'}
         badgeColor={consolidatedDebt > 0 ? 'danger' : 'success'}
-        defaultExpanded={consolidatedDebt > 0}
-        persistKey={`associate_${associateId}_debt_unified`}
       >
         {associateId ? (
           <DeudaUnificada 
@@ -343,8 +319,6 @@ const AssociateDetailPage = () => {
           title="Historial de Cambios"
           icon="🔍"
           subtitle="Quién creó y modificó este registro"
-          defaultExpanded={false}
-          persistKey={`associate_${associateId}_audit`}
         >
           <AuditHistory
             tableName="users"

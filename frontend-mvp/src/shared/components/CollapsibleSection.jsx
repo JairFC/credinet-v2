@@ -5,10 +5,10 @@
  * - Se expande/colapsa con animación suave
  * - Carga el contenido SOLO cuando se expande por primera vez (lazy loading)
  * - Muestra contador/badge opcional en el header
- * - Persistencia opcional del estado en sessionStorage
+ * - SIEMPRE inicia colapsada para ahorrar recursos
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import './CollapsibleSection.css';
 
 const CollapsibleSection = ({
@@ -17,31 +17,14 @@ const CollapsibleSection = ({
   subtitle,
   badge,
   badgeColor = 'info',
-  defaultExpanded = false,
-  persistKey, // Si se proporciona, persiste el estado en sessionStorage
   children,
   onExpand, // Callback cuando se expande (para cargar datos)
   className = ''
 }) => {
-  // Obtener estado inicial de sessionStorage si hay persistKey
-  const getInitialState = () => {
-    if (persistKey) {
-      const saved = sessionStorage.getItem(`collapsible_${persistKey}`);
-      return saved !== null ? saved === 'true' : defaultExpanded;
-    }
-    return defaultExpanded;
-  };
-
-  const [isExpanded, setIsExpanded] = useState(getInitialState);
-  const [hasLoaded, setHasLoaded] = useState(defaultExpanded);
+  // SIEMPRE inicia colapsada
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-
-  // Persistir estado cuando cambia
-  useEffect(() => {
-    if (persistKey) {
-      sessionStorage.setItem(`collapsible_${persistKey}`, isExpanded.toString());
-    }
-  }, [isExpanded, persistKey]);
 
   const toggleExpanded = useCallback(() => {
     setIsAnimating(true);

@@ -144,7 +144,6 @@ const ClientesAsociado = ({ associateId }) => {
           >
             <option value="">Todos</option>
             <option value="ACTIVE">Con préstamo activo</option>
-            <option value="GOOD_STANDING">Al corriente</option>
             <option value="DEFAULTED">Morosos</option>
           </select>
         </div>

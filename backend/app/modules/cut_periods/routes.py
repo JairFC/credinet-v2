@@ -50,24 +50,43 @@ async def list_cut_periods(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     repo: PgCutPeriodRepository = Depends(get_cut_period_repository),
+    db: AsyncSession = Depends(get_async_db),
 ):
-    """Lista todos los periodos de corte con paginación"""
+    """Lista todos los periodos de corte con paginación y conteos"""
     try:
         use_case = ListCutPeriodsUseCase(repo)
         periods = await use_case.execute(limit, offset)
         total = await repo.count()
         
+        # Obtener conteos de statements y pagos para cada período
+        period_ids = [p.id for p in periods]
+        
+        # Query optimizada para obtener conteos
+        counts_query = text("""
+            SELECT 
+                cp.id,
+                COALESCE((SELECT COUNT(*) FROM associate_payment_statements aps WHERE aps.cut_period_id = cp.id), 0) as statements_count,
+                COALESCE((SELECT COUNT(*) FROM payments p WHERE p.cut_period_id = cp.id), 0) as payment_count
+            FROM cut_periods cp
+            WHERE cp.id = ANY(:period_ids)
+        """)
+        
+        result = await db.execute(counts_query, {"period_ids": period_ids})
+        counts_map = {row.id: {"statements": row.statements_count, "payments": row.payment_count} for row in result.fetchall()}
+        
         items = [
             CutPeriodListItemDTO(
                 id=p.id,
                 cut_number=p.cut_number,
-                cut_code=p.cut_code,  # Usar el código de la BD directamente
+                cut_code=p.cut_code,
                 period_start_date=p.period_start_date,
                 period_end_date=p.period_end_date,
-                payment_date=p.period_end_date,  # Fecha de pago es el final del período
-                cut_date=p.period_end_date,      # Fecha de corte es el final del período
+                payment_date=p.period_end_date,
+                cut_date=p.period_end_date,
                 status_id=p.status_id,
                 collection_percentage=p.get_collection_percentage(),
+                statements_count=counts_map.get(p.id, {}).get("statements", 0),
+                payment_count=counts_map.get(p.id, {}).get("payments", 0),
             )
             for p in periods
         ]

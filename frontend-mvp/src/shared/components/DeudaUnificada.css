@@ -163,10 +163,11 @@
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  background: var(--color-info-light, #e7f3ff);
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 6px;
   font-size: 12px;
-  color: var(--color-info-dark, #0066cc);
+  color: #60a5fa;
 }
 
 .resumen-info .info-icon {
@@ -180,7 +181,7 @@
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
-  border-bottom: 2px solid var(--color-border);
+  border-bottom: 2px solid rgba(71, 85, 105, 0.3);
   padding-bottom: 0;
 }
 
@@ -193,18 +194,18 @@
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  color: var(--color-text-secondary);
-  transition: all 0.2s;
+  color: #94a3b8;
+  transition: all 0.3s ease;
 }
 
 .deuda-tabs .tab:hover {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
+  color: #e2e8f0;
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .deuda-tabs .tab.active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
+  color: #818cf8;
+  border-bottom-color: #818cf8;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -212,21 +213,28 @@
    ═══════════════════════════════════════════════════════════════ */
 .deuda-content {
   min-height: 200px;
+  background: transparent;
 }
 
+.deuda-unificada .empty-state,
+.deuda-content .empty-state,
+.tab-convenios .empty-state,
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: var(--color-text-muted);
+  color: #94a3b8 !important;
+  background: rgba(30, 41, 59, 0.4) !important;
+  border-radius: 12px;
+  border: 1px dashed rgba(71, 85, 105, 0.4);
 }
 
 /* ═══════════════════════════════════════════════════════════════
    CONVENIOS
    ═══════════════════════════════════════════════════════════════ */
 .convenio-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  border-radius: 12px;
   margin-bottom: 12px;
   overflow: hidden;
 }
@@ -489,18 +497,21 @@
 }
 
 .badge-warning {
-  background: #fff3cd;
-  color: #856404;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 .badge-success {
-  background: #d4edda;
-  color: #155724;
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 .badge-secondary {
-  background: #e2e3e5;
-  color: #383d41;
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -517,7 +528,8 @@
   align-items: center;
   margin-bottom: 16px;
   padding: 12px 16px;
-  background: #f8f9fa;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.3);
   border-radius: 8px;
   gap: 16px;
 }
@@ -540,7 +552,8 @@
   border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: 13px;
-  background: white;
+  background: var(--color-surface);
+  color: var(--color-text);
   cursor: pointer;
   min-width: 200px;
 }
@@ -564,7 +577,7 @@
 }
 
 .abono-card {
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 16px;
@@ -602,23 +615,27 @@
 }
 
 .abono-badge.badge-primary {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .abono-badge.badge-warning {
-  background: #fff3cd;
-  color: #856404;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 .abono-badge.badge-success {
-  background: #d4edda;
-  color: #155724;
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
 }
 
 .abono-badge.badge-secondary {
-  background: #e2e3e5;
-  color: #383d41;
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
 .abono-amount {

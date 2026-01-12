@@ -23,7 +23,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '@/shared/api/apiClient';
-import PeriodoTimeline from '../components/PeriodoTimeline';
+import PeriodoTimelineV2 from '../components/PeriodoTimelineV2';
 import RelacionAsociadoCard from '../components/RelacionAsociadoCard';
 import RegistrarAbonoModal from '../components/RegistrarAbonoModal';
 import './EstadosCuentaPage.css';
@@ -103,14 +103,28 @@ export default function EstadosCuentaPage() {
   const loadPeriods = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/api/v1/cut-periods', {
-        params: { limit: 50, offset: 0 }
-      });
-
-      const periodsData = response.data.items || [];
+      
+      // Cargar períodos en lotes para obtener todos (hay ~288)
+      const allPeriods = [];
+      let offset = 0;
+      const batchSize = 100;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const response = await apiClient.get('/api/v1/cut-periods', {
+          params: { limit: batchSize, offset }
+        });
+        const batch = response.data.items || [];
+        allPeriods.push(...batch);
+        offset += batchSize;
+        hasMore = batch.length === batchSize;
+        
+        // Límite de seguridad
+        if (offset > 500) break;
+      }
 
       // Añadir campos derivados para el timeline y ordenar por fecha descendente
-      const enrichedPeriods = periodsData
+      const enrichedPeriods = allPeriods
         .map(p => ({
           ...p,
           period_code: p.cut_code,
@@ -125,10 +139,20 @@ export default function EstadosCuentaPage() {
       // 1. SETTLING (LIQUIDACIÓN) - deuda pendiente de cierre
       // 2. COLLECTING (EN COBRO) - donde se trabaja normalmente
       // 3. CUTOFF (BORRADOR) - pendiente de cerrar corte
-      // 4. El más reciente
+      // 4. Período más reciente con actividad real (statements o pagos > 0)
+      // 5. Período actual según fecha del sistema
+      const today = new Date().toISOString().split('T')[0];
+      
       const settlingPeriod = enrichedPeriods.find(p => p.status_id === 6);   // SETTLING
       const collectingPeriod = enrichedPeriods.find(p => p.status_id === 4); // COLLECTING
       const cutoffPeriod = enrichedPeriods.find(p => p.status_id === 3);     // CUTOFF
+      const withActivityPeriod = enrichedPeriods.find(p => 
+        p.statements_count > 0 || p.payment_count > 0
+      );
+      // Período que contiene la fecha actual
+      const currentDatePeriod = enrichedPeriods.find(p => 
+        p.period_start_date <= today && p.period_end_date >= today
+      );
 
       if (settlingPeriod) {
         setSelectedPeriod(settlingPeriod);
@@ -136,6 +160,10 @@ export default function EstadosCuentaPage() {
         setSelectedPeriod(collectingPeriod);
       } else if (cutoffPeriod) {
         setSelectedPeriod(cutoffPeriod);
+      } else if (withActivityPeriod) {
+        setSelectedPeriod(withActivityPeriod);
+      } else if (currentDatePeriod) {
+        setSelectedPeriod(currentDatePeriod);
       } else if (enrichedPeriods.length > 0) {
         setSelectedPeriod(enrichedPeriods[0]);
       }
@@ -373,7 +401,8 @@ export default function EstadosCuentaPage() {
         associateCountTotal: statements.length,
         paymentCount: 0,
         paidStatements: 0,
-        pendingStatements: 0
+        pendingStatements: 0,
+        statementCount: statements.length  // Para el timeline
       };
     }
 
@@ -399,7 +428,11 @@ export default function EstadosCuentaPage() {
       pendingStatements: 0
     });
 
-    return { ...stats, associateCountTotal: statements.length };
+    return { 
+      ...stats, 
+      associateCountTotal: statements.length,
+      statementCount: statementsWithPayments.length  // Para el timeline
+    };
   }, [statements]);
 
   // Handlers
@@ -651,22 +684,9 @@ export default function EstadosCuentaPage() {
 
   return (
     <div className="estados-cuenta-page">
-      {/* Header con título */}
-      <header className="page-header">
-        <div className="header-content">
-          <h1>
-            <span className="header-icon">📊</span>
-            Estados de Cuenta
-          </h1>
-          <p className="header-subtitle">
-            Relaciones de pago por asociado • Seguimiento y cobro quincenal
-          </p>
-        </div>
-      </header>
-
-      {/* Timeline de períodos */}
+      {/* Timeline de períodos futurista - Incluye header */}
       <section className="timeline-section">
-        <PeriodoTimeline
+        <PeriodoTimelineV2
           periods={periods}
           selectedPeriod={selectedPeriod}
           onSelectPeriod={setSelectedPeriod}
