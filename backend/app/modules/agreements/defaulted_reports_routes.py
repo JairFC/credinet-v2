@@ -28,6 +28,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from decimal import Decimal
 from datetime import datetime
+from app.modules.auth.routes import get_current_user_id
 from app.core.database import get_async_db
 
 router = APIRouter(prefix="/defaulted-reports", tags=["defaulted-reports"])
@@ -201,7 +202,8 @@ async def get_defaulted_report(
 @router.post("", response_model=DefaultedReportResponseDTO, status_code=201)
 async def create_defaulted_report(
     data: DefaultedReportCreateDTO,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
     Crea un nuevo reporte de cliente moroso.
@@ -288,7 +290,7 @@ async def create_defaulted_report(
         "associate_profile_id": loan.associate_profile_id,
         "loan_id": data.loan_id,
         "client_user_id": loan.user_id,
-        "reported_by": loan.associate_user_id,  # TODO: Use current authenticated user
+        "reported_by": current_user_id,
         "total_debt_amount": data.total_debt_amount,
         "evidence_details": data.evidence_details.strip()
     })
@@ -304,7 +306,8 @@ async def create_defaulted_report(
 async def approve_defaulted_report(
     report_id: int,
     notes: Optional[str] = None,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user_id: int = Depends(get_current_user_id)
 ):
     """
     Aprueba un reporte de cliente moroso.
@@ -369,7 +372,7 @@ async def approve_defaulted_report(
         WHERE id = :report_id
     """), {
         "report_id": report_id,
-        "approved_by": 1  # TODO: Use current authenticated user
+        "approved_by": current_user_id
     })
     
     # 2. Mark pending payments as PAID_BY_ASSOCIATE
