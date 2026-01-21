@@ -110,7 +110,7 @@ export default function PromoteRoleModal({
               {(user.first_name?.[0] || user.full_name?.[0] || 'U').toUpperCase()}
             </div>
             <div className="user-details">
-              <h3>{user.full_name || \`\${user.first_name} \${user.paternal_last_name || user.last_name || ''}\`}</h3>
+              <h3>{user.full_name || `${user.first_name} ${user.paternal_last_name || user.last_name || ''}`}</h3>
               <span className="user-email">{user.email}</span>
               {user.username && <span className="user-username">@{user.username}</span>}
             </div>
@@ -124,7 +124,7 @@ export default function PromoteRoleModal({
           )}
 
           {successMessage && (
-            <div className={\`success-alert \${alreadyHasRole ? 'info' : ''}\`}>
+            <div className={`success-alert ${alreadyHasRole ? 'info' : ''}`}>
               {alreadyHasRole ? 'ℹ️' : '✅'} {successMessage}
             </div>
           )}
@@ -152,7 +152,7 @@ export default function PromoteRoleModal({
                     >
                       {ASSOCIATE_LEVELS.map(level => (
                         <option key={level.id} value={level.id}>
-                          {level.name} - Hasta \${level.credit_limit.toLocaleString('es-MX')}
+                          {level.name} - Hasta ${level.credit_limit.toLocaleString('es-MX')}
                         </option>
                       ))}
                     </select>
@@ -165,7 +165,7 @@ export default function PromoteRoleModal({
                       </div>
                       <div className="level-info">
                         <span>Límite de crédito:</span>
-                        <strong>\${selectedLevelData.credit_limit.toLocaleString('es-MX')}</strong>
+                        <strong>${selectedLevelData.credit_limit.toLocaleString('es-MX')}</strong>
                       </div>
                     </div>
                   )}
