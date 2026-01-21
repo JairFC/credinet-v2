@@ -1,0 +1,166 @@
+/**
+ * PromoteRoleModal - Modal para promocionar usuarios entre roles
+ * 
+ * Soporta:
+ * - Cliente → Asociado (requiere seleccionar nivel)
+ * - Asociado → Cliente (solo confirmación)
+ */
+import { useState } from 'react';
+import { associatesService } from '../api/services/associatesService';
+import './PromoteRoleModal.css';
+
+const ASSOCIATE_LEVELS = [
+  { id: 1, name: 'Bronce', credit_limit: 25000 },
+  { id: 2, name: 'Plata', credit_limit: 300000 },
+  { id: 3, name: 'Oro', credit_limit: 600000 },
+  { id: 4, name: 'Platino', credit_limit: 900000 },
+  { id: 5, name: 'Diamante', credit_limit: 5000000 },
+];
+
+export default function PromoteRoleModal({ 
+  isOpen, 
+  onClose, 
+  user, 
+  promotionType, // 'to-associate' | 'to-client'
+  onSuccess 
+}) {
+  const [selectedLevel, setSelectedLevel] = useState('1');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!isOpen || !user) return null;
+
+  const handlePromote = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      if (promotionType === 'to-associate') {
+        // Promover cliente a asociado
+        await associatesService.promoteToAssociate(user.user_id || user.id, {
+          level_id: parseInt(selectedLevel)
+        });
+      } else {
+        // Agregar rol de cliente a asociado
+        await associatesService.addClientRole(user.user_id || user.id);
+      }
+
+      onSuccess?.();
+      onClose();
+    } catch (err) {
+      console.error('Error promoting user:', err);
+      const message = err.response?.data?.detail || err.message || 'Error al cambiar rol';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedLevelData = ASSOCIATE_LEVELS.find(l => l.id === parseInt(selectedLevel));
+
+  return (
+    <div className="promote-modal-overlay" onClick={onClose}>
+      <div className="promote-modal" onClick={e => e.stopPropagation()}>
+        <div className="promote-modal-header">
+          <h2>
+            {promotionType === 'to-associate' 
+              ? '🎯 Promover a Asociado' 
+              : '👤 Agregar Rol de Cliente'}
+          </h2>
+          <button className="close-btn" onClick={onClose}>×</button>
+        </div>
+
+        <div className="promote-modal-body">
+          {/* Info del usuario */}
+          <div className="user-info-card">
+            <div className="user-avatar">
+              {(user.first_name?.[0] || user.full_name?.[0] || 'U').toUpperCase()}
+            </div>
+            <div className="user-details">
+              <h3>{user.full_name || `${user.first_name} ${user.paternal_last_name || user.last_name || ''}`}</h3>
+              <span className="user-email">{user.email}</span>
+              {user.username && <span className="user-username">@{user.username}</span>}
+            </div>
+          </div>
+
+          {error && (
+            <div className="error-alert">
+              ⚠️ {error}
+            </div>
+          )}
+
+          {promotionType === 'to-associate' ? (
+            <>
+              <div className="info-message">
+                <span className="info-icon">ℹ️</span>
+                <p>
+                  Este cliente será promovido a <strong>Asociado</strong>. 
+                  Mantendrá su historial como cliente y ahora también podrá otorgar préstamos.
+                </p>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="level">Selecciona el nivel de asociado:</label>
+                <select 
+                  id="level"
+                  value={selectedLevel}
+                  onChange={(e) => setSelectedLevel(e.target.value)}
+                  className="level-select"
+                >
+                  {ASSOCIATE_LEVELS.map(level => (
+                    <option key={level.id} value={level.id}>
+                      {level.name} - Hasta ${level.credit_limit.toLocaleString('es-MX')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedLevelData && (
+                <div className="level-preview">
+                  <div className="level-badge" data-level={selectedLevelData.name.toLowerCase()}>
+                    {selectedLevelData.name}
+                  </div>
+                  <div className="level-info">
+                    <span>Límite de crédito:</span>
+                    <strong>${selectedLevelData.credit_limit.toLocaleString('es-MX')}</strong>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="info-message">
+              <span className="info-icon">ℹ️</span>
+              <p>
+                Este asociado también obtendrá el rol de <strong>Cliente</strong>.
+                Podrá solicitar préstamos de otros asociados mientras mantiene su capacidad de otorgar préstamos.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="promote-modal-footer">
+          <button 
+            className="btn-cancel" 
+            onClick={onClose}
+            disabled={loading}
+          >
+            Cancelar
+          </button>
+          <button 
+            className="btn-confirm"
+            onClick={handlePromote}
+            disabled={loading}
+          >
+            {loading ? (
+              <>⏳ Procesando...</>
+            ) : promotionType === 'to-associate' ? (
+              <>✅ Promover a Asociado</>
+            ) : (
+              <>✅ Agregar Rol Cliente</>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

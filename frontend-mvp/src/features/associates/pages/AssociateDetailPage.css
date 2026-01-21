@@ -47,8 +47,9 @@
   margin: 0;
   font-size: 28px;
   font-weight: 700;
-  color: #ffffff;
-  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.5px;
 }
 
 .page-header .header-meta {
@@ -77,6 +78,25 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+.page-header .role-badge {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.page-header .role-badge.client {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.2));
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.page-header .header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .page-header .associate-id,
 .page-header .username {
   font-size: 13px;
@@ -84,8 +104,26 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
+.page-header .btn-add-role {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-header .btn-add-role:hover {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+}
+
 .page-header .btn-secondary,
-.page-header button {
+.page-header button:not(.btn-add-role) {
   padding: 12px 24px;
   background: linear-gradient(135deg, rgba(51, 65, 85, 0.8), rgba(30, 41, 59, 0.9));
   border: 1px solid rgba(148, 163, 184, 0.3);

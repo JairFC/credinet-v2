@@ -19,9 +19,11 @@ import CollapsibleSection from '../../../shared/components/CollapsibleSection';
 import DeudaUnificada from '../../../shared/components/DeudaUnificada';
 import AuditHistory from '../../../shared/components/AuditHistory';
 import PrestamosAsociado from '../../../shared/components/PrestamosAsociado';
+import PromoteRoleModal from '../../../shared/components/PromoteRoleModal';
 import RegistrarAbonoDeudaModal from '../components/RegistrarAbonoDeudaModal';
 import ClientesAsociado from '../components/ClientesAsociado';
 import { apiClient } from '../../../shared/api/apiClient';
+import { associatesService } from '../../../shared/api/services/associatesService';
 import ENDPOINTS from '../../../shared/api/endpoints';
 import './AssociateDetailPage.css';
 
@@ -31,7 +33,9 @@ const AssociateDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAbonoModal, setShowAbonoModal] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [userRoles, setUserRoles] = useState([]);
 
   // Estados para contadores de badges (cargados bajo demanda)
   const [loansCount, setLoansCount] = useState(null);
@@ -44,6 +48,16 @@ const AssociateDetailPage = () => {
       const response = await apiClient.get(ENDPOINTS.associates.detail(associateId));
       console.log('📥 Associate detail response:', response.data);
       setAssociate(response.data);
+      
+      // Obtener roles del usuario
+      if (response.data?.user_id) {
+        try {
+          const rolesRes = await associatesService.getUserRoles(response.data.user_id);
+          setUserRoles(rolesRes.data?.roles || []);
+        } catch (roleErr) {
+          console.error('Error fetching roles:', roleErr);
+        }
+      }
     } catch (err) {
       console.error('❌ Error loading associate:', err);
       setError('Error al cargar asociado: ' + (err.response?.data?.detail || err.message));
@@ -88,6 +102,12 @@ const AssociateDetailPage = () => {
     // Forzar refresh de componentes hijos
     setRefreshKey(prev => prev + 1);
   };
+
+  const handleRoleSuccess = () => {
+    fetchAssociateData();
+  };
+
+  const isAlsoClient = userRoles.some(r => r.role_id === 5 || r.role_name?.toLowerCase() === 'cliente');
 
   if (loading) {
     return (
@@ -148,15 +168,37 @@ const AssociateDetailPage = () => {
             </span>
             <span className="associate-id">ID: #{associate.id}</span>
             {associate.username && <span className="username">@{associate.username}</span>}
+            {isAlsoClient && (
+              <span className="role-badge client">También es Cliente</span>
+            )}
           </div>
         </div>
-        <button
-          className="btn btn-secondary"
-          onClick={() => window.history.back()}
-        >
-          ← Volver
-        </button>
+        <div className="header-actions">
+          {!isAlsoClient && (
+            <button
+              className="btn btn-add-role"
+              onClick={() => setShowRoleModal(true)}
+            >
+              👤 Agregar Rol Cliente
+            </button>
+          )}
+          <button
+            className="btn btn-secondary"
+            onClick={() => window.history.back()}
+          >
+            ← Volver
+          </button>
+        </div>
       </div>
+
+      {/* Modal para agregar rol */}
+      <PromoteRoleModal
+        isOpen={showRoleModal}
+        onClose={() => setShowRoleModal(false)}
+        user={associate}
+        promotionType="to-client"
+        onSuccess={handleRoleSuccess}
+      />
 
       {/* Estado de Crédito - SIEMPRE VISIBLE (Hero Section) */}
       <div className="credit-hero-card">

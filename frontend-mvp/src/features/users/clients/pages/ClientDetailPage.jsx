@@ -13,7 +13,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { clientsService } from '../../../../shared/api/services/clientsService';
+import { associatesService } from '../../../../shared/api/services/associatesService';
 import AuditHistory from '../../../../shared/components/AuditHistory';
+import PromoteRoleModal from '../../../../shared/components/PromoteRoleModal';
 import './ClientDetailPage.css';
 
 const ClientDetailPage = () => {
@@ -22,6 +24,8 @@ const ClientDetailPage = () => {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showPromoteModal, setShowPromoteModal] = useState(false);
+  const [userRoles, setUserRoles] = useState([]);
 
   useEffect(() => {
     if (clientId) {
@@ -35,12 +39,28 @@ const ClientDetailPage = () => {
       setError('');
       const response = await clientsService.getById(clientId);
       setClient(response.data);
+      
+      // Obtener roles del usuario
+      if (response.data?.user_id || response.data?.id) {
+        try {
+          const rolesRes = await associatesService.getUserRoles(response.data.user_id || response.data.id);
+          setUserRoles(rolesRes.data?.roles || []);
+        } catch (roleErr) {
+          console.error('Error fetching roles:', roleErr);
+        }
+      }
     } catch (err) {
       console.error('Error fetching client:', err);
       setError(err.response?.data?.detail || 'Error al cargar datos del cliente');
     } finally {
       setLoading(false);
     }
+  };
+
+  const isAlsoAssociate = userRoles.some(r => r.role_id === 4 || r.role_name?.toLowerCase() === 'asociado');
+
+  const handlePromoteSuccess = () => {
+    fetchClientData(); // Refrescar datos
   };
 
   if (loading) {
@@ -83,8 +103,19 @@ const ClientDetailPage = () => {
           <span className={`status-badge ${client.active ? 'active' : 'inactive'}`}>
             {client.active ? '✓ Activo' : '✗ Inactivo'}
           </span>
+          {isAlsoAssociate && (
+            <span className="role-badge associate">También es Asociado</span>
+          )}
         </div>
         <div className="header-actions">
+          {!isAlsoAssociate && (
+            <button
+              className="btn btn-promote"
+              onClick={() => setShowPromoteModal(true)}
+            >
+              🎯 Hacer Asociado
+            </button>
+          )}
           <button
             className="btn btn-secondary"
             onClick={() => navigate('/usuarios/clientes')}
@@ -93,6 +124,15 @@ const ClientDetailPage = () => {
           </button>
         </div>
       </div>
+
+      {/* Modal de Promoción */}
+      <PromoteRoleModal
+        isOpen={showPromoteModal}
+        onClose={() => setShowPromoteModal(false)}
+        user={client}
+        promotionType="to-associate"
+        onSuccess={handlePromoteSuccess}
+      />
 
       <div className="detail-container">
         {/* Información Personal */}
