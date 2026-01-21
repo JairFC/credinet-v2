@@ -1245,7 +1245,7 @@ async def check_user_for_promotion(
         # 1. Obtener usuario
         user_query = select(UserModel).where(UserModel.id == user_id)
         result = await db.execute(user_query)
-        user = result.scalar_one_or_none()
+        user = result.unique().scalar_one_or_none()  # unique() requerido por lazy="joined"
         
         if not user:
             raise HTTPException(
@@ -1342,7 +1342,7 @@ async def promote_client_to_associate(
         # 1. Verificar que el usuario existe
         user_query = select(UserModel).where(UserModel.id == user_id)
         result = await db.execute(user_query)
-        user = result.scalar_one_or_none()
+        user = result.unique().scalar_one_or_none()  # unique() requerido por lazy="joined"
         
         if not user:
             raise HTTPException(
@@ -1443,7 +1443,7 @@ async def add_client_role_to_associate(
         # 1. Verificar que el usuario existe
         user_query = select(UserModel).where(UserModel.id == user_id)
         result = await db.execute(user_query)
-        user = result.scalar_one_or_none()
+        user = result.unique().scalar_one_or_none()  # unique() requerido por lazy="joined"
         
         if not user:
             raise HTTPException(
@@ -1514,7 +1514,7 @@ async def get_user_roles(
         # Verificar que el usuario existe
         user_query = select(UserModel).where(UserModel.id == user_id)
         result = await db.execute(user_query)
-        user = result.scalar_one_or_none()
+        user = result.unique().scalar_one_or_none()  # unique() requerido por lazy="joined"
         
         if not user:
             raise HTTPException(
