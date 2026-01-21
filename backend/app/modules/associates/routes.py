@@ -11,9 +11,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+import logging
 
 from app.core.database import get_async_db
 from app.core.dependencies import require_admin
+from app.modules.auth.routes import get_current_user_id
 from app.modules.associates.application.dtos import (
     AssociateResponseDTO,
     AssociateListItemDTO,
@@ -27,6 +29,8 @@ from app.modules.associates.application.use_cases import (
     GetAssociateCreditUseCase,
 )
 from app.modules.associates.infrastructure.repositories.pg_associate_repository import PgAssociateRepository
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(
@@ -1315,11 +1319,36 @@ async def check_user_for_promotion(
         )
 
 
+async def _create_audit_log(
+    db: AsyncSession,
+    table_name: str,
+    record_id: int,
+    operation: str,
+    old_data: dict = None,
+    new_data: dict = None,
+    changed_by: int = None
+):
+    """Helper para crear registro de auditoría."""
+    from app.modules.audit.infrastructure.models import AuditLogModel
+    
+    audit = AuditLogModel(
+        table_name=table_name,
+        record_id=record_id,
+        operation=operation,
+        old_data=old_data,
+        new_data=new_data,
+        changed_by=changed_by
+    )
+    db.add(audit)
+    # No hacemos commit aquí - se hace en la transacción principal
+
+
 @router.post("/promote-to-associate/{user_id}", status_code=status.HTTP_201_CREATED)
 async def promote_client_to_associate(
     user_id: int,
     request: PromoteToAssociateRequest,
     db: AsyncSession = Depends(get_async_db),
+    current_user_id: int = Depends(get_current_user_id),
 ):
     """
     Promueve un cliente existente a asociado (agrega rol de asociado y crea perfil).
@@ -1356,10 +1385,18 @@ async def promote_client_to_associate(
         existing_profile = result.scalar_one_or_none()
         
         if existing_profile:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"El usuario ya es asociado (perfil ID: {existing_profile.id})"
-            )
+            # Ya es asociado - retornar información en lugar de error
+            return {
+                "success": True,
+                "message": f"{user.first_name} {user.last_name} ya es asociado",
+                "data": {
+                    "user_id": user_id,
+                    "associate_profile_id": existing_profile.id,
+                    "level_id": existing_profile.level_id,
+                    "credit_limit": float(existing_profile.credit_limit),
+                    "already_associate": True
+                }
+            }
         
         # 3. Verificar si ya tiene el rol de asociado
         ASSOCIATE_ROLE_ID = 4
@@ -1371,6 +1408,7 @@ async def promote_client_to_associate(
         )
         has_role = role_check.fetchone()
         
+        role_was_added = False
         if not has_role:
             # Agregar rol de asociado
             await db.execute(
@@ -1379,6 +1417,7 @@ async def promote_client_to_associate(
                     role_id=ASSOCIATE_ROLE_ID
                 )
             )
+            role_was_added = True
         
         # 4. Obtener límite de crédito según el nivel
         level_id = request.level_id
@@ -1395,8 +1434,44 @@ async def promote_client_to_associate(
         )
         
         db.add(new_profile)
+        await db.flush()  # Para obtener el ID del perfil
+        
+        # 6. Registrar en auditoría
+        await _create_audit_log(
+            db=db,
+            table_name="associate_profiles",
+            record_id=new_profile.id,
+            operation="INSERT",
+            new_data={
+                "user_id": user_id,
+                "level_id": level_id,
+                "credit_limit": float(credit_limit),
+                "promoted_from_client": True,
+                "role_added": role_was_added
+            },
+            changed_by=current_user_id
+        )
+        
+        # También registrar el cambio de rol si se agregó
+        if role_was_added:
+            await _create_audit_log(
+                db=db,
+                table_name="user_roles",
+                record_id=user_id,
+                operation="INSERT",
+                new_data={
+                    "user_id": user_id,
+                    "role_id": ASSOCIATE_ROLE_ID,
+                    "role_name": "asociado",
+                    "action": "promote_to_associate"
+                },
+                changed_by=current_user_id
+            )
+        
         await db.commit()
         await db.refresh(new_profile)
+        
+        logger.info(f"Usuario {user_id} promovido a asociado por usuario {current_user_id}")
         
         return {
             "success": True,
@@ -1407,6 +1482,8 @@ async def promote_client_to_associate(
                 "level_id": new_profile.level_id,
                 "credit_limit": float(new_profile.credit_limit),
                 "available_credit": float(new_profile.credit_limit),
+                "role_added": role_was_added,
+                "already_associate": False
             }
         }
         
@@ -1414,6 +1491,7 @@ async def promote_client_to_associate(
         raise
     except Exception as e:
         await db.rollback()
+        logger.error(f"Error promoviendo usuario {user_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error promoviendo usuario a asociado: {str(e)}"
@@ -1424,6 +1502,7 @@ async def promote_client_to_associate(
 async def add_client_role_to_associate(
     user_id: int,
     db: AsyncSession = Depends(get_async_db),
+    current_user_id: int = Depends(get_current_user_id),
 ):
     """
     Agrega el rol de cliente a un asociado existente.
@@ -1464,8 +1543,8 @@ async def add_client_role_to_associate(
         if has_role:
             return {
                 "success": True,
-                "message": "El usuario ya tiene el rol de cliente",
-                "data": {"user_id": user_id, "role_added": False}
+                "message": f"{user.first_name} {user.last_name} ya tiene el rol de cliente",
+                "data": {"user_id": user_id, "role_added": False, "already_client": True}
             }
         
         # 3. Agregar rol de cliente
@@ -1475,18 +1554,38 @@ async def add_client_role_to_associate(
                 role_id=CLIENT_ROLE_ID
             )
         )
+        
+        # 4. Registrar en auditoría
+        await _create_audit_log(
+            db=db,
+            table_name="user_roles",
+            record_id=user_id,
+            operation="INSERT",
+            new_data={
+                "user_id": user_id,
+                "role_id": CLIENT_ROLE_ID,
+                "role_name": "cliente",
+                "action": "add_client_role",
+                "full_name": f"{user.first_name} {user.last_name}"
+            },
+            changed_by=current_user_id
+        )
+        
         await db.commit()
+        
+        logger.info(f"Rol de cliente agregado a usuario {user_id} por usuario {current_user_id}")
         
         return {
             "success": True,
             "message": f"Rol de cliente agregado a {user.first_name} {user.last_name}",
-            "data": {"user_id": user_id, "role_added": True}
+            "data": {"user_id": user_id, "role_added": True, "already_client": False}
         }
         
     except HTTPException:
         raise
     except Exception as e:
         await db.rollback()
+        logger.error(f"Error agregando rol de cliente a usuario {user_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error agregando rol de cliente: {str(e)}"
