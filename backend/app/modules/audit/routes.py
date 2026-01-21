@@ -101,14 +101,29 @@ async def get_record_history(
     table_name: str,
     record_id: int,
     repo: PgAuditLogRepository = Depends(get_audit_repository),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Obtiene historial completo de cambios de un registro específico"""
+    from sqlalchemy import select
+    from app.modules.auth.infrastructure.models import UserModel
+    
     try:
         use_case = GetRecordHistoryUseCase(repo)
         logs = await use_case.execute(table_name, record_id)
         
-        return [
-            AuditLogResponseDTO(
+        # Obtener nombres de usuarios que hicieron cambios
+        user_ids = list(set(log.changed_by for log in logs if log.changed_by))
+        user_names = {}
+        
+        if user_ids:
+            user_query = select(UserModel).where(UserModel.id.in_(user_ids))
+            result = await db.execute(user_query)
+            users = result.unique().scalars().all()
+            user_names = {u.id: f"{u.first_name} {u.last_name}" for u in users}
+        
+        response_list = []
+        for log in logs:
+            response = AuditLogResponseDTO(
                 id=log.id,
                 table_name=log.table_name,
                 record_id=log.record_id,
@@ -121,8 +136,14 @@ async def get_record_history(
                 user_agent=log.user_agent,
                 changed_fields=log.get_changed_fields(),
             )
-            for log in logs
-        ]
+            # Agregar nombre del usuario como extra en new_data
+            if log.changed_by and log.changed_by in user_names:
+                if response.new_data is None:
+                    response.new_data = {}
+                response.new_data['_changed_by_name'] = user_names[log.changed_by]
+            response_list.append(response)
+        
+        return response_list
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

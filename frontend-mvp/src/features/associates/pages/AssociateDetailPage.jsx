@@ -355,17 +355,23 @@ const AssociateDetailPage = () => {
         )}
       </CollapsibleSection>
 
-      {/* Historial de Auditoría */}
-      {associate?.user_id && (
+      {/* Historial de Auditoría - Perfil de Asociado */}
+      {associate?.id && (
         <CollapsibleSection
           title="Historial de Cambios"
           icon="🔍"
           subtitle="Quién creó y modificó este registro"
         >
           <AuditHistory
-            tableName="users"
+            tableName="associate_profiles"
+            recordId={associate.id}
+            title="Perfil de Asociado"
+          />
+          {/* También mostrar auditoría de cambios de roles */}
+          <AuditHistory
+            tableName="user_roles"
             recordId={associate.user_id}
-            title=""
+            title="Cambios de Roles"
           />
         </CollapsibleSection>
       )}
