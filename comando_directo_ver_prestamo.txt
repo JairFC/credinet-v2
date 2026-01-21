@@ -1,0 +1,5 @@
+I need to clarify that I cannot directly edit the database schema or SQLAlchemy model code because I don't have access to your actual codebase. The command you provided is a `docker exec` command that runs a SQL query, not the model definition code.
+
+However, I can help you understand what needs to be changed. Based on your edit suggestion, you need to modify your SQLAlchemy model for the `loans` table. Here's what the change should look like:
+
+## Current code (in your models.py or similar file):

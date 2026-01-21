@@ -1183,3 +1183,372 @@ async def get_associate_debt_history(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error obteniendo historial de deudas: {str(e)}"
         )
+
+
+# =============================================================================
+# GESTIÓN DE ROLES - Promover Cliente a Asociado / Agregar rol de Cliente
+# =============================================================================
+
+from pydantic import BaseModel, Field
+
+class PromoteToAssociateRequest(BaseModel):
+    """Request body para promover cliente a asociado"""
+    level_id: int = Field(..., ge=1, le=5, description="Nivel de asociado (1=Bronce, 2=Plata, 3=Oro, 4=Platino, 5=Diamante)")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "level_id": 2
+            }
+        }
+
+
+# Mapeo de niveles a límites de crédito
+LEVEL_CREDIT_LIMITS = {
+    1: 25000,    # Bronce
+    2: 300000,   # Plata
+    3: 600000,   # Oro
+    4: 900000,   # Platino
+    5: 5000000,  # Diamante
+}
+
+
+@router.get("/check-user/{user_id}")
+async def check_user_for_promotion(
+    user_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Verifica un usuario antes de promoverlo a asociado.
+    
+    Retorna información del usuario incluyendo:
+    - Datos personales
+    - Roles actuales
+    - Si tiene dirección, aval, beneficiario
+    - Si ya es asociado
+    
+    Args:
+        user_id: ID del usuario a verificar
+        
+    Returns:
+        Información completa del usuario para tomar decisión de promoción
+    """
+    from sqlalchemy import select
+    from app.modules.auth.infrastructure.models import UserModel, user_roles
+    from app.modules.associates.infrastructure.models import AssociateProfileModel
+    from app.modules.addresses.infrastructure.models import AddressModel
+    from app.modules.guarantors.infrastructure.models import GuarantorModel
+    from app.modules.beneficiaries.infrastructure.models import BeneficiaryModel
+    
+    try:
+        # 1. Obtener usuario
+        user_query = select(UserModel).where(UserModel.id == user_id)
+        result = await db.execute(user_query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Usuario {user_id} no encontrado"
+            )
+        
+        # 2. Obtener roles
+        roles_query = text("""
+            SELECT r.id, r.name FROM user_roles ur
+            JOIN roles r ON ur.role_id = r.id
+            WHERE ur.user_id = :user_id
+        """)
+        roles_result = await db.execute(roles_query, {"user_id": user_id})
+        roles = [{"id": r.id, "name": r.name} for r in roles_result.fetchall()]
+        
+        # 3. Verificar perfil de asociado
+        profile_query = select(AssociateProfileModel).where(AssociateProfileModel.user_id == user_id)
+        profile_result = await db.execute(profile_query)
+        associate_profile = profile_result.scalar_one_or_none()
+        
+        # 4. Verificar datos adicionales
+        address_result = await db.execute(select(AddressModel).where(AddressModel.user_id == user_id))
+        has_address = address_result.scalar_one_or_none() is not None
+        
+        guarantor_result = await db.execute(select(GuarantorModel).where(GuarantorModel.user_id == user_id))
+        has_guarantor = guarantor_result.scalar_one_or_none() is not None
+        
+        beneficiary_result = await db.execute(select(BeneficiaryModel).where(BeneficiaryModel.user_id == user_id))
+        has_beneficiary = beneficiary_result.scalar_one_or_none() is not None
+        
+        return {
+            "success": True,
+            "data": {
+                "user_id": user_id,
+                "username": user.username,
+                "full_name": f"{user.first_name} {user.last_name}",
+                "email": user.email,
+                "phone": user.phone_number,
+                "active": user.active,
+                "roles": roles,
+                "is_client": any(r["id"] == 5 for r in roles),
+                "is_associate": any(r["id"] == 4 for r in roles),
+                "has_associate_profile": associate_profile is not None,
+                "associate_profile": {
+                    "id": associate_profile.id,
+                    "level_id": associate_profile.level_id,
+                    "credit_limit": float(associate_profile.credit_limit),
+                    "available_credit": float(associate_profile.available_credit) if associate_profile.available_credit else 0,
+                } if associate_profile else None,
+                "existing_data": {
+                    "has_address": has_address,
+                    "has_guarantor": has_guarantor,
+                    "has_beneficiary": has_beneficiary,
+                },
+                "can_promote_to_associate": associate_profile is None,
+                "can_add_client_role": not any(r["id"] == 5 for r in roles),
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error verificando usuario: {str(e)}"
+        )
+
+
+@router.post("/promote-to-associate/{user_id}", status_code=status.HTTP_201_CREATED)
+async def promote_client_to_associate(
+    user_id: int,
+    request: PromoteToAssociateRequest,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Promueve un cliente existente a asociado (agrega rol de asociado y crea perfil).
+    
+    El usuario mantiene su rol de cliente si lo tenía.
+    
+    Args:
+        user_id: ID del usuario a promover
+        level_id: Nivel de asociado (1-5)
+        credit_limit: Límite de crédito inicial
+        
+    Returns:
+        Datos del nuevo perfil de asociado
+    """
+    from sqlalchemy import insert, select
+    from app.modules.auth.infrastructure.models import UserModel, user_roles
+    from app.modules.associates.infrastructure.models import AssociateProfileModel
+    
+    try:
+        # 1. Verificar que el usuario existe
+        user_query = select(UserModel).where(UserModel.id == user_id)
+        result = await db.execute(user_query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Usuario {user_id} no encontrado"
+            )
+        
+        # 2. Verificar que no tenga ya un perfil de asociado
+        profile_query = select(AssociateProfileModel).where(AssociateProfileModel.user_id == user_id)
+        result = await db.execute(profile_query)
+        existing_profile = result.scalar_one_or_none()
+        
+        if existing_profile:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El usuario ya es asociado (perfil ID: {existing_profile.id})"
+            )
+        
+        # 3. Verificar si ya tiene el rol de asociado
+        ASSOCIATE_ROLE_ID = 4
+        role_check = await db.execute(
+            select(user_roles).where(
+                user_roles.c.user_id == user_id,
+                user_roles.c.role_id == ASSOCIATE_ROLE_ID
+            )
+        )
+        has_role = role_check.fetchone()
+        
+        if not has_role:
+            # Agregar rol de asociado
+            await db.execute(
+                insert(user_roles).values(
+                    user_id=user_id,
+                    role_id=ASSOCIATE_ROLE_ID
+                )
+            )
+        
+        # 4. Obtener límite de crédito según el nivel
+        level_id = request.level_id
+        credit_limit = LEVEL_CREDIT_LIMITS.get(level_id, 25000)
+        
+        # 5. Crear perfil de asociado
+        new_profile = AssociateProfileModel(
+            user_id=user_id,
+            level_id=level_id,
+            credit_limit=credit_limit,
+            pending_payments_total=0,
+            default_commission_rate=5.0,  # Valor por defecto (no se usa realmente)
+            active=True,
+        )
+        
+        db.add(new_profile)
+        await db.commit()
+        await db.refresh(new_profile)
+        
+        return {
+            "success": True,
+            "message": f"Usuario {user.first_name} {user.last_name} promovido a asociado",
+            "data": {
+                "user_id": user_id,
+                "associate_profile_id": new_profile.id,
+                "level_id": new_profile.level_id,
+                "credit_limit": float(new_profile.credit_limit),
+                "available_credit": float(new_profile.credit_limit),
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error promoviendo usuario a asociado: {str(e)}"
+        )
+
+
+@router.post("/add-client-role/{user_id}", status_code=status.HTTP_200_OK)
+async def add_client_role_to_associate(
+    user_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Agrega el rol de cliente a un asociado existente.
+    
+    Esto permite que un asociado también pueda solicitar préstamos como cliente.
+    
+    Args:
+        user_id: ID del usuario asociado
+        
+    Returns:
+        Confirmación del rol agregado
+    """
+    from sqlalchemy import insert, select
+    from app.modules.auth.infrastructure.models import UserModel, user_roles
+    
+    try:
+        # 1. Verificar que el usuario existe
+        user_query = select(UserModel).where(UserModel.id == user_id)
+        result = await db.execute(user_query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Usuario {user_id} no encontrado"
+            )
+        
+        # 2. Verificar si ya tiene el rol de cliente
+        CLIENT_ROLE_ID = 5
+        role_check = await db.execute(
+            select(user_roles).where(
+                user_roles.c.user_id == user_id,
+                user_roles.c.role_id == CLIENT_ROLE_ID
+            )
+        )
+        has_role = role_check.fetchone()
+        
+        if has_role:
+            return {
+                "success": True,
+                "message": "El usuario ya tiene el rol de cliente",
+                "data": {"user_id": user_id, "role_added": False}
+            }
+        
+        # 3. Agregar rol de cliente
+        await db.execute(
+            insert(user_roles).values(
+                user_id=user_id,
+                role_id=CLIENT_ROLE_ID
+            )
+        )
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Rol de cliente agregado a {user.first_name} {user.last_name}",
+            "data": {"user_id": user_id, "role_added": True}
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error agregando rol de cliente: {str(e)}"
+        )
+
+
+@router.get("/user-roles/{user_id}")
+async def get_user_roles(
+    user_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Obtiene los roles de un usuario.
+    
+    Args:
+        user_id: ID del usuario
+        
+    Returns:
+        Lista de roles del usuario
+    """
+    from sqlalchemy import select
+    from app.modules.auth.infrastructure.models import UserModel, user_roles
+    
+    try:
+        # Verificar que el usuario existe
+        user_query = select(UserModel).where(UserModel.id == user_id)
+        result = await db.execute(user_query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Usuario {user_id} no encontrado"
+            )
+        
+        # Obtener roles
+        roles_query = text("""
+            SELECT r.id, r.name, r.description
+            FROM user_roles ur
+            JOIN roles r ON ur.role_id = r.id
+            WHERE ur.user_id = :user_id
+            ORDER BY r.id
+        """)
+        
+        result = await db.execute(roles_query, {"user_id": user_id})
+        roles = result.fetchall()
+        
+        return {
+            "success": True,
+            "data": {
+                "user_id": user_id,
+                "full_name": f"{user.first_name} {user.last_name}",
+                "roles": [
+                    {"id": r.id, "name": r.name, "description": r.description}
+                    for r in roles
+                ]
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error obteniendo roles: {str(e)}"
+        )

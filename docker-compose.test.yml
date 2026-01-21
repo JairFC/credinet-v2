@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: credinet-postgres-test
+    environment:
+      POSTGRES_USER: credinet_user
+      POSTGRES_PASSWORD: credinet_pass_change_this_in_production
+      POSTGRES_DB: credinet_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - credinet_test_data:/var/lib/postgresql/data
+      - /tmp/init_final.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U credinet_user -d credinet_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  credinet_test_data:
+    name: credinet_test_data

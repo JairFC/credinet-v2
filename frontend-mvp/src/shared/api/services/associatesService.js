@@ -108,4 +108,42 @@ export const associatesService = {
   delete: (id) => {
     return apiClient.delete(ENDPOINTS.associates.detail(id));
   },
+
+  // =============================================================================
+  // GESTIÓN DE ROLES - Promover usuarios
+  // =============================================================================
+
+  /**
+   * Verifica un usuario antes de promoverlo a asociado
+   * @param {number} userId - ID del usuario a verificar
+   */
+  checkUserForPromotion: (userId) => {
+    return apiClient.get(`${ENDPOINTS.associates.list}/check-user/${userId}`);
+  },
+
+  /**
+   * Promueve un cliente a asociado
+   * @param {number} userId - ID del usuario a promover
+   * @param {Object} data - Datos de la promoción
+   * @param {number} data.level_id - Nivel de asociado (1-5)
+   */
+  promoteToAssociate: (userId, data) => {
+    return apiClient.post(`${ENDPOINTS.associates.list}/promote-to-associate/${userId}`, data);
+  },
+
+  /**
+   * Agrega rol de cliente a un asociado
+   * @param {number} userId - ID del usuario asociado
+   */
+  addClientRole: (userId) => {
+    return apiClient.post(`${ENDPOINTS.associates.list}/add-client-role/${userId}`);
+  },
+
+  /**
+   * Obtiene los roles de un usuario
+   * @param {number} userId - ID del usuario
+   */
+  getUserRoles: (userId) => {
+    return apiClient.get(`${ENDPOINTS.associates.list}/user-roles/${userId}`);
+  },
 };
