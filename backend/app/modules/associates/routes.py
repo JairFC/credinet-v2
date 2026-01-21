@@ -10,6 +10,7 @@ Endpoints:
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 from app.core.database import get_async_db
 from app.core.dependencies import require_admin
@@ -1521,9 +1522,9 @@ async def get_user_roles(
                 detail=f"Usuario {user_id} no encontrado"
             )
         
-        # Obtener roles
+        # Obtener roles usando text() con parámetro bindparam
         roles_query = text("""
-            SELECT r.id, r.name, r.description
+            SELECT r.id as role_id, r.name as role_name, r.description as role_description
             FROM user_roles ur
             JOIN roles r ON ur.role_id = r.id
             WHERE ur.user_id = :user_id
@@ -1539,7 +1540,7 @@ async def get_user_roles(
                 "user_id": user_id,
                 "full_name": f"{user.first_name} {user.last_name}",
                 "roles": [
-                    {"id": r.id, "name": r.name, "description": r.description}
+                    {"role_id": r.role_id, "role_name": r.role_name, "description": r.role_description}
                     for r in roles
                 ]
             }
@@ -1548,6 +1549,8 @@ async def get_user_roles(
     except HTTPException:
         raise
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error en get_user_roles: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error obteniendo roles: {str(e)}"
