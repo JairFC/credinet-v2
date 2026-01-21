@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { useFieldValidation } from '../../hooks/useFieldValidation';
 import { generateCURP } from '../../utils/curpGenerator';
 
 /**
@@ -16,30 +15,30 @@ export const GuarantorSection = ({
   collapsible = true
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [relationships, setRelationships] = useState([]);
 
-  // Cargar catálogo de relaciones
-  useEffect(() => {
-    const loadRelationships = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/shared/relationships`);
-        const data = await response.json();
-        if (data.success) {
-          setRelationships(data.data);
-        }
-      } catch (error) {
-        console.error('Error cargando relaciones:', error);
-      }
-    };
-    loadRelationships();
-  }, []);
+  // Relaciones por defecto (el endpoint del backend no existe aún)
+  const relationships = [
+    { id: 1, name: 'Padre' },
+    { id: 2, name: 'Madre' },
+    { id: 3, name: 'Hermano/a' },
+    { id: 4, name: 'Esposo/a' },
+    { id: 5, name: 'Hijo/a' },
+    { id: 6, name: 'Tío/a' },
+    { id: 7, name: 'Primo/a' },
+    { id: 8, name: 'Abuelo/a' },
+    { id: 9, name: 'Suegro/a' },
+    { id: 10, name: 'Cuñado/a' },
+    { id: 11, name: 'Amigo/a' },
+    { id: 12, name: 'Conocido/a' },
+    { id: 13, name: 'Otro' }
+  ];
 
-  // Validaciones en tiempo real (solo si hay datos)
-  const curpValidation = useFieldValidation(
-    'curp',
-    formData.guarantor_curp,
-    { skip: !formData.guarantor_curp }
-  );
+  // Handler para expandir/contraer
+  const handleToggleExpand = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsExpanded(!isExpanded);
+  };
 
   // Calcular CURP automáticamente cuando cambien los datos necesarios
   useEffect(() => {
@@ -75,11 +74,18 @@ export const GuarantorSection = ({
 
   if (collapsible && !isExpanded) {
     return (
-      <Card className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900" onClick={() => setIsExpanded(true)}>
+      <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-normal text-gray-600 dark:text-gray-400">
-            + Agregar Aval/Garante (opcional)
-          </CardTitle>
+          <button
+            type="button"
+            onClick={handleToggleExpand}
+            className="w-full text-left cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 -m-4 p-4 rounded-lg"
+          >
+            <CardTitle className="text-sm font-normal text-gray-600 dark:text-gray-400 flex items-center gap-2">
+              <span className="text-lg">🤝</span>
+              + Agregar Aval/Garante (opcional)
+            </CardTitle>
+          </button>
         </CardHeader>
       </Card>
     );
@@ -89,14 +95,17 @@ export const GuarantorSection = ({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Aval/Garante (opcional)</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <span>🤝</span>
+            Aval/Garante (opcional)
+          </CardTitle>
           {collapsible && (
             <button
               type="button"
-              onClick={() => setIsExpanded(false)}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              onClick={handleToggleExpand}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              Contraer
+              ✕ Contraer
             </button>
           )}
         </div>
@@ -253,14 +262,6 @@ export const GuarantorSection = ({
           {formData.guarantor_curp && (
             <p className="text-xs text-green-600">
               ✓ CURP generado automáticamente
-            </p>
-          )}
-          {curpValidation.validating && (
-            <p className="text-sm text-gray-500">Verificando CURP...</p>
-          )}
-          {curpValidation.message && (
-            <p className={`text-sm ${curpValidation.available ? 'text-green-600' : 'text-red-600'}`}>
-              {curpValidation.message}
             </p>
           )}
         </div>

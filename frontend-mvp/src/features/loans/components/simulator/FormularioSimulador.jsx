@@ -5,39 +5,46 @@
 import { useState, useEffect } from 'react';
 import './FormularioSimulador.css';
 
+/**
+ * Rangos recomendados para tasas
+ * IMPORTANTE: La comisión se calcula sobre el MONTO prestado (no sobre el pago)
+ */
+const RATE_RANGES = {
+  interest: {
+    min: 0.5,     // 0.5% por quincena (mínimo)
+    max: 10,      // 10% por quincena (máximo)
+    recommended: { min: 3, max: 5 },  // Rango típico: 3-5% por quincena
+    standard: 4.25  // Standard usa 4.25% por quincena
+  },
+  commission: {
+    min: 0,
+    max: 5,       // 5% del monto por quincena (máximo)
+    recommended: { min: 1, max: 2 },  // Rango típico: 1-2% del monto
+    standard: 1.6  // Standard usa 1.6% del monto (igual que Legacy)
+  }
+};
+
 const PROFILES = [
   {
     code: 'legacy',
-    name: 'Legacy (Variable) ℹ️',
+    name: 'Tabla Histórica v2.0 (Solo 12Q)',
     terms: [12],
     predefinedAmounts: [3000, 4000, 5000, 6000, 7000, 7500, 8000, 9000, 10000, 11000, 12000, 13000, 14000, 15000, 16000, 17000, 18000, 19000, 20000, 21000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 29000, 30000],
     allowCustomAmount: false
   },
   {
-    code: 'transition',
-    name: 'Transition (3.75%)',
-    terms: [6, 12, 18, 24],
-    predefinedAmounts: [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 18000, 20000, 22000, 25000, 28000, 30000],
-    allowCustomAmount: true
-  },
-  {
     code: 'standard',
-    name: 'Standard (4.25%) ⭐',
-    terms: [3, 6, 9, 12, 15, 18, 21, 24, 30, 36],
-    predefinedAmounts: [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 18000, 20000, 22000, 25000, 28000, 30000],
-    allowCustomAmount: true
-  },
-  {
-    code: 'premium',
-    name: 'Premium (4.5%)',
+    name: 'Estándar - Recomendado ⭐',
+    description: 'Interés 4.25% por quincena, comisión asociado 1.6% del monto',
     terms: [3, 6, 9, 12, 15, 18, 21, 24, 30, 36],
     predefinedAmounts: [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 18000, 20000, 22000, 25000, 28000, 30000],
     allowCustomAmount: true
   },
   {
     code: 'custom',
-    name: 'Custom (Personalizado)',
-    terms: [],
+    name: 'Personalizado',
+    description: 'Define tus propias tasas de interés y comisión',
+    terms: [3, 6, 9, 12, 15, 18, 21, 24, 30, 36],
     predefinedAmounts: [3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 12000, 15000, 18000, 20000, 22000, 25000, 28000, 30000],
     allowCustomAmount: true
   },
@@ -49,7 +56,9 @@ export default function FormularioSimulador({ onSimulate, loading }) {
     term_biweeks: 12,
     profile_code: 'standard',
     approval_date: new Date().toISOString().split('T')[0],
-    custom_interest_rate: null,
+    // Tasas quincenales (no anuales) para coincidir con la lógica del backend
+    custom_interest_rate: '',
+    custom_commission_rate: '',
     useCustomAmount: false,
     customAmount: '',
   });
@@ -137,16 +146,27 @@ export default function FormularioSimulador({ onSimulate, loading }) {
       newErrors.approval_date = 'La fecha no puede ser anterior a hoy';
     }
 
-    // Validar tasa custom
+    // Validar tasas custom
     if (formData.profile_code === 'custom') {
-      if (!formData.custom_interest_rate) {
-        newErrors.custom_interest_rate = 'La tasa es obligatoria para perfil custom';
-      } else if (formData.custom_interest_rate < 0.5 || formData.custom_interest_rate > 10) {
-        newErrors.custom_interest_rate = 'La tasa debe estar entre 0.5% y 10%';
-      }
-    }
+      const interestRate = parseFloat(formData.custom_interest_rate);
+      const commissionRate = parseFloat(formData.custom_commission_rate);
 
-    setErrors(newErrors);
+      if (!formData.custom_interest_rate || isNaN(interestRate)) {
+        newErrors.custom_interest_rate = 'Ingrese la tasa de interés por quincena';
+      } else if (interestRate < RATE_RANGES.interest.min || interestRate > RATE_RANGES.interest.max) {
+        newErrors.custom_interest_rate = `Rango válido: ${RATE_RANGES.interest.min}% - ${RATE_RANGES.interest.max}% por quincena`;
+      } else if (interestRate < RATE_RANGES.interest.recommended.min || interestRate > RATE_RANGES.interest.recommended.max) {
+        newErrors.custom_interest_rate = `⚠️ Fuera del rango típico (${RATE_RANGES.interest.recommended.min}%-${RATE_RANGES.interest.recommended.max}% por quincena). Standard usa ${RATE_RANGES.interest.standard}%`;
+      }
+
+      if (formData.custom_commission_rate === '' || isNaN(commissionRate)) {
+        newErrors.custom_commission_rate = 'Ingrese el % de comisión sobre el monto';
+      } else if (commissionRate < RATE_RANGES.commission.min || commissionRate > RATE_RANGES.commission.max) {
+        newErrors.custom_commission_rate = `Rango válido: ${RATE_RANGES.commission.min}% - ${RATE_RANGES.commission.max}% del monto`;
+      } else if (commissionRate < RATE_RANGES.commission.recommended.min || commissionRate > RATE_RANGES.commission.recommended.max) {
+        newErrors.custom_commission_rate = `⚠️ Fuera del rango típico (${RATE_RANGES.commission.recommended.min}%-${RATE_RANGES.commission.recommended.max}% del monto). Standard usa ${RATE_RANGES.commission.standard}%`;
+      }
+    } setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -159,14 +179,17 @@ export default function FormularioSimulador({ onSimulate, loading }) {
         term_biweeks: formData.term_biweeks,
         profile_code: formData.profile_code,
         approval_date: formData.approval_date,
-        custom_interest_rate: formData.profile_code === 'custom' ? formData.custom_interest_rate : null,
       };
+
+      // Solo agregar tasas custom si el perfil es 'custom'
+      if (formData.profile_code === 'custom') {
+        params.custom_interest_rate = parseFloat(formData.custom_interest_rate);
+        params.custom_commission_rate = parseFloat(formData.custom_commission_rate);
+      }
 
       onSimulate(params);
     }
-  };
-
-  return (
+  }; return (
     <div className="formulario-simulador">
       <h3>💰 Configurar Simulación</h3>
 
@@ -308,29 +331,59 @@ export default function FormularioSimulador({ onSimulate, loading }) {
           {errors.approval_date && <span className="error-message">{errors.approval_date}</span>}
         </div>
 
-        {/* Tasa Custom (solo si aplica) */}
+        {/* Tasas Custom (solo si aplica) */}
         {formData.profile_code === 'custom' && (
-          <div className="form-group">
-            <label htmlFor="custom_interest_rate">
-              Tasa de Interés Personalizada (%) <span className="required">*</span>
-            </label>
-            <input
-              type="number"
-              id="custom_interest_rate"
-              name="custom_interest_rate"
-              value={formData.custom_interest_rate || ''}
-              onChange={handleChange}
-              min="0.5"
-              max="10"
-              step="0.25"
-              disabled={loading}
-              className={errors.custom_interest_rate ? 'error' : ''}
-            />
-            <small className="help-text">Rango: 0.5% - 10%</small>
-            {errors.custom_interest_rate && (
-              <span className="error-message">{errors.custom_interest_rate}</span>
-            )}
-          </div>
+          <>
+            <div className="form-group">
+              <label htmlFor="custom_interest_rate">
+                📈 Tasa de Interés por Quincena (%) <span className="required">*</span>
+              </label>
+              <input
+                type="number"
+                id="custom_interest_rate"
+                name="custom_interest_rate"
+                value={formData.custom_interest_rate}
+                onChange={handleChange}
+                min={RATE_RANGES.interest.min}
+                max={RATE_RANGES.interest.max}
+                step="0.25"
+                placeholder="Ej: 4.25 (Standard)"
+                disabled={loading}
+                className={errors.custom_interest_rate ? 'error' : ''}
+              />
+              <small className="help-text">
+                💡 Interés que se suma al préstamo por cada quincena. Standard: {RATE_RANGES.interest.standard}%, Rango típico: {RATE_RANGES.interest.recommended.min}-{RATE_RANGES.interest.recommended.max}%
+              </small>
+              {errors.custom_interest_rate && (
+                <span className="error-message">{errors.custom_interest_rate}</span>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="custom_commission_rate">
+                💰 Comisión del Asociado (% del Monto Prestado) <span className="required">*</span>
+              </label>
+              <input
+                type="number"
+                id="custom_commission_rate"
+                name="custom_commission_rate"
+                value={formData.custom_commission_rate}
+                onChange={handleChange}
+                min={RATE_RANGES.commission.min}
+                max={RATE_RANGES.commission.max}
+                step="0.1"
+                placeholder="Ej: 1.6 (Standard)"
+                disabled={loading}
+                className={errors.custom_commission_rate ? 'error' : ''}
+              />
+              <small className="help-text">
+                💡 Ganancia del asociado por quincena = Monto × este %. Ejemplo: $10,000 × 1.6% = $160/quincena. Standard: {RATE_RANGES.commission.standard}%
+              </small>
+              {errors.custom_commission_rate && (
+                <span className="error-message">{errors.custom_commission_rate}</span>
+              )}
+            </div>
+          </>
         )}
 
         {/* Botón de Simular */}

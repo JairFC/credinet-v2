@@ -2,14 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import { lookupZipCode, getColonies } from '../../api/services/zipCodeService';
+import { lookupZipCode } from '../../api/services/zipCodeService';
 
 /**
  * Componente reutilizable para dirección
@@ -25,6 +18,13 @@ export const AddressSection = ({
   const [colonies, setColonies] = useState([]);
   const [zipError, setZipError] = useState('');
   const [isExpanded, setIsExpanded] = useState(!collapsible || required);
+
+  // Handler para expandir/contraer
+  const handleToggleExpand = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsExpanded(!isExpanded);
+  };
 
   // Buscar información del CP cuando se completan 5 dígitos
   useEffect(() => {
@@ -79,11 +79,18 @@ export const AddressSection = ({
 
   if (collapsible && !isExpanded) {
     return (
-      <Card className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900" onClick={() => setIsExpanded(true)}>
+      <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-normal text-gray-600 dark:text-gray-400">
-            + Agregar Dirección {!required && '(opcional)'}
-          </CardTitle>
+          <button
+            type="button"
+            onClick={handleToggleExpand}
+            className="w-full text-left cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900 -m-4 p-4 rounded-lg"
+          >
+            <CardTitle className="text-sm font-normal text-gray-600 dark:text-gray-400 flex items-center gap-2">
+              <span className="text-lg">📍</span>
+              + Agregar Dirección {!required && '(opcional)'}
+            </CardTitle>
+          </button>
         </CardHeader>
       </Card>
     );
@@ -93,16 +100,17 @@ export const AddressSection = ({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <span>📍</span>
             Dirección {!required && '(opcional)'}
           </CardTitle>
           {collapsible && !required && (
             <button
               type="button"
-              onClick={() => setIsExpanded(false)}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              onClick={handleToggleExpand}
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              Contraer
+              ✕ Contraer
             </button>
           )}
         </div>
@@ -136,21 +144,19 @@ export const AddressSection = ({
         {colonies.length > 0 && (
           <div className="space-y-2">
             <Label htmlFor="colony">Colonia {required && '*'}</Label>
-            <Select
+            <select
+              id="colony"
               value={formData.colony || ''}
-              onValueChange={(value) => onChange({ colony: value })}
+              onChange={(e) => onChange({ colony: e.target.value })}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <SelectTrigger id="colony">
-                <SelectValue placeholder="Seleccionar colonia" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[200px]">
-                {colonies.map((colony, index) => (
-                  <SelectItem key={index} value={colony}>
-                    {colony}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              <option value="">Seleccionar colonia...</option>
+              {colonies.map((colony, index) => (
+                <option key={index} value={colony}>
+                  {colony}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 

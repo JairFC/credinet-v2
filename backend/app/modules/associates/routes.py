@@ -5,11 +5,14 @@ Endpoints:
 - POST /associates → Crear asociado completo
 - GET /associates → Listar asociados
 - GET /associates/:userId/credit → Resumen de crédito
+- GET /associates/:id/clients → Lista de clientes del asociado
 """
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_db
+from app.core.dependencies import require_admin
 from app.modules.associates.application.dtos import (
     AssociateResponseDTO,
     AssociateListItemDTO,
@@ -25,7 +28,11 @@ from app.modules.associates.application.use_cases import (
 from app.modules.associates.infrastructure.repositories.pg_associate_repository import PgAssociateRepository
 
 
-router = APIRouter(prefix="/associates", tags=["Associates"])
+router = APIRouter(
+    prefix="/associates",
+    tags=["Associates"],
+    dependencies=[Depends(require_admin)]  # 🔒 Solo admins
+)
 
 
 def get_associate_repository(db: AsyncSession = Depends(get_async_db)) -> PgAssociateRepository:
@@ -109,7 +116,7 @@ async def create_associate(
             user_id=new_user.id,
             level_id=request.level_id,
             credit_limit=request.credit_limit,
-            credit_used=0,
+            pending_payments_total=0,
             contact_person=request.contact_person,
             contact_email=request.contact_email,
             default_commission_rate=request.default_commission_rate,
@@ -192,7 +199,7 @@ async def search_available_associates(
     
     Filtros aplicados:
     - Solo asociados activos
-    - Con credit_available >= min_credit
+    - Con available_credit >= min_credit
     - Búsqueda por: nombre completo, username, email
     
     Args:
@@ -220,8 +227,8 @@ async def search_available_associates(
                 AssociateProfileModel.user_id,
                 AssociateProfileModel.level_id,
                 AssociateProfileModel.credit_limit,
-                AssociateProfileModel.credit_used,
-                AssociateProfileModel.credit_available,
+                AssociateProfileModel.pending_payments_total,
+                AssociateProfileModel.available_credit,
                 AssociateProfileModel.active,
                 UserModel.username,
                 UserModel.first_name,
@@ -233,7 +240,7 @@ async def search_available_associates(
             .where(
                 and_(
                     AssociateProfileModel.active == True,
-                    AssociateProfileModel.credit_available >= min_credit,
+                    AssociateProfileModel.available_credit >= min_credit,
                     or_(
                         func.lower(UserModel.username).like(search_term),
                         func.lower(UserModel.first_name).like(search_term),
@@ -243,7 +250,7 @@ async def search_available_associates(
                     )
                 )
             )
-            .order_by(AssociateProfileModel.credit_available.desc())
+            .order_by(AssociateProfileModel.available_credit.desc())
             .limit(limit)
         )
         
@@ -254,9 +261,9 @@ async def search_available_associates(
         associates = []
         for row in rows:
             credit_limit = float(row.credit_limit)
-            credit_used = float(row.credit_used)
-            credit_available = float(row.credit_available)
-            credit_usage_percentage = (credit_used / credit_limit * 100) if credit_limit > 0 else 0
+            pending_payments_total = float(row.pending_payments_total)
+            available_credit = float(row.available_credit)
+            credit_usage_percentage = (pending_payments_total / credit_limit * 100) if credit_limit > 0 else 0
             
             associates.append(
                 AssociateSearchItemDTO(
@@ -268,11 +275,11 @@ async def search_available_associates(
                     phone_number=row.phone_number,
                     level_id=row.level_id,
                     credit_limit=row.credit_limit,
-                    credit_used=row.credit_used,
-                    credit_available=row.credit_available,
+                    pending_payments_total=row.pending_payments_total,
+                    available_credit=row.available_credit,
                     credit_usage_percentage=credit_usage_percentage,
                     active=row.active,
-                    can_grant_loans=credit_available > 0,
+                    can_grant_loans=available_credit > 0,
                 )
             )
         
@@ -309,18 +316,18 @@ async def list_associates(
     from app.modules.auth.infrastructure.models import UserModel
     
     try:
-        # Query con JOIN para obtener datos del usuario y deuda
+        # Query con JOIN para obtener datos del usuario y deuda real
         from sqlalchemy import func, text
         
-        # Subquery para contar deudas pendientes usando text() para evitar importar el modelo
+        # ⭐ Subquery para contar períodos con deuda desde associate_accumulated_balances (la tabla real)
         pending_debts_subq = (
             select(func.count(text('*')))
-            .select_from(text('associate_debt_breakdown'))
+            .select_from(text('associate_accumulated_balances aab'))
             .where(
-                text('associate_debt_breakdown.associate_profile_id = associate_profiles.id'),
-                text('associate_debt_breakdown.is_liquidated = false')
+                text('aab.user_id = users.id'),
+                text('aab.accumulated_debt > 0')
             )
-            .correlate(AssociateProfileModel)
+            .correlate(UserModel)
             .scalar_subquery()
         )
         
@@ -329,9 +336,9 @@ async def list_associates(
                 AssociateProfileModel.id,
                 AssociateProfileModel.user_id,
                 AssociateProfileModel.credit_limit,
-                AssociateProfileModel.credit_used,
-                AssociateProfileModel.credit_available,
-                AssociateProfileModel.debt_balance,
+                AssociateProfileModel.pending_payments_total,
+                AssociateProfileModel.available_credit,
+                AssociateProfileModel.consolidated_debt,
                 pending_debts_subq.label('pending_debts_count'),
                 AssociateProfileModel.active,
                 AssociateProfileModel.level_id,
@@ -362,9 +369,9 @@ async def list_associates(
                 email=row.email,
                 level_id=row.level_id,
                 credit_limit=row.credit_limit,
-                credit_used=row.credit_used,
-                credit_available=row.credit_available,
-                debt_balance=row.debt_balance,
+                pending_payments_total=row.pending_payments_total,
+                available_credit=row.available_credit,
+                consolidated_debt=row.consolidated_debt,
                 pending_debts_count=row.pending_debts_count or 0,
                 active=row.active,
             )
@@ -420,11 +427,11 @@ async def get_associate_detail(
                 AssociateProfileModel.consecutive_on_time_payments,
                 AssociateProfileModel.clients_in_agreement,
                 AssociateProfileModel.last_level_evaluation_date,
-                AssociateProfileModel.credit_used,
+                AssociateProfileModel.pending_payments_total,
                 AssociateProfileModel.credit_limit,
-                AssociateProfileModel.credit_available,
+                AssociateProfileModel.available_credit,
                 AssociateProfileModel.credit_last_updated,
-                AssociateProfileModel.debt_balance,
+                AssociateProfileModel.consolidated_debt,
                 AssociateProfileModel.created_at,
                 AssociateProfileModel.updated_at,
                 UserModel.username,
@@ -449,7 +456,7 @@ async def get_associate_detail(
         # Calcular porcentaje de uso de crédito
         credit_usage_percentage = None
         if row.credit_limit and row.credit_limit > 0:
-            credit_usage_percentage = float((row.credit_used / row.credit_limit) * 100)
+            credit_usage_percentage = float((row.pending_payments_total / row.credit_limit) * 100)
         
         return AssociateResponseDTO(
             id=row.id,
@@ -463,11 +470,11 @@ async def get_associate_detail(
             consecutive_on_time_payments=row.consecutive_on_time_payments,
             clients_in_agreement=row.clients_in_agreement,
             last_level_evaluation_date=row.last_level_evaluation_date,
-            credit_used=row.credit_used,
+            pending_payments_total=row.pending_payments_total,
             credit_limit=row.credit_limit,
-            credit_available=row.credit_available,
+            available_credit=row.available_credit,
             credit_last_updated=row.credit_last_updated,
-            debt_balance=row.debt_balance,
+            consolidated_debt=row.consolidated_debt,
             created_at=row.created_at,
             updated_at=row.updated_at,
             credit_usage_percentage=credit_usage_percentage,
@@ -488,6 +495,104 @@ async def get_associate_detail(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error getting associate detail: {str(e)}"
+        )
+
+
+@router.get("/by-user/{user_id}", response_model=AssociateResponseDTO)
+async def get_associate_by_user_id(
+    user_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Obtiene el detalle completo de un asociado por USER_ID (no profile_id).
+    Útil para enlaces desde statements donde se usa user_id.
+    
+    Args:
+        user_id: ID del usuario (tabla users)
+        
+    Returns:
+        Detalle completo del asociado
+    """
+    from sqlalchemy import select
+    from app.modules.associates.infrastructure.models import AssociateProfileModel
+    from app.modules.auth.infrastructure.models import UserModel
+    
+    try:
+        stmt = (
+            select(
+                AssociateProfileModel.id,
+                AssociateProfileModel.user_id,
+                AssociateProfileModel.level_id,
+                AssociateProfileModel.contact_person,
+                AssociateProfileModel.contact_email,
+                AssociateProfileModel.default_commission_rate,
+                AssociateProfileModel.active,
+                AssociateProfileModel.consecutive_full_credit_periods,
+                AssociateProfileModel.consecutive_on_time_payments,
+                AssociateProfileModel.clients_in_agreement,
+                AssociateProfileModel.last_level_evaluation_date,
+                AssociateProfileModel.pending_payments_total,
+                AssociateProfileModel.credit_limit,
+                AssociateProfileModel.available_credit,
+                AssociateProfileModel.credit_last_updated,
+                AssociateProfileModel.consolidated_debt,
+                AssociateProfileModel.created_at,
+                AssociateProfileModel.updated_at,
+                UserModel.username,
+                UserModel.email,
+                UserModel.phone_number,
+                UserModel.first_name,
+                UserModel.last_name,
+            )
+            .join(UserModel, AssociateProfileModel.user_id == UserModel.id)
+            .where(AssociateProfileModel.user_id == user_id)  # Buscar por user_id
+        )
+        
+        result = await db.execute(stmt)
+        row = result.one_or_none()
+        
+        if not row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Associate with user_id {user_id} not found"
+            )
+        
+        return AssociateResponseDTO(
+            id=row.id,
+            user_id=row.user_id,
+            username=row.username,
+            email=row.email,
+            phone_number=row.phone_number,
+            first_name=row.first_name,
+            last_name=row.last_name,
+            full_name=f"{row.first_name} {row.last_name}".strip(),
+            level_id=row.level_id,
+            contact_person=row.contact_person,
+            contact_email=row.contact_email,
+            default_commission_rate=float(row.default_commission_rate),
+            active=row.active,
+            consecutive_full_credit_periods=row.consecutive_full_credit_periods,
+            consecutive_on_time_payments=row.consecutive_on_time_payments,
+            clients_in_agreement=row.clients_in_agreement,
+            last_level_evaluation_date=row.last_level_evaluation_date,
+            pending_payments_total=float(row.pending_payments_total) if row.pending_payments_total else 0.0,
+            credit_limit=float(row.credit_limit) if row.credit_limit else 0.0,
+            available_credit=float(row.available_credit) if row.available_credit else 0.0,
+            credit_last_updated=row.credit_last_updated,
+            consolidated_debt=float(row.consolidated_debt) if row.consolidated_debt else 0.0,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error getting associate by user_id: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error getting associate: {str(e)}"
         )
 
 
@@ -522,11 +627,11 @@ async def get_associate_credit(
             associate_id=associate.id,
             user_id=associate.user_id,
             credit_limit=associate.credit_limit,
-            credit_used=associate.credit_used,
-            credit_available=associate.credit_available,
+            pending_payments_total=associate.pending_payments_total,
+            available_credit=associate.available_credit,
             credit_usage_percentage=associate.get_credit_usage_percentage(),
             active_loans_count=0,  # TODO: Contar loans activos
-            total_disbursed=associate.credit_used,
+            total_disbursed=associate.pending_payments_total,
         )
     except HTTPException:
         raise
@@ -538,73 +643,275 @@ async def get_associate_credit(
 
 
 # =============================================================================
+# ⭐ LISTA DE CLIENTES POR ASOCIADO
+# =============================================================================
+
+@router.get("/{associate_id}/clients")
+async def get_associate_clients(
+    associate_id: int,
+    db: AsyncSession = Depends(get_async_db),
+    status_filter: Optional[str] = Query(None, description="Filtrar por status: ACTIVE, COMPLETED, DEFAULTED, etc"),
+    limit: int = Query(50, ge=1, le=200, description="Límite de resultados"),
+    offset: int = Query(0, ge=0, description="Offset para paginación"),
+):
+    """
+    Lista todos los clientes (borrowers) que han solicitado préstamos con este asociado.
+    
+    Incluye información de:
+    - Datos del cliente (nombre, teléfono, email)
+    - Total de préstamos con el asociado
+    - Monto total prestado
+    - Estado actual de la relación
+    
+    Args:
+        associate_id: ID del perfil de asociado
+        status_filter: Filtrar por estado del préstamo (ACTIVE, COMPLETED, etc)
+        limit: Límite de resultados (default 50)
+        offset: Offset para paginación
+    
+    Returns:
+        Lista paginada de clientes con estadísticas
+    """
+    from sqlalchemy import text
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Verificar que existe el asociado y obtener user_id
+        check = await db.execute(
+            text("SELECT id, user_id FROM associate_profiles WHERE id = :id"),
+            {"id": associate_id}
+        )
+        profile = check.fetchone()
+        
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Asociado {associate_id} no encontrado"
+            )
+        
+        associate_user_id = profile.user_id
+        
+        # Construir query base
+        base_query = """
+        WITH client_stats AS (
+            SELECT 
+                l.user_id as client_user_id,
+                u.first_name,
+                u.last_name,
+                u.phone_number,
+                u.email,
+                u.curp,
+                COUNT(l.id) as total_loans,
+                SUM(l.amount) as total_amount_loaned,
+                SUM(CASE WHEN ls.name = 'ACTIVE' THEN 1 ELSE 0 END) as active_loans,
+                SUM(CASE WHEN ls.name = 'COMPLETED' OR ls.name = 'PAID' THEN 1 ELSE 0 END) as completed_loans,
+                SUM(CASE WHEN ls.name = 'DEFAULTED' THEN 1 ELSE 0 END) as defaulted_loans,
+                MIN(l.approved_at) as first_loan_date,
+                MAX(l.approved_at) as last_loan_date,
+                CASE 
+                    WHEN SUM(CASE WHEN ls.name = 'ACTIVE' THEN 1 ELSE 0 END) > 0 THEN 'ACTIVE'
+                    WHEN SUM(CASE WHEN ls.name = 'DEFAULTED' THEN 1 ELSE 0 END) > 0 THEN 'DEFAULTED'
+                    WHEN SUM(CASE WHEN ls.name = 'COMPLETED' OR ls.name = 'PAID' THEN 1 ELSE 0 END) > 0 THEN 'GOOD_STANDING'
+                    ELSE 'INACTIVE'
+                END as client_status
+            FROM loans l
+            JOIN users u ON u.id = l.user_id
+            JOIN loan_statuses ls ON ls.id = l.status_id
+            WHERE l.associate_user_id = :associate_user_id
+        """
+        
+        # Aplicar filtro por status si se especifica
+        if status_filter:
+            if status_filter == "GOOD_STANDING":
+                base_query += " AND ls.name IN ('COMPLETED', 'PAID')"
+            else:
+                base_query += f" AND ls.name = '{status_filter}'"
+        
+        base_query += """
+            GROUP BY l.user_id, u.first_name, u.last_name, u.phone_number, u.email, u.curp
+        )
+        SELECT 
+            cs.*,
+            (SELECT COUNT(*) FROM client_stats) as total_count
+        FROM client_stats cs
+        ORDER BY cs.last_loan_date DESC NULLS LAST
+        LIMIT :limit OFFSET :offset
+        """
+        
+        result = await db.execute(
+            text(base_query),
+            {
+                "associate_user_id": associate_user_id,
+                "limit": limit,
+                "offset": offset
+            }
+        )
+        
+        rows = result.fetchall()
+        
+        if not rows:
+            return {
+                "success": True,
+                "data": {
+                    "associate_id": associate_id,
+                    "clients": [],
+                    "total": 0,
+                    "limit": limit,
+                    "offset": offset
+                }
+            }
+        
+        total_count = rows[0].total_count if rows else 0
+        
+        clients = []
+        for row in rows:
+            clients.append({
+                "client_user_id": row.client_user_id,
+                "first_name": row.first_name,
+                "last_name": row.last_name,
+                "full_name": f"{row.first_name} {row.last_name}".strip(),
+                "phone_number": row.phone_number,
+                "email": row.email,
+                "curp": row.curp,
+                "total_loans": row.total_loans,
+                "total_amount_loaned": float(row.total_amount_loaned) if row.total_amount_loaned else 0,
+                "active_loans": row.active_loans,
+                "completed_loans": row.completed_loans,
+                "defaulted_loans": row.defaulted_loans,
+                "first_loan_date": row.first_loan_date.isoformat() if row.first_loan_date else None,
+                "last_loan_date": row.last_loan_date.isoformat() if row.last_loan_date else None,
+                "client_status": row.client_status
+            })
+        
+        return {
+            "success": True,
+            "data": {
+                "associate_id": associate_id,
+                "clients": clients,
+                "total": total_count,
+                "limit": limit,
+                "offset": offset
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error listando clientes del asociado: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error obteniendo clientes del asociado: {str(e)}"
+        )
+
+
+# =============================================================================
 # ⭐ NUEVOS ENDPOINTS FASE 6 - DEUDA Y PAGOS
 # =============================================================================
+
+from pydantic import BaseModel, Field
+from typing import Optional
+
+class RegisterDebtPaymentRequest(BaseModel):
+    """DTO para registrar abono a deuda"""
+    payment_amount: float = Field(..., gt=0, description="Monto del abono")
+    payment_method_id: int = Field(..., description="ID del método de pago")
+    payment_reference: Optional[str] = Field(None, max_length=100, description="Referencia del pago")
+    notes: Optional[str] = Field(None, description="Notas adicionales")
+
 
 @router.post("/{associate_id}/debt-payments", status_code=status.HTTP_201_CREATED)
 async def register_debt_payment(
     associate_id: int,
-    payment_amount: float = Query(..., gt=0),
-    payment_date: str = Query(...),
-    payment_method_id: int = Query(...),
-    payment_reference: str = Query(None),
-    notes: str = Query(None),
+    request: RegisterDebtPaymentRequest,
     db: AsyncSession = Depends(get_async_db),
 ):
     """
-    Registra abono a deuda acumulada (FIFO automático).
+    Registra abono a deuda acumulada usando FIFO sobre balances reales.
     
-    **Trigger aplica FIFO:**
-    1. Obtiene items de deuda pendientes (is_liquidated = false)
-    2. Ordena por created_at ASC
-    3. Liquida de más antiguos a más recientes
-    4. Guarda detalle en JSONB applied_breakdown_items
-    5. Actualiza debt_balance del asociado
+    **Lógica FIFO v2 (usa associate_accumulated_balances):**
+    1. Obtiene items de deuda desde associate_accumulated_balances
+    2. Ordena por created_at ASC (más antiguo primero)
+    3. Aplica el pago reduciendo accumulated_debt
+    4. Actualiza consolidated_debt en associate_profiles
+    5. Libera crédito automáticamente (available_credit aumenta)
+    6. Registra detalle en JSONB applied_breakdown_items
     
-    **Returns:** JSON con items liquidados
+    **Returns:** JSON con items liquidados, deuda restante y crédito liberado
     """
     from sqlalchemy import text
+    import logging
     
-    result = await db.execute(
-        text("""
-            INSERT INTO associate_debt_payments 
-            (associate_profile_id, payment_amount, payment_date, payment_method_id, 
-             payment_reference, registered_by, notes)
-            VALUES (:associate_id, :payment_amount, :payment_date, :payment_method_id,
-                    :payment_reference, 1, :notes)
-            RETURNING id, applied_breakdown_items, created_at
-        """),
-        {
-            "associate_id": associate_id,
-            "payment_amount": payment_amount,
-            "payment_date": payment_date,
-            "payment_method_id": payment_method_id,
-            "payment_reference": payment_reference,
-            "notes": notes
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Verificar que existe el asociado
+        check = await db.execute(
+            text("SELECT id, consolidated_debt FROM associate_profiles WHERE id = :id"),
+            {"id": associate_id}
+        )
+        profile = check.fetchone()
+        
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Asociado {associate_id} no encontrado"
+            )
+        
+        if float(profile.consolidated_debt) <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El asociado no tiene deuda pendiente"
+            )
+        
+        # Llamar a la función FIFO v2
+        result = await db.execute(
+            text("""
+                SELECT * FROM apply_debt_payment_v2(
+                    p_associate_profile_id := :associate_id,
+                    p_payment_amount := :payment_amount,
+                    p_payment_method_id := :payment_method_id,
+                    p_payment_reference := :payment_reference,
+                    p_registered_by := 1,
+                    p_notes := :notes
+                )
+            """),
+            {
+                "associate_id": associate_id,
+                "payment_amount": request.payment_amount,
+                "payment_method_id": request.payment_method_id,
+                "payment_reference": request.payment_reference,
+                "notes": request.notes
+            }
+        )
+        
+        row = result.fetchone()
+        await db.commit()
+        
+        logger.info(f"✅ Abono registrado: ${request.payment_amount} para asociado {associate_id}")
+        
+        return {
+            "success": True,
+            "message": f"Abono de ${request.payment_amount:,.2f} aplicado exitosamente",
+            "data": {
+                "payment_id": row[0],
+                "amount_applied": float(row[1]),
+                "remaining_debt": float(row[2]),
+                "applied_items": row[3],
+                "credit_released": float(row[4])
+            }
         }
-    )
-    
-    await db.commit()
-    row = result.fetchone()
-    
-    # Obtener deuda actualizada
-    debt_result = await db.execute(
-        text("SELECT debt_balance FROM associate_profiles WHERE id = :id"),
-        {"id": associate_id}
-    )
-    debt_row = debt_result.fetchone()
-    
-    return {
-        "success": True,
-        "data": {
-            "payment_id": row[0],
-            "associate_profile_id": associate_id,
-            "payment_amount": payment_amount,
-            "applied_breakdown_items": row[1],
-            "debt_balance_after": float(debt_row[0]) if debt_row else 0.0,
-            "registered_at": row[2].isoformat()
-        }
-    }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error registrando abono: {str(e)}", exc_info=True)
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error registrando abono: {str(e)}"
+        )
 
 
 @router.get("/{associate_id}/debt-summary")
@@ -613,13 +920,14 @@ async def get_debt_summary(
     db: AsyncSession = Depends(get_async_db),
 ):
     """
-    Resumen de deuda del asociado (usa vista v_associate_debt_summary).
+    Resumen de deuda del asociado (usa vista v_associate_real_debt_summary).
     
     **Returns:**
-    - Deuda actual
-    - Items pendientes/liquidados
-    - Total pagado
+    - Deuda total real (desde associate_accumulated_balances)
+    - Períodos con deuda
+    - Total pagado a deuda
     - Fechas clave
+    - Crédito disponible
     """
     from sqlalchemy import text
     
@@ -627,18 +935,20 @@ async def get_debt_summary(
         text("""
             SELECT 
                 associate_profile_id,
+                user_id,
                 associate_name,
-                current_debt_balance,
-                pending_debt_items,
-                liquidated_debt_items,
-                total_pending_debt,
-                total_paid_to_debt,
+                total_debt,
+                periods_with_debt,
                 oldest_debt_date,
-                last_payment_date,
-                total_debt_payments_count,
-                credit_available,
-                credit_limit
-            FROM v_associate_debt_summary
+                newest_debt_date,
+                profile_consolidated_debt,
+                credit_limit,
+                available_credit,
+                pending_payments_total,
+                total_paid_to_debt,
+                total_payments_count,
+                last_payment_date
+            FROM v_associate_real_debt_summary
             WHERE associate_profile_id = :id
         """),
         {"id": associate_id}
@@ -649,24 +959,26 @@ async def get_debt_summary(
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Associate {associate_id} not found"
+            detail=f"Asociado {associate_id} no encontrado"
         )
     
     return {
         "success": True,
         "data": {
             "associate_profile_id": row[0],
-            "associate_name": row[1],
-            "current_debt_balance": float(row[2]),
-            "pending_debt_items": row[3],
-            "liquidated_debt_items": row[4],
-            "total_pending_debt": float(row[5]),
-            "total_paid_to_debt": float(row[6]),
-            "oldest_debt_date": row[7].isoformat() if row[7] else None,
-            "last_payment_date": row[8].isoformat() if row[8] else None,
-            "total_debt_payments_count": row[9],
-            "credit_available": float(row[10]),
-            "credit_limit": float(row[11])
+            "user_id": row[1],
+            "associate_name": row[2],
+            "total_debt": float(row[3]),
+            "periods_with_debt": row[4],
+            "oldest_debt_date": row[5].isoformat() if row[5] else None,
+            "newest_debt_date": row[6].isoformat() if row[6] else None,
+            "profile_consolidated_debt": float(row[7]),
+            "credit_limit": float(row[8]),
+            "available_credit": float(row[9]),
+            "pending_payments_total": float(row[10]),
+            "total_paid_to_debt": float(row[11]),
+            "total_payments_count": row[12],
+            "last_payment_date": row[13].isoformat() if row[13] else None
         }
     }
 
@@ -763,4 +1075,480 @@ async def validate_contact_email(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error validating contact email: {str(e)}"
+        )
+
+
+# =============================================================================
+# DEBT HISTORY ENDPOINT
+# =============================================================================
+
+@router.get(
+    "/{associate_id}/debt-history",
+    status_code=status.HTTP_200_OK,
+    summary="Get Associate Debt History",
+    description="Obtiene el historial de deudas acumuladas del asociado con detalles de cada período."
+)
+async def get_associate_debt_history(
+    associate_id: int,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """
+    Retorna el historial completo de deudas acumuladas del asociado.
+    
+    Incluye:
+    - Balance acumulado por período
+    - Detalles de cada deuda (statement origen, montos, fechas)
+    - Total de deuda pendiente
+    """
+    from sqlalchemy import text
+    
+    try:
+        # Verificar que existe el asociado
+        associate_check = await db.execute(
+            text("SELECT id, user_id FROM associate_profiles WHERE id = :id"),
+            {"id": associate_id}
+        )
+        associate = associate_check.fetchone()
+        
+        if not associate:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Asociado {associate_id} no encontrado"
+            )
+        
+        user_id = associate.user_id
+        
+        # Obtener historial de deudas con detalles del período
+        result = await db.execute(
+            text("""
+            SELECT 
+                aab.id,
+                aab.cut_period_id,
+                cp.cut_code,
+                cp.period_start_date,
+                cp.period_end_date,
+                aab.accumulated_debt,
+                aab.debt_details,
+                aab.created_at,
+                aab.updated_at
+            FROM associate_accumulated_balances aab
+            JOIN cut_periods cp ON cp.id = aab.cut_period_id
+            WHERE aab.user_id = :user_id
+            ORDER BY cp.period_end_date DESC
+            """),
+            {"user_id": user_id}
+        )
+        
+        debts = result.fetchall()
+        
+        # Calcular totales
+        total_debt = sum(float(d.accumulated_debt) for d in debts)
+        
+        # Formatear respuesta
+        debt_history = []
+        for d in debts:
+            # Parsear debt_details si es string
+            details = d.debt_details
+            if isinstance(details, str):
+                import json
+                details = json.loads(details)
+            
+            debt_history.append({
+                "id": d.id,
+                "period_id": d.cut_period_id,
+                "period_code": d.cut_code,
+                "period_start": d.period_start_date.isoformat() if d.period_start_date else None,
+                "period_end": d.period_end_date.isoformat() if d.period_end_date else None,
+                "accumulated_debt": float(d.accumulated_debt),
+                "details": details or [],
+                "created_at": d.created_at.isoformat() if d.created_at else None,
+                "updated_at": d.updated_at.isoformat() if d.updated_at else None
+            })
+        
+        return {
+            "success": True,
+            "data": {
+                "associate_id": associate_id,
+                "user_id": user_id,
+                "total_debt": total_debt,
+                "periods_with_debt": len(debts),
+                "debt_history": debt_history
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error obteniendo historial de deudas: {str(e)}"
+        )
+
+
+# =============================================================================
+# GESTIÓN DE ROLES - Promover Cliente a Asociado / Agregar rol de Cliente
+# =============================================================================
+
+from pydantic import BaseModel, Field
+
+class PromoteToAssociateRequest(BaseModel):
+    """Request body para promover cliente a asociado"""
+    level_id: int = Field(..., ge=1, le=5, description="Nivel de asociado (1=Bronce, 2=Plata, 3=Oro, 4=Platino, 5=Diamante)")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "level_id": 2
+            }
+        }
+
+
+# Mapeo de niveles a límites de crédito
+LEVEL_CREDIT_LIMITS = {
+    1: 25000,    # Bronce
+    2: 300000,   # Plata
+    3: 600000,   # Oro
+    4: 900000,   # Platino
+    5: 5000000,  # Diamante
+}
+
+
+@router.get("/check-user/{user_id}")
+async def check_user_for_promotion(
+    user_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Verifica un usuario antes de promoverlo a asociado.
+    
+    Retorna información del usuario incluyendo:
+    - Datos personales
+    - Roles actuales
+    - Si tiene dirección, aval, beneficiario
+    - Si ya es asociado
+    
+    Args:
+        user_id: ID del usuario a verificar
+        
+    Returns:
+        Información completa del usuario para tomar decisión de promoción
+    """
+    from sqlalchemy import select
+    from app.modules.auth.infrastructure.models import UserModel, user_roles
+    from app.modules.associates.infrastructure.models import AssociateProfileModel
+    from app.modules.addresses.infrastructure.models import AddressModel
+    from app.modules.guarantors.infrastructure.models import GuarantorModel
+    from app.modules.beneficiaries.infrastructure.models import BeneficiaryModel
+    
+    try:
+        # 1. Obtener usuario
+        user_query = select(UserModel).where(UserModel.id == user_id)
+        result = await db.execute(user_query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Usuario {user_id} no encontrado"
+            )
+        
+        # 2. Obtener roles
+        roles_query = text("""
+            SELECT r.id, r.name FROM user_roles ur
+            JOIN roles r ON ur.role_id = r.id
+            WHERE ur.user_id = :user_id
+        """)
+        roles_result = await db.execute(roles_query, {"user_id": user_id})
+        roles = [{"id": r.id, "name": r.name} for r in roles_result.fetchall()]
+        
+        # 3. Verificar perfil de asociado
+        profile_query = select(AssociateProfileModel).where(AssociateProfileModel.user_id == user_id)
+        profile_result = await db.execute(profile_query)
+        associate_profile = profile_result.scalar_one_or_none()
+        
+        # 4. Verificar datos adicionales
+        address_result = await db.execute(select(AddressModel).where(AddressModel.user_id == user_id))
+        has_address = address_result.scalar_one_or_none() is not None
+        
+        guarantor_result = await db.execute(select(GuarantorModel).where(GuarantorModel.user_id == user_id))
+        has_guarantor = guarantor_result.scalar_one_or_none() is not None
+        
+        beneficiary_result = await db.execute(select(BeneficiaryModel).where(BeneficiaryModel.user_id == user_id))
+        has_beneficiary = beneficiary_result.scalar_one_or_none() is not None
+        
+        return {
+            "success": True,
+            "data": {
+                "user_id": user_id,
+                "username": user.username,
+                "full_name": f"{user.first_name} {user.last_name}",
+                "email": user.email,
+                "phone": user.phone_number,
+                "active": user.active,
+                "roles": roles,
+                "is_client": any(r["id"] == 5 for r in roles),
+                "is_associate": any(r["id"] == 4 for r in roles),
+                "has_associate_profile": associate_profile is not None,
+                "associate_profile": {
+                    "id": associate_profile.id,
+                    "level_id": associate_profile.level_id,
+                    "credit_limit": float(associate_profile.credit_limit),
+                    "available_credit": float(associate_profile.available_credit) if associate_profile.available_credit else 0,
+                } if associate_profile else None,
+                "existing_data": {
+                    "has_address": has_address,
+                    "has_guarantor": has_guarantor,
+                    "has_beneficiary": has_beneficiary,
+                },
+                "can_promote_to_associate": associate_profile is None,
+                "can_add_client_role": not any(r["id"] == 5 for r in roles),
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error verificando usuario: {str(e)}"
+        )
+
+
+@router.post("/promote-to-associate/{user_id}", status_code=status.HTTP_201_CREATED)
+async def promote_client_to_associate(
+    user_id: int,
+    request: PromoteToAssociateRequest,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Promueve un cliente existente a asociado (agrega rol de asociado y crea perfil).
+    
+    El usuario mantiene su rol de cliente si lo tenía.
+    
+    Args:
+        user_id: ID del usuario a promover
+        level_id: Nivel de asociado (1-5)
+        credit_limit: Límite de crédito inicial
+        
+    Returns:
+        Datos del nuevo perfil de asociado
+    """
+    from sqlalchemy import insert, select
+    from app.modules.auth.infrastructure.models import UserModel, user_roles
+    from app.modules.associates.infrastructure.models import AssociateProfileModel
+    
+    try:
+        # 1. Verificar que el usuario existe
+        user_query = select(UserModel).where(UserModel.id == user_id)
+        result = await db.execute(user_query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Usuario {user_id} no encontrado"
+            )
+        
+        # 2. Verificar que no tenga ya un perfil de asociado
+        profile_query = select(AssociateProfileModel).where(AssociateProfileModel.user_id == user_id)
+        result = await db.execute(profile_query)
+        existing_profile = result.scalar_one_or_none()
+        
+        if existing_profile:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El usuario ya es asociado (perfil ID: {existing_profile.id})"
+            )
+        
+        # 3. Verificar si ya tiene el rol de asociado
+        ASSOCIATE_ROLE_ID = 4
+        role_check = await db.execute(
+            select(user_roles).where(
+                user_roles.c.user_id == user_id,
+                user_roles.c.role_id == ASSOCIATE_ROLE_ID
+            )
+        )
+        has_role = role_check.fetchone()
+        
+        if not has_role:
+            # Agregar rol de asociado
+            await db.execute(
+                insert(user_roles).values(
+                    user_id=user_id,
+                    role_id=ASSOCIATE_ROLE_ID
+                )
+            )
+        
+        # 4. Obtener límite de crédito según el nivel
+        level_id = request.level_id
+        credit_limit = LEVEL_CREDIT_LIMITS.get(level_id, 25000)
+        
+        # 5. Crear perfil de asociado
+        new_profile = AssociateProfileModel(
+            user_id=user_id,
+            level_id=level_id,
+            credit_limit=credit_limit,
+            pending_payments_total=0,
+            default_commission_rate=5.0,  # Valor por defecto (no se usa realmente)
+            active=True,
+        )
+        
+        db.add(new_profile)
+        await db.commit()
+        await db.refresh(new_profile)
+        
+        return {
+            "success": True,
+            "message": f"Usuario {user.first_name} {user.last_name} promovido a asociado",
+            "data": {
+                "user_id": user_id,
+                "associate_profile_id": new_profile.id,
+                "level_id": new_profile.level_id,
+                "credit_limit": float(new_profile.credit_limit),
+                "available_credit": float(new_profile.credit_limit),
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error promoviendo usuario a asociado: {str(e)}"
+        )
+
+
+@router.post("/add-client-role/{user_id}", status_code=status.HTTP_200_OK)
+async def add_client_role_to_associate(
+    user_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Agrega el rol de cliente a un asociado existente.
+    
+    Esto permite que un asociado también pueda solicitar préstamos como cliente.
+    
+    Args:
+        user_id: ID del usuario asociado
+        
+    Returns:
+        Confirmación del rol agregado
+    """
+    from sqlalchemy import insert, select
+    from app.modules.auth.infrastructure.models import UserModel, user_roles
+    
+    try:
+        # 1. Verificar que el usuario existe
+        user_query = select(UserModel).where(UserModel.id == user_id)
+        result = await db.execute(user_query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Usuario {user_id} no encontrado"
+            )
+        
+        # 2. Verificar si ya tiene el rol de cliente
+        CLIENT_ROLE_ID = 5
+        role_check = await db.execute(
+            select(user_roles).where(
+                user_roles.c.user_id == user_id,
+                user_roles.c.role_id == CLIENT_ROLE_ID
+            )
+        )
+        has_role = role_check.fetchone()
+        
+        if has_role:
+            return {
+                "success": True,
+                "message": "El usuario ya tiene el rol de cliente",
+                "data": {"user_id": user_id, "role_added": False}
+            }
+        
+        # 3. Agregar rol de cliente
+        await db.execute(
+            insert(user_roles).values(
+                user_id=user_id,
+                role_id=CLIENT_ROLE_ID
+            )
+        )
+        await db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Rol de cliente agregado a {user.first_name} {user.last_name}",
+            "data": {"user_id": user_id, "role_added": True}
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error agregando rol de cliente: {str(e)}"
+        )
+
+
+@router.get("/user-roles/{user_id}")
+async def get_user_roles(
+    user_id: int,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Obtiene los roles de un usuario.
+    
+    Args:
+        user_id: ID del usuario
+        
+    Returns:
+        Lista de roles del usuario
+    """
+    from sqlalchemy import select
+    from app.modules.auth.infrastructure.models import UserModel, user_roles
+    
+    try:
+        # Verificar que el usuario existe
+        user_query = select(UserModel).where(UserModel.id == user_id)
+        result = await db.execute(user_query)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Usuario {user_id} no encontrado"
+            )
+        
+        # Obtener roles
+        roles_query = text("""
+            SELECT r.id, r.name, r.description
+            FROM user_roles ur
+            JOIN roles r ON ur.role_id = r.id
+            WHERE ur.user_id = :user_id
+            ORDER BY r.id
+        """)
+        
+        result = await db.execute(roles_query, {"user_id": user_id})
+        roles = result.fetchall()
+        
+        return {
+            "success": True,
+            "data": {
+                "user_id": user_id,
+                "full_name": f"{user.first_name} {user.last_name}",
+                "roles": [
+                    {"id": r.id, "name": r.name, "description": r.description}
+                    for r in roles
+                ]
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error obteniendo roles: {str(e)}"
         )

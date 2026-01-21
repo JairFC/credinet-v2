@@ -41,7 +41,8 @@ class StatementEnhancedService:
                 cp.cut_code as period_code,
                 aps.total_payments_count,
                 aps.total_amount_collected,
-                aps.total_commission_owed,
+                aps.total_to_credicuenta,
+                aps.commission_earned,
                 aps.commission_rate_applied,
                 aps.status_id,
                 ss.name as status_name,
@@ -72,11 +73,11 @@ class StatementEnhancedService:
         
         # Calcular campos derivados
         paid_amount = result.paid_amount or Decimal("0.00")
-        associate_payment_total = result.total_amount_collected - result.total_commission_owed
-        remaining_amount = associate_payment_total - paid_amount + result.late_fee_amount
+        # total_to_credicuenta es el monto que el asociado debe pagar a CrediCuenta
+        remaining_amount = result.total_to_credicuenta - paid_amount + result.late_fee_amount
         
         # Determinar estado
-        is_paid = paid_amount >= associate_payment_total
+        is_paid = paid_amount >= result.total_to_credicuenta
         from datetime import datetime
         is_overdue = (
             not is_paid and 
@@ -93,10 +94,11 @@ class StatementEnhancedService:
             "user_id": result.user_id,
             "associate_name": result.associate_name,  # ✅ Ya no es "TODO"
             "cut_period_id": result.cut_period_id,
-            "period_code": result.period_code,  # ✅ Ya no es "TODO"
+            "cut_period_code": result.period_code,  # ✅ Ya no es "TODO"
             "total_payments_count": result.total_payments_count,
             "total_amount_collected": result.total_amount_collected,
-            "total_commission_owed": result.total_commission_owed,
+            "total_to_credicuenta": result.total_to_credicuenta,
+            "commission_earned": result.commission_earned,
             "commission_rate_applied": result.commission_rate_applied,
             "status_id": result.status_id,
             "status_name": result.status_name,  # ✅ Ya no es "TODO"
@@ -139,10 +141,11 @@ class StatementEnhancedService:
                 aps.id,
                 aps.statement_number,
                 CONCAT(u.first_name, ' ', u.last_name) as associate_name,
-                cp.cut_code as period_code,
+                cp.cut_code as cut_period_code,
                 aps.total_payments_count,
                 aps.total_amount_collected,
-                aps.total_commission_owed,
+                aps.total_to_credicuenta,
+                aps.commission_earned,
                 ss.name as status_name,
                 aps.generated_date,
                 aps.due_date,
@@ -190,12 +193,14 @@ class StatementEnhancedService:
                 "id": r.id,
                 "statement_number": r.statement_number,
                 "associate_name": r.associate_name,  # ✅ Ya no es "TODO"
-                "period_code": r.period_code,  # ✅ Ya no es "TODO"
+                "cut_period_code": r.cut_period_code,  # ✅ Ya no es "TODO"
                 "total_payments_count": r.total_payments_count,
                 "total_amount_collected": r.total_amount_collected,
-                "total_commission_owed": r.total_commission_owed,
+                "total_to_credicuenta": r.total_to_credicuenta,
+                "commission_earned": r.commission_earned,
                 "status_name": r.status_name,  # ✅ Ya no es "TODO"
-                "generated_date": r.generated_date,
+                "is_overdue": r.due_date < __import__('datetime').date.today() and r.paid_date is None,
+                "remaining_amount": r.total_to_credicuenta - (r.paid_amount or Decimal("0.00")) + r.late_fee_amount,
                 "due_date": r.due_date,
                 "paid_date": r.paid_date,
                 "paid_amount": r.paid_amount or Decimal("0.00"),

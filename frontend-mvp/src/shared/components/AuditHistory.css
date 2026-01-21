@@ -1,0 +1,269 @@
+/* AuditHistory Component Styles */
+
+.audit-history-card {
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  margin-top: 1.5rem;
+  overflow: hidden;
+}
+
+.audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.audit-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #1f2937);
+}
+
+.btn-toggle-history {
+  background: none;
+  border: 1px solid #cbd5e1;
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-toggle-history:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #475569;
+}
+
+.audit-content {
+  padding: 1.25rem 1.5rem;
+}
+
+.audit-loading {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.audit-creation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.audit-info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.audit-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #64748b;
+  min-width: 160px;
+}
+
+.audit-value {
+  font-size: 0.875rem;
+  color: #1f2937;
+}
+
+.audit-by {
+  color: #64748b;
+}
+
+.audit-by strong {
+  color: #3b82f6;
+}
+
+.audit-no-data {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* Timeline */
+.audit-timeline {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.audit-timeline h4 {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.audit-timeline-item {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-left: 2px solid #e5e7eb;
+  margin-left: 0.5rem;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.audit-timeline-item:last-child {
+  border-left-color: transparent;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -0.75rem;
+  top: 0.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: #fff;
+  border: 2px solid #e5e7eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+
+.audit-timeline-item.op-insert .timeline-marker {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+.audit-timeline-item.op-update .timeline-marker {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.audit-timeline-item.op-delete .timeline-marker {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.timeline-content {
+  flex: 1;
+  padding-left: 0.5rem;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.timeline-operation {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #1f2937;
+}
+
+.timeline-date {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.timeline-user {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin-bottom: 0.25rem;
+}
+
+.timeline-fields {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  background: #f8fafc;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.audit-error {
+  padding: 0.75rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 4px;
+  color: #dc2626;
+  font-size: 0.875rem;
+}
+
+.audit-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .audit-history-card {
+    background: var(--color-surface, #1f2937);
+    border-color: var(--color-border, #374151);
+  }
+
+  .audit-header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-bottom-color: #374151;
+  }
+
+  .audit-header h3 {
+    color: #f1f5f9;
+  }
+
+  .btn-toggle-history {
+    border-color: #475569;
+    color: #94a3b8;
+  }
+
+  .btn-toggle-history:hover {
+    background: #334155;
+    border-color: #64748b;
+    color: #e2e8f0;
+  }
+
+  .audit-label {
+    color: #94a3b8;
+  }
+
+  .audit-value {
+    color: #e2e8f0;
+  }
+
+  .audit-timeline {
+    border-top-color: #374151;
+  }
+
+  .audit-timeline h4 {
+    color: #94a3b8;
+  }
+
+  .audit-timeline-item {
+    border-left-color: #374151;
+  }
+
+  .timeline-marker {
+    background: #1f2937;
+    border-color: #475569;
+  }
+
+  .timeline-operation {
+    color: #f1f5f9;
+  }
+
+  .timeline-date,
+  .timeline-user {
+    color: #94a3b8;
+  }
+
+  .timeline-fields {
+    background: #1e293b;
+    color: #64748b;
+  }
+}

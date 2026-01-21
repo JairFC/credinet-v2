@@ -38,6 +38,9 @@ class CutPeriodListItemDTO(BaseModel):
     cut_date: date
     status_id: int
     collection_percentage: float
+    # Conteos para el timeline
+    statements_count: int = 0
+    payment_count: int = 0
     
     class Config:
         from_attributes = True

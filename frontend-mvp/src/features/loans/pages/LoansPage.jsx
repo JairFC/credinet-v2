@@ -10,14 +10,16 @@ import './LoansPage.css';
  * Lógica del Sistema (Backend v2.0):
  * - Estados de préstamo (status_id):
  *   1 = PENDING (pendiente aprobación)
- *   2 = APPROVED (aprobado, cronograma generado)
- *   3 = ACTIVE (activo, en cobro)
- *   4 = PAID_OFF (liquidado)
- *   5 = DEFAULTED (en mora)
- *   6 = REJECTED (rechazado)
+ *   2 = ACTIVE (activo, cronograma generado, crédito reservado)
+ *   4 = COMPLETED (liquidado)
+ *   5 = PAID (pagado)
+ *   6 = DEFAULTED (en mora)
+ *   7 = REJECTED (rechazado)
+ *   8 = CANCELLED (cancelado)
+ *   9 = IN_AGREEMENT (en convenio)
  * 
  * - Solo préstamos en PENDING pueden ser aprobados/rechazados
- * - Al aprobar: trigger genera cronograma automáticamente
+ * - Al aprobar: trigger genera cronograma automáticamente (status → ACTIVE)
  * - Al rechazar: rejection_reason es OBLIGATORIO (min 10 chars)
  */
 
@@ -32,28 +34,73 @@ export default function LoansPage() {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage] = useState(15); // Fijo en 15 items por página
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
   // Modal states
   const [approveModal, setApproveModal] = useState({ isOpen: false, loan: null, notes: '' });
   const [rejectModal, setRejectModal] = useState({ isOpen: false, loan: null, reason: '' });
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Debounce de búsqueda para no hacer request en cada tecla
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1); // Reset página al buscar
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Cargar préstamos cuando cambia la página, filtros o búsqueda
   useEffect(() => {
     loadLoans();
-  }, []);
+  }, [currentPage, filter, debouncedSearch]);
+
+  // Reset página cuando cambia el filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   const loadLoans = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await loansService.getAll();
+      // Construir parámetros de la consulta
+      const params = {
+        limit: itemsPerPage,
+        offset: (currentPage - 1) * itemsPerPage
+      };
+
+      // Mapear filtro a status_id del backend
+      if (filter === 'pending') {
+        params.status_id = 1; // PENDING
+      }
+      // TODO: Para 'active' y 'completed' necesitaríamos soporte de múltiples status
+      // Por ahora, obtenemos todos y filtramos en frontend para estos casos
+
+      // Agregar búsqueda si hay término
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      const response = await loansService.getAll(params);
+
       // El backend retorna { items: [], total: X, limit: Y, offset: Z }
-      const items = response.data?.items || response.data || [];
+      const data = response.data;
+      const items = data?.items || data || [];
+      const total = data?.total || items.length;
+
       setLoans(Array.isArray(items) ? items : []);
+      setTotalItems(total);
     } catch (err) {
       console.error('Error loading loans:', err);
       setError(err.response?.data?.detail || 'Error al cargar préstamos');
       setLoans([]);
+      setTotalItems(0);
     } finally {
       setLoading(false);
     }
@@ -62,53 +109,41 @@ export default function LoansPage() {
   // ============ MAPEO DE ESTADOS BACKEND → UI ============
   const LOAN_STATUS = {
     PENDING: 1,
-    APPROVED: 2,
-    ACTIVE: 3,
-    PAID_OFF: 4,
-    DEFAULTED: 5,
-    REJECTED: 6,
-    CANCELLED: 7,
-    RESTRUCTURED: 8,
-    OVERDUE: 9,
-    EARLY_PAYMENT: 10
+    ACTIVE: 2,        // Estado para préstamos activos
+    COMPLETED: 4,
+    PAID: 5,
+    DEFAULTED: 6,
+    REJECTED: 7,
+    CANCELLED: 8,
+    IN_AGREEMENT: 9
   };
 
   const getStatusInfo = (status_id) => {
     const statusMap = {
       1: { text: 'Pendiente Aprobación', class: 'badge-warning', filter: 'pending' },
-      2: { text: 'Aprobado', class: 'badge-info', filter: 'active' },
-      3: { text: 'Activo', class: 'badge-success', filter: 'active' },
-      4: { text: 'Liquidado', class: 'badge-success', filter: 'completed' },
-      5: { text: 'En Mora', class: 'badge-danger', filter: 'active' },
-      6: { text: 'Rechazado', class: 'badge-danger', filter: 'completed' },
-      7: { text: 'Cancelado', class: 'badge-secondary', filter: 'completed' },
-      8: { text: 'Reestructurado', class: 'badge-info', filter: 'active' },
-      9: { text: 'Vencido', class: 'badge-danger', filter: 'active' },
-      10: { text: 'Pago Anticipado', class: 'badge-success', filter: 'completed' }
+      2: { text: 'Activo', class: 'badge-success', filter: 'active' },
+      4: { text: 'Completado', class: 'badge-info', filter: 'completed' },
+      5: { text: 'Pagado', class: 'badge-success', filter: 'completed' },
+      6: { text: 'En Mora', class: 'badge-danger', filter: 'active' },
+      7: { text: 'Rechazado', class: 'badge-danger', filter: 'completed' },
+      8: { text: 'Cancelado', class: 'badge-secondary', filter: 'completed' },
+      9: { text: 'En Convenio', class: 'badge-info', filter: 'active' }
     };
     return statusMap[status_id] || { text: 'Desconocido', class: 'badge-secondary', filter: 'all' };
   };
 
   const canApproveOrReject = (loan) => loan.status_id === LOAN_STATUS.PENDING;
 
-  // ============ FILTRADO Y BÚSQUEDA ============
+  // ============ FILTRADO LOCAL (para filtros de estado no soportados por backend) ============
+  // La búsqueda ya se hace en el backend, aquí solo filtramos por estado cuando no es 'pending' o 'all'
   const filteredLoans = loans.filter(loan => {
     const statusInfo = getStatusInfo(loan.status_id);
 
-    if (filter === 'pending' && statusInfo.filter !== 'pending') return false;
+    // El filtro 'pending' se aplica en backend (status_id=1)
+    // Para 'all' no filtramos
+    // Para 'active' y 'completed' filtramos localmente
     if (filter === 'active' && statusInfo.filter !== 'active') return false;
     if (filter === 'completed' && statusInfo.filter !== 'completed') return false;
-
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      const clientName = loan.client_name || '';
-      const associateName = loan.associate_name || '';
-      return (
-        loan.id.toString().includes(search) ||
-        clientName.toLowerCase().includes(search) ||
-        associateName.toLowerCase().includes(search)
-      );
-    }
 
     return true;
   });
@@ -166,9 +201,13 @@ export default function LoansPage() {
       await loadLoans();
 
       console.log('✅ Préstamo aprobado exitosamente');
+      alert('Préstamo aprobado exitosamente');
     } catch (err) {
       console.error('Error aprobando préstamo:', err);
-      alert(err.response?.data?.detail || 'Error al aprobar préstamo');
+      console.error('Error response:', err.response);
+      console.error('Error detail:', err.response?.data?.detail);
+      const errorMsg = err.response?.data?.detail || err.response?.data?.message || 'Error al aprobar préstamo';
+      alert(errorMsg);
     } finally {
       setActionLoading(false);
     }
@@ -404,6 +443,54 @@ export default function LoansPage() {
           </table>
         )}
       </div>
+
+      {/* Controles de Paginación - Clases únicas */}
+      {totalItems > 0 && (
+        <div className="lp-pagination">
+          <span className="lp-pagination-info">
+            Mostrando {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} - {Math.min(currentPage * itemsPerPage, totalItems)} de {totalItems} préstamos
+          </span>
+          <div className="lp-pagination-controls">
+            <button
+              className="lp-page-btn"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1 || loading}
+              title="Primera página"
+            >
+              ⏮
+            </button>
+            <button
+              className="lp-page-btn"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1 || loading}
+              title="Página anterior"
+            >
+              ◀
+            </button>
+
+            <span className="lp-page-indicator">
+              Página {currentPage} de {Math.ceil(totalItems / itemsPerPage)}
+            </span>
+
+            <button
+              className="lp-page-btn"
+              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalItems / itemsPerPage), prev + 1))}
+              disabled={currentPage >= Math.ceil(totalItems / itemsPerPage) || loading}
+              title="Página siguiente"
+            >
+              ▶
+            </button>
+            <button
+              className="lp-page-btn"
+              onClick={() => setCurrentPage(Math.ceil(totalItems / itemsPerPage))}
+              disabled={currentPage >= Math.ceil(totalItems / itemsPerPage) || loading}
+              title="Última página"
+            >
+              ⏭
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Aprobación */}
       {approveModal.isOpen && (

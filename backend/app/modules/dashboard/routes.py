@@ -8,6 +8,7 @@ from datetime import datetime, date
 from decimal import Decimal
 
 from app.core.database import get_async_db
+from app.core.dependencies import require_admin
 from app.modules.loans.infrastructure.models import LoanModel
 from app.modules.payments.infrastructure.models import PaymentModel
 from pydantic import BaseModel
@@ -28,7 +29,11 @@ class DashboardStatsDTO(BaseModel):
     total_disbursed: Decimal
 
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(
+    prefix="/dashboard",
+    tags=["dashboard"],
+    dependencies=[Depends(require_admin)]  # 🔒 Solo admins
+)
 
 
 @router.get("/stats", response_model=DashboardStatsDTO)
@@ -54,8 +59,8 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_async_db)):
     total_loans_query = select(func.count()).select_from(LoanModel)
     total_loans = (await db.execute(total_loans_query)).scalar_one()
     
-    # Préstamos activos (status_id = 3)
-    active_loans_query = select(func.count()).select_from(LoanModel).where(LoanModel.status_id == 3)
+    # Préstamos activos (status_id = 2 = ACTIVE)
+    active_loans_query = select(func.count()).select_from(LoanModel).where(LoanModel.status_id == 2)
     active_loans = (await db.execute(active_loans_query)).scalar_one()
     
     # Préstamos pendientes (status_id = 1)
@@ -109,10 +114,10 @@ async def get_dashboard_stats(db: AsyncSession = Depends(get_async_db)):
     collected_month_result = (await db.execute(collected_month_query)).scalar_one()
     collected_this_month = Decimal(str(collected_month_result or 0))
     
-    # Total desembolsado (suma de todos los préstamos aprobados)
+    # Total desembolsado (suma de todos los préstamos activos y completados)
     total_disbursed_query = select(
         func.coalesce(func.sum(LoanModel.amount), 0)
-    ).where(LoanModel.status_id.in_([2, 3, 4]))  # APPROVED, ACTIVE, COMPLETED
+    ).where(LoanModel.status_id.in_([2, 4]))  # ACTIVE, COMPLETED
     total_disbursed_result = (await db.execute(total_disbursed_query)).scalar_one()
     total_disbursed = Decimal(str(total_disbursed_result or 0))
     

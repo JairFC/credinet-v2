@@ -1,0 +1,754 @@
+/**
+ * DeudaUnificada - Estilos para la vista unificada de deuda
+ */
+
+.deuda-unificada {
+  padding: 16px;
+}
+
+.deuda-unificada.loading,
+.deuda-unificada.error {
+  padding: 40px;
+  text-align: center;
+}
+
+.deuda-unificada .spinner {
+  color: var(--color-text-secondary);
+}
+
+.deuda-unificada .btn-retry {
+  margin-left: 12px;
+  padding: 6px 12px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Sin deuda */
+.no-deuda {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--color-success);
+}
+
+.no-deuda .icon {
+  font-size: 64px;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.no-deuda h3 {
+  margin: 0 0 8px 0;
+  font-size: 20px;
+}
+
+.no-deuda p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESUMEN
+   ═══════════════════════════════════════════════════════════════ */
+.deuda-resumen {
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--color-border);
+}
+
+.resumen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.resumen-total .label {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.resumen-total .value {
+  display: block;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--color-danger);
+}
+
+.resumen-total .note {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.btn-abonar {
+  padding: 10px 20px;
+  font-size: 14px;
+}
+
+/* Desglose */
+.resumen-desglose {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.desglose-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--color-surface-secondary);
+  border-radius: 8px;
+  border-left: 3px solid var(--color-border);
+}
+
+.desglose-item.en-convenio {
+  border-left-color: var(--color-warning);
+}
+
+.desglose-item.sin-convenio {
+  border-left-color: var(--color-primary);
+}
+
+.desglose-item.pagado {
+  border-left-color: var(--color-success);
+}
+
+.desglose-icon {
+  font-size: 20px;
+  opacity: 0.7;
+}
+
+.desglose-content {
+  flex: 1;
+}
+
+.desglose-label {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.desglose-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.desglose-detail {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* Info adicional */
+.resumen-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #60a5fa;
+}
+
+.resumen-info .info-icon {
+  font-size: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════ */
+.deuda-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid rgba(71, 85, 105, 0.3);
+  padding-bottom: 0;
+}
+
+.deuda-tabs .tab {
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #94a3b8;
+  transition: all 0.3s ease;
+}
+
+.deuda-tabs .tab:hover {
+  color: #e2e8f0;
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.deuda-tabs .tab.active {
+  color: #818cf8;
+  border-bottom-color: #818cf8;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTENIDO
+   ═══════════════════════════════════════════════════════════════ */
+.deuda-content {
+  min-height: 200px;
+  background: transparent;
+}
+
+.deuda-unificada .empty-state,
+.deuda-content .empty-state,
+.tab-convenios .empty-state,
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #94a3b8 !important;
+  background: rgba(30, 41, 59, 0.4) !important;
+  border-radius: 12px;
+  border: 1px dashed rgba(71, 85, 105, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONVENIOS
+   ═══════════════════════════════════════════════════════════════ */
+.convenio-card {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.convenio-card.active {
+  border-left: 3px solid var(--color-warning);
+}
+
+.convenio-card.completed {
+  border-left: 3px solid var(--color-success);
+}
+
+.convenio-header {
+  display: grid;
+  grid-template-columns: 1fr auto auto 30px;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.convenio-header:hover {
+  background: var(--color-surface-hover);
+}
+
+.convenio-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.convenio-info strong {
+  font-size: 14px;
+}
+
+.convenio-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
+
+.convenio-progress .progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.convenio-progress .progress-fill {
+  height: 100%;
+  background: var(--color-success);
+  border-radius: 3px;
+}
+
+.convenio-progress .progress-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  min-width: 30px;
+}
+
+.convenio-amounts {
+  text-align: right;
+}
+
+.convenio-amounts .amount {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.convenio-amounts .amount.pendiente {
+  color: var(--color-warning);
+}
+
+.convenio-amounts .amount-label {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.convenio-header .toggle {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.convenio-details {
+  padding: 16px;
+  background: var(--color-surface-secondary);
+  border-top: 1px solid var(--color-border);
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.details-grid .detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.details-grid .detail .label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.details-grid .detail .value {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.details-grid .detail .value.success {
+  color: var(--color-success);
+}
+
+.details-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HISTORIAL POR PERÍODO
+   ═══════════════════════════════════════════════════════════════ */
+.periodo-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.periodo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.periodo-header:hover {
+  background: var(--color-surface-hover);
+}
+
+.periodo-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.periodo-icon {
+  font-size: 20px;
+}
+
+.periodo-text strong {
+  display: block;
+  font-size: 14px;
+}
+
+.periodo-dates {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.periodo-amount {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.periodo-amount .amount {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+.periodo-amount .toggle {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.periodo-details {
+  padding: 16px;
+  background: var(--color-surface-secondary);
+  border-top: 1px solid var(--color-border);
+}
+
+.periodo-details .detail-item {
+  padding: 12px;
+  background: var(--color-surface);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.periodo-details .detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.detail-header {
+  margin-bottom: 8px;
+}
+
+.detail-header .statement-number {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.detail-amounts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.amount-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.amount-row .label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.amount-row .value {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.amount-row .value.success {
+  color: var(--color-success);
+}
+
+.amount-row .value.danger {
+  color: var(--color-danger);
+}
+
+.detail-date {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.badge-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-success {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-secondary {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TAB HISTORIAL DE ABONOS
+   ═══════════════════════════════════════════════════════════════════ */
+.tab-abonos {
+  padding: 8px 0;
+}
+
+/* Filtros */
+.abonos-filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  border-radius: 8px;
+  gap: 16px;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.filter-select {
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  min-width: 200px;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.filter-summary {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* Lista */
+.abonos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.abono-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+  transition: box-shadow 0.2s;
+}
+
+.abono-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.abono-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.abono-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.abono-icon {
+  font-size: 20px;
+}
+
+.abono-badge {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.abono-badge.badge-primary {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.abono-badge.badge-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.abono-badge.badge-success {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.abono-badge.badge-secondary {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.abono-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-success);
+}
+
+.abono-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px 16px;
+  font-size: 13px;
+}
+
+.abono-details > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.abono-details .label {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.abono-details .value {
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+.abono-notes {
+  grid-column: 1 / -1;
+}
+
+.abono-notes .value {
+  font-style: italic;
+  color: var(--color-text-secondary);
+}
+
+/* Paginación */
+.abonos-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-light);
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+  min-width: 100px;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+.pagination-btn:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  min-width: 120px;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .resumen-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .btn-abonar {
+    width: 100%;
+  }
+  
+  .convenio-header {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .convenio-progress {
+    min-width: 100%;
+  }
+  
+  .detail-amounts {
+    grid-template-columns: 1fr;
+  }
+
+  .abono-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .abono-details {
+    grid-template-columns: 1fr 1fr;
+  }
+}

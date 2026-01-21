@@ -108,7 +108,7 @@ class PaymentModel(Base):
     )
     status_id = Column(
         Integer,
-        # ForeignKey('payment_statuses.id'),  # Comentado hasta implementar PaymentStatusModel
+        ForeignKey('payment_statuses.id'),  # ✅ IMPLEMENTADO EN BD
         index=True,
         comment='Estado del pago (pendiente, pagado, parcial, etc.)'
     )
@@ -116,7 +116,7 @@ class PaymentModel(Base):
     # Periodo de corte
     cut_period_id = Column(
         Integer,
-        # ForeignKey('cut_periods.id'),  # Comentado hasta implementar CutPeriodModel
+        ForeignKey('cut_periods.id'),  # ✅ IMPLEMENTADO EN BD
         index=True,
         comment='Periodo quincenal al que pertenece este pago'
     )

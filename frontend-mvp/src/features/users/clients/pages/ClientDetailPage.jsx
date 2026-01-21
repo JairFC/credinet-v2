@@ -13,6 +13,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { clientsService } from '../../../../shared/api/services/clientsService';
+import AuditHistory from '../../../../shared/components/AuditHistory';
 import './ClientDetailPage.css';
 
 const ClientDetailPage = () => {
@@ -248,38 +249,12 @@ const ClientDetailPage = () => {
           </div>
         )}
 
-        {/* Información de Auditoría */}
-        <div className="info-card audit-card">
-          <div className="card-header">
-            <h2>📅 Información de Auditoría</h2>
-          </div>
-          <div className="info-grid">
-            <div className="info-item">
-              <span className="label">Fecha de Creación:</span>
-              <span className="value">
-                {client.created_at ? new Date(client.created_at).toLocaleDateString('es-MX', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }) : 'N/A'}
-              </span>
-            </div>
-            <div className="info-item">
-              <span className="label">Última Actualización:</span>
-              <span className="value">
-                {client.updated_at ? new Date(client.updated_at).toLocaleDateString('es-MX', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                }) : 'N/A'}
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* Historial de Auditoría - Quién creó y modificó el registro */}
+        <AuditHistory
+          tableName="users"
+          recordId={client.id}
+          title="Historial de Cambios del Cliente"
+        />
       </div>
     </div>
   );

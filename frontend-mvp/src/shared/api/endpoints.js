@@ -34,6 +34,9 @@ export const ENDPOINTS = {
     update: (id) => `/api/v1/loans/${id}`,
     delete: (id) => `/api/v1/loans/${id}`,
     amortization: (id) => `/api/v1/loans/${id}/amortization`,
+    // Renovación
+    clientActiveLoans: (clientUserId) => `/api/v1/loans/client/${clientUserId}/active-loans`,
+    renew: '/api/v1/loans/renew',
   },
 
   // Payments
@@ -63,20 +66,24 @@ export const ENDPOINTS = {
     detail: (id) => `/api/v1/cut-periods/${id}`,
     current: '/api/v1/cut-periods/current',
     statements: (periodId) => `/api/v1/cut-periods/${periodId}/statements`,
+    close: (periodId) => `/api/v1/cut-periods/${periodId}/close`,
   },
 
   // Associates
   associates: {
     list: '/api/v1/associates',
     detail: (id) => `/api/v1/associates/${id}`,
+    byUserId: (userId) => `/api/v1/associates/by-user/${userId}`,  // Para buscar por user_id (usado en statements)
+    searchAvailable: '/api/v1/associates/search/available', // Buscar asociados por nombre/email
     create: '/api/v1/associates',
     update: (id) => `/api/v1/associates/${id}`,
     profile: (id) => `/api/v1/associates/${id}/profile`,
     credit: (userId) => `/api/v1/associates/${userId}/credit`,
     // Phase 6: Debt tracking endpoints
-    debtSummary: (id) => `/api/v1/associates/${id}/debt-summary`,
-    allPayments: (id) => `/api/v1/associates/${id}/all-payments`,
-    debtPayments: (id) => `/api/v1/associates/${id}/debt-payments`,
+    debtSummary: (userId) => `/api/v1/associates/${userId}/debt-summary`,
+    allPayments: (userId) => `/api/v1/associates/${userId}/all-payments`,
+    debtPayments: (userId) => `/api/v1/associates/${userId}/debt-payments`,
+    debtHistory: (userId) => `/api/v1/associates/${userId}/debt-history`,
     // Validations
     validateContactEmail: (email) => `/api/v1/associates/validate/contact-email/${encodeURIComponent(email)}`,
   },
@@ -109,6 +116,30 @@ export const ENDPOINTS = {
   simulator: {
     simulate: '/api/v1/simulator/simulate',
     quick: '/api/v1/simulator/quick',
+  },
+
+  // Agreements (Convenios) y Reportes de Morosos
+  agreements: {
+    // Reportes de clientes morosos
+    defaultedReports: '/api/v1/defaulted-reports',
+    defaultedReportDetail: (id) => `/api/v1/defaulted-reports/${id}`,
+    createDefaultedReport: '/api/v1/defaulted-reports',
+    approveDefaultedReport: (id) => `/api/v1/defaulted-reports/${id}/approve`,
+    rejectDefaultedReport: (id) => `/api/v1/defaulted-reports/${id}/reject`,
+    associateDefaultedReports: (associateProfileId) => `/api/v1/defaulted-reports/associate/${associateProfileId}`,
+    
+    // Convenios
+    list: '/api/v1/agreements',
+    detail: (id) => `/api/v1/agreements/${id}`,
+    create: '/api/v1/agreements',
+    createFromLoans: '/api/v1/agreements/from-loans', // Crear convenio desde préstamos activos
+    associateAgreements: (associateProfileId) => `/api/v1/agreements/associates/${associateProfileId}`,
+    registerPayment: (agreementId, paymentNumber) => `/api/v1/agreements/${agreementId}/payments/${paymentNumber}`,
+    payments: (agreementId) => `/api/v1/agreements/${agreementId}/payments`,
+    cancel: (id) => `/api/v1/agreements/${id}/cancel`,
+    
+    // Desglose de deuda
+    debtBreakdown: (associateProfileId) => `/api/v1/associates/${associateProfileId}/debt-breakdown`,
   },
 };
 

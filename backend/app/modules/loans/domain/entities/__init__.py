@@ -19,17 +19,19 @@ class LoanStatusEnum(IntEnum):
     Estados posibles de un préstamo.
     
     Mapea directamente a la tabla catalog: loan_statuses
+    
+    IDs según BD:
+    1=PENDING, 2=ACTIVE, 4=COMPLETED, 5=PAID, 6=DEFAULTED,
+    7=REJECTED, 8=CANCELLED, 9=IN_AGREEMENT
     """
     PENDING = 1          # Solicitud creada, esperando aprobación
-    APPROVED = 2         # Aprobado, cronograma generado
-    ACTIVE = 3           # Desembolsado, pagos en curso
-    PAID_OFF = 4         # Completamente liquidado
-    DEFAULTED = 5        # Cliente moroso (admin aprobó reporte)
-    REJECTED = 6         # Rechazado por admin
-    CANCELLED = 7        # Cancelado antes de desembolso
-    RESTRUCTURED = 8     # Reestructurado (convenio)
-    OVERDUE = 9          # Atrasado (1+ pagos vencidos)
-    EARLY_PAYMENT = 10   # Liquidado anticipadamente
+    ACTIVE = 2           # Préstamo activo con pagos en curso
+    COMPLETED = 4        # Completamente liquidado
+    PAID = 5             # Pagado (sinónimo de COMPLETED)
+    DEFAULTED = 6        # En mora
+    REJECTED = 7         # Rechazado por admin
+    CANCELLED = 8        # Cancelado antes de desembolso
+    IN_AGREEMENT = 9     # En convenio de pago
 
 
 # =============================================================================
@@ -216,10 +218,6 @@ class Loan:
         """Verifica si el préstamo está pendiente de aprobación."""
         return self.status_id == LoanStatusEnum.PENDING
     
-    def is_approved(self) -> bool:
-        """Verifica si el préstamo está aprobado."""
-        return self.status_id == LoanStatusEnum.APPROVED
-    
     def is_active(self) -> bool:
         """Verifica si el préstamo está activo (en cobro)."""
         return self.status_id == LoanStatusEnum.ACTIVE
@@ -242,7 +240,7 @@ class Loan:
     
     def can_be_cancelled(self) -> bool:
         """Verifica si el préstamo puede ser cancelado."""
-        return self.status_id in (LoanStatusEnum.PENDING, LoanStatusEnum.APPROVED)
+        return self.status_id in (LoanStatusEnum.PENDING, LoanStatusEnum.ACTIVE)
     
     def calculate_total_to_pay(self) -> Decimal:
         """

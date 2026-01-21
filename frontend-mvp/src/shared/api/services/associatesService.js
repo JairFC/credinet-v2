@@ -8,6 +8,18 @@ import { ENDPOINTS } from '../endpoints';
 
 export const associatesService = {
   /**
+   * Busca asociados por nombre, email o username
+   * @param {string} q - Término de búsqueda (mínimo 2 caracteres)
+   * @param {number} minCredit - Crédito disponible mínimo (default 0)
+   * @param {number} limit - Máximo resultados (default 10)
+   */
+  searchAvailable: async (q, minCredit = 0, limit = 10) => {
+    return apiClient.get(ENDPOINTS.associates.searchAvailable, {
+      params: { q, min_credit: minCredit, limit }
+    });
+  },
+
+  /**
    * Obtiene lista paginada de asociados
    */
   getAll: async (params = {}) => {
@@ -39,6 +51,13 @@ export const associatesService = {
   },
 
   /**
+   * Obtiene historial de deudas por periodo (Phase 6)
+   */
+  getDebtHistory: (associateId) => {
+    return apiClient.get(ENDPOINTS.associates.debtHistory(associateId));
+  },
+
+  /**
    * Obtiene todos los pagos de un asociado (Phase 6)
    */
   getAllPayments: (associateId, params = {}) => {
@@ -49,6 +68,12 @@ export const associatesService = {
 
   /**
    * Registra un abono de deuda (Phase 6)
+   * @param {number} associateId - ID del perfil del asociado
+   * @param {Object} data - Datos del pago
+   * @param {number} data.payment_amount - Monto del abono
+   * @param {number} data.payment_method_id - ID del método de pago
+   * @param {string} [data.payment_reference] - Referencia del pago
+   * @param {string} [data.notes] - Notas adicionales
    */
   registerDebtPayment: (associateId, data) => {
     return apiClient.post(ENDPOINTS.associates.debtPayments(associateId), data);
@@ -82,5 +107,43 @@ export const associatesService = {
    */
   delete: (id) => {
     return apiClient.delete(ENDPOINTS.associates.detail(id));
+  },
+
+  // =============================================================================
+  // GESTIÓN DE ROLES - Promover usuarios
+  // =============================================================================
+
+  /**
+   * Verifica un usuario antes de promoverlo a asociado
+   * @param {number} userId - ID del usuario a verificar
+   */
+  checkUserForPromotion: (userId) => {
+    return apiClient.get(`${ENDPOINTS.associates.list}/check-user/${userId}`);
+  },
+
+  /**
+   * Promueve un cliente a asociado
+   * @param {number} userId - ID del usuario a promover
+   * @param {Object} data - Datos de la promoción
+   * @param {number} data.level_id - Nivel de asociado (1-5)
+   */
+  promoteToAssociate: (userId, data) => {
+    return apiClient.post(`${ENDPOINTS.associates.list}/promote-to-associate/${userId}`, data);
+  },
+
+  /**
+   * Agrega rol de cliente a un asociado
+   * @param {number} userId - ID del usuario asociado
+   */
+  addClientRole: (userId) => {
+    return apiClient.post(`${ENDPOINTS.associates.list}/add-client-role/${userId}`);
+  },
+
+  /**
+   * Obtiene los roles de un usuario
+   * @param {number} userId - ID del usuario
+   */
+  getUserRoles: (userId) => {
+    return apiClient.get(`${ENDPOINTS.associates.list}/user-roles/${userId}`);
   },
 };

@@ -26,11 +26,12 @@ def _map_model_to_entity(model: AssociateProfileModel) -> Associate:
         consecutive_on_time_payments=model.consecutive_on_time_payments,
         clients_in_agreement=model.clients_in_agreement,
         last_level_evaluation_date=model.last_level_evaluation_date,
-        credit_used=Decimal(str(model.credit_used)),
+        # Campos refactorizados
+        pending_payments_total=Decimal(str(model.pending_payments_total)),
         credit_limit=Decimal(str(model.credit_limit)),
-        credit_available=Decimal(str(model.credit_available)),
+        available_credit=Decimal(str(model.available_credit)),
         credit_last_updated=model.credit_last_updated,
-        debt_balance=Decimal(str(model.debt_balance)),
+        consolidated_debt=Decimal(str(model.consolidated_debt)),
         created_at=model.created_at,
         updated_at=model.updated_at,
     )
@@ -90,10 +91,10 @@ class PgAssociateRepository(AssociateRepository):
     async def update_credit(
         self,
         associate_id: int,
-        credit_used: Decimal,
-        credit_available: Decimal
+        pending_payments_total: Decimal,
+        available_credit: Decimal
     ) -> Associate:
-        """Actualiza el crédito usado y disponible"""
+        """Actualiza el crédito (pagos pendientes y disponible)"""
         stmt = select(AssociateProfileModel).where(AssociateProfileModel.id == associate_id)
         result = await self._db.execute(stmt)
         model = result.scalar_one_or_none()
@@ -101,8 +102,8 @@ class PgAssociateRepository(AssociateRepository):
         if not model:
             raise ValueError(f"Associate {associate_id} not found")
         
-        model.credit_used = credit_used
-        model.credit_available = credit_available
+        model.pending_payments_total = pending_payments_total
+        # available_credit es computado, no se puede setear directamente
         model.credit_last_updated = func.now()
         
         await self._db.flush()

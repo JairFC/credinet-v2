@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from './PrivateRoute';
+import AdminRoute from './AdminRoute';
 import LoginPage from "../../features/auth/pages/LoginPage";
 import DashboardPage from "../../features/dashboard/pages/DashboardPage";
 import LoansPage from "../../features/loans/pages/LoansPage";
@@ -7,7 +8,8 @@ import LoanCreatePage from "../../features/loans/pages/LoanCreatePage";
 import LoanDetailPage from "../../features/loans/pages/LoanDetailPage";
 import SimuladorPrestamosPage from "../../features/loans/pages/SimuladorPrestamosPage";
 import PaymentsPage from "../../features/payments/pages/PaymentsPage";
-import PeriodosConStatementsPage from "../../features/statements/pages/PeriodosConStatementsPage";
+import EstadosCuentaPage from "../../features/statements/pages/EstadosCuentaPage";
+import StatementDetailPage from "../../features/statements/pages/StatementDetailPage";
 import AssociateDetailPage from "../../features/associates/pages/AssociateDetailPage";
 
 // Users Module - Separated by role
@@ -16,6 +18,9 @@ import ClientCreatePage from "../../features/users/clients/pages/ClientCreatePag
 import ClientDetailPage from "../../features/users/clients/pages/ClientDetailPage";
 import AssociatesManagementPage from "../../features/users/associates/pages/AssociatesManagementPage";
 import AssociateCreatePage from "../../features/users/associates/pages/AssociateCreatePage";
+
+// Agreements Module (Convenios y Reportes de Morosos)
+import { AgreementsPage, DefaultedReportsPage, CreateDefaultedReportPage, CreateAgreementPage, AgreementDetailPage, NuevoConvenioPage } from "../../features/agreements";
 
 import MainLayout from '@/shared/components/layout/MainLayout';
 
@@ -30,88 +35,99 @@ const AppRoutes = () => {
         <Route
           path="/dashboard"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <DashboardPage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
         <Route
           path="/prestamos"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <LoansPage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
         <Route
           path="/prestamos/nuevo"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <LoanCreatePage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
         <Route
           path="/prestamos/:id"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <LoanDetailPage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
         <Route
           path="/prestamos/simulador"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <SimuladorPrestamosPage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
         <Route
           path="/pagos"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <PaymentsPage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
         <Route
           path="/estados-cuenta"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
-                <PeriodosConStatementsPage />
+                <EstadosCuentaPage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
+          }
+        />
+
+        <Route
+          path="/estados-cuenta/:statementId"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <StatementDetailPage />
+              </MainLayout>
+            </AdminRoute>
           }
         />
 
         <Route
           path="/asociados/:associateId"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <AssociateDetailPage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
@@ -121,33 +137,33 @@ const AppRoutes = () => {
         <Route
           path="/usuarios/clientes"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <ClientsPage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
         <Route
           path="/usuarios/clientes/nuevo"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <ClientCreatePage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
         <Route
           path="/usuarios/clientes/:clientId"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <ClientDetailPage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
@@ -155,22 +171,84 @@ const AppRoutes = () => {
         <Route
           path="/usuarios/asociados"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <AssociatesManagementPage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
           }
         />
 
         <Route
           path="/usuarios/asociados/nuevo"
           element={
-            <PrivateRoute>
+            <AdminRoute>
               <MainLayout>
                 <AssociateCreatePage />
               </MainLayout>
-            </PrivateRoute>
+            </AdminRoute>
+          }
+        />
+
+        {/* ====== AGREEMENTS MODULE (Convenios y Morosos) ====== */}
+        
+        {/* Lista de convenios */}
+        <Route
+          path="/convenios"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <AgreementsPage />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Lista de reportes de morosos */}
+        <Route
+          path="/convenios/reportes"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <DefaultedReportsPage />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Crear nuevo reporte de moroso */}
+        <Route
+          path="/convenios/nuevo-reporte"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <CreateDefaultedReportPage />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Crear nuevo convenio (desde préstamos activos) */}
+        <Route
+          path="/convenios/nuevo"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <NuevoConvenioPage />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Detalle de convenio */}
+        <Route
+          path="/convenios/:agreementId"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <AgreementDetailPage />
+              </MainLayout>
+            </AdminRoute>
           }
         />
 

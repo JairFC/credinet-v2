@@ -85,12 +85,29 @@ def setup_middleware(app: FastAPI):
     
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        # Convertir bytes a string en los errores de validación
+        def convert_errors(errors):
+            result = []
+            for error in errors:
+                error_dict = dict(error)
+                # Convertir cualquier bytes a string
+                for key, value in error_dict.items():
+                    if isinstance(value, bytes):
+                        error_dict[key] = value.decode('utf-8', errors='replace')
+                    elif isinstance(value, (list, tuple)):
+                        error_dict[key] = [
+                            v.decode('utf-8', errors='replace') if isinstance(v, bytes) else v 
+                            for v in value
+                        ]
+                result.append(error_dict)
+            return result
+        
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "error": "Validation Error",
                 "message": "Datos de entrada inválidos",
-                "details": exc.errors()
+                "details": convert_errors(exc.errors())
             }
         )
     

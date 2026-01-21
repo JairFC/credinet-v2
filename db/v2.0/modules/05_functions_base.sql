@@ -104,25 +104,23 @@ CREATE OR REPLACE FUNCTION calculate_loan_remaining_balance(
 )
 RETURNS DECIMAL(12,2) AS $$
 DECLARE
-    v_total_amount DECIMAL(12,2);
-    v_total_paid DECIMAL(12,2);
     v_remaining DECIMAL(12,2);
+    v_pending_status_id INTEGER;
 BEGIN
-    -- Obtener monto total del préstamo
-    SELECT amount INTO v_total_amount
-    FROM loans
-    WHERE id = p_loan_id;
+    -- Obtener ID del estado PENDING
+    SELECT id INTO v_pending_status_id FROM payment_statuses WHERE name = 'PENDING';
     
-    IF v_total_amount IS NULL THEN
+    -- ✅ CORREGIDO: Sumar expected_amount de los pagos PENDIENTES
+    -- Esto da el saldo real que debe liquidar el cliente (capital + interés + comisión completos)
+    SELECT COALESCE(SUM(expected_amount), 0) INTO v_remaining
+    FROM payments
+    WHERE loan_id = p_loan_id
+      AND status_id = v_pending_status_id;  -- Solo pagos PENDIENTES
+    
+    -- Validar que el préstamo exista
+    IF NOT EXISTS (SELECT 1 FROM loans WHERE id = p_loan_id) THEN
         RAISE EXCEPTION 'Préstamo con ID % no encontrado', p_loan_id;
     END IF;
-    
-    -- Calcular total pagado
-    SELECT COALESCE(SUM(amount_paid), 0) INTO v_total_paid
-    FROM payments
-    WHERE loan_id = p_loan_id;
-    
-    v_remaining := v_total_amount - v_total_paid;
     
     -- No permitir saldo negativo
     IF v_remaining < 0 THEN
@@ -135,7 +133,7 @@ $$ LANGUAGE plpgsql
 STABLE;
 
 COMMENT ON FUNCTION calculate_loan_remaining_balance(INTEGER) IS 
-'Calcula el saldo pendiente de un préstamo (monto total - pagos realizados).';
+'✅ v2.0.3: Calcula el saldo pendiente REAL de un préstamo sumando expected_amount de los pagos PENDIENTES. Incluye capital + interés + comisión completos de cada pago no realizado. NO usa amount - amount_paid que es incorrecto.';
 
 -- =============================================================================
 -- FUNCIÓN 3: handle_loan_approval_status

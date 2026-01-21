@@ -143,7 +143,7 @@ class LoanRepository(ABC):
     # =============================================================================
     
     @abstractmethod
-    async def check_associate_credit_available(
+    async def check_associate_available_credit(
         self,
         associate_user_id: int,
         amount: Decimal
@@ -151,7 +151,7 @@ class LoanRepository(ABC):
         """
         Verifica si el asociado tiene crédito disponible suficiente.
         
-        Usa la función DB: check_associate_credit_available()
+        Usa la función DB: check_associate_available_credit()
         
         Args:
             associate_user_id: ID del asociado

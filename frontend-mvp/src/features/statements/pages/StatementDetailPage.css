@@ -1,0 +1,1307 @@
+/**
+ * StatementDetailPage.css - Estado de Cuenta Profesional
+ * 
+ * Diseño optimizado para reportes periódicos con tema oscuro.
+ * Todos los selectores scopeados con .statement-detail-page
+ * 
+ * Variables del sistema:
+ * --surface-ground, --surface-card, --surface-elevated
+ * --text-primary, --text-secondary
+ * --border-color, --brand-gradient
+ */
+
+/* ============================================================
+   CONTAINER PRINCIPAL
+   ============================================================ */
+.statement-detail-page {
+  padding: 2rem;
+  max-width: 1440px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--surface-ground);
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   LOADING & ERROR STATES
+   ============================================================ */
+.statement-detail-page .loading-container,
+.statement-detail-page .error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+.statement-detail-page .error-container .error-icon {
+  font-size: 4.5rem;
+}
+
+.statement-detail-page .error-container h2 {
+  margin: 0;
+  color: #f87171;
+  font-size: 1.5rem;
+}
+
+.statement-detail-page .error-container p {
+  color: var(--text-secondary);
+  margin: 0;
+  text-align: center;
+  max-width: 400px;
+}
+
+.statement-detail-page .spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--border-color);
+  border-top-color: #8b5cf6;
+  border-radius: 50%;
+  animation: sdp-spin 0.8s linear infinite;
+}
+
+@keyframes sdp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   DOCUMENT HEADER - Estilo de documento oficial
+   ============================================================ */
+.statement-detail-page .page-header {
+  margin-bottom: 2rem;
+}
+
+.statement-detail-page .btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-bottom: 1.5rem;
+}
+
+.statement-detail-page .btn-back:hover {
+  background: var(--brand-gradient);
+  color: white;
+  border-color: transparent;
+  transform: translateX(-4px);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+}
+
+/* Header Principal - Estilo documento */
+.statement-detail-page .header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  background: var(--surface-card);
+  padding: 2rem 2.5rem;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Línea decorativa superior */
+.statement-detail-page .header-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--brand-gradient);
+}
+
+.statement-detail-page .header-main {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.statement-detail-page .associate-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: var(--brand-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35);
+}
+
+.statement-detail-page .associate-avatar span {
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.statement-detail-page .header-info h1 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.statement-detail-page .header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+/* Meta Badges - Información clave */
+.statement-detail-page .meta-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.statement-detail-page .meta-badge.code {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.statement-detail-page .meta-badge.period {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.statement-detail-page .meta-badge.payments {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.statement-detail-page .meta-badge-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--brand-gradient);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.statement-detail-page .meta-badge-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+/* Status Badge Grande */
+.statement-detail-page .status-badge-large {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.statement-detail-page .status-badge-large.draft {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.statement-detail-page .status-badge-large.collecting {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.statement-detail-page .status-badge-large.settling {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.statement-detail-page .status-badge-large.closed,
+.statement-detail-page .status-badge-large.paid {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.statement-detail-page .status-badge-large.partial {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.statement-detail-page .status-badge-large.overdue {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.statement-detail-page .status-badge-large.absorbed {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.statement-detail-page .status-badge-large .status-icon {
+  font-size: 1.25rem;
+}
+
+/* ============================================================
+   SUMMARY CARDS GRID - KPIs financieros
+   ============================================================ */
+.statement-detail-page .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.statement-detail-page .summary-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Indicador lateral de color */
+.statement-detail-page .summary-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--border-color);
+  transition: background 0.25s ease;
+}
+
+.statement-detail-page .summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  border-color: transparent;
+}
+
+.statement-detail-page .summary-card .card-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Colores por tipo de card */
+.statement-detail-page .summary-card.collected::before {
+  background: #8b5cf6;
+}
+.statement-detail-page .summary-card.collected .card-icon {
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.statement-detail-page .summary-card.commission::before {
+  background: #10b981;
+}
+.statement-detail-page .summary-card.commission .card-icon {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.statement-detail-page .summary-card.to-pay::before {
+  background: #f59e0b;
+}
+.statement-detail-page .summary-card.to-pay .card-icon {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.statement-detail-page .summary-card.paid::before {
+  background: #3b82f6;
+}
+.statement-detail-page .summary-card.paid .card-icon {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.statement-detail-page .summary-card.balance.pending::before {
+  background: #ef4444;
+}
+.statement-detail-page .summary-card.balance.pending .card-icon {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.statement-detail-page .summary-card.balance.clear::before {
+  background: #22c55e;
+}
+.statement-detail-page .summary-card.balance.clear .card-icon {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.statement-detail-page .card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.statement-detail-page .card-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statement-detail-page .card-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  letter-spacing: -0.02em;
+}
+
+.statement-detail-page .card-value.success {
+  color: #4ade80;
+}
+
+.statement-detail-page .card-value.info {
+  color: #60a5fa;
+}
+
+.statement-detail-page .card-value.danger {
+  color: #f87171;
+}
+
+/* ============================================================
+   CONTENT TOOLBAR
+   ============================================================ */
+.statement-detail-page .content-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.75rem;
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px 14px 0 0;
+  border-bottom: 2px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.statement-detail-page .content-toolbar h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.statement-detail-page .content-toolbar h2::before {
+  content: '📋';
+}
+
+.statement-detail-page .toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.statement-detail-page .toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.statement-detail-page .filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.statement-detail-page .filter-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.statement-detail-page .filter-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.statement-detail-page .filter-select:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.statement-detail-page .toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.statement-detail-page .toolbar-btn:hover {
+  background: var(--surface-card);
+  border-color: var(--text-secondary);
+}
+
+.statement-detail-page .toolbar-btn.btn-payment {
+  background: var(--brand-gradient);
+  color: white;
+  border: none;
+}
+
+.statement-detail-page .toolbar-btn.btn-payment:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.statement-detail-page .toolbar-btn.btn-export:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+  color: #4ade80;
+}
+
+.statement-detail-page .toolbar-btn.btn-print:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+/* ============================================================
+   TABLE SECTION - Tabla de pagos profesional
+   ============================================================ */
+.statement-detail-page .table-section {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 14px 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.statement-detail-page .loading-state,
+.statement-detail-page .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1rem;
+  color: var(--text-secondary);
+}
+
+.statement-detail-page .empty-state .empty-icon {
+  font-size: 4rem;
+  opacity: 0.5;
+}
+
+.statement-detail-page .empty-state h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.statement-detail-page .empty-state p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.statement-detail-page .table-container {
+  overflow-x: auto;
+}
+
+.statement-detail-page .payments-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.statement-detail-page .payments-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.statement-detail-page .payments-table th {
+  padding: 1rem 0.875rem;
+  text-align: left;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: var(--surface-elevated);
+  border-bottom: 2px solid var(--border-color);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+}
+
+.statement-detail-page .payments-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.statement-detail-page .payments-table th.sortable:hover {
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+.statement-detail-page .sort-icon {
+  margin-left: 0.35rem;
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.statement-detail-page .payments-table td {
+  padding: 1rem 0.875rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.statement-detail-page .payments-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.statement-detail-page .payments-table tbody tr:hover {
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.statement-detail-page .payments-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.statement-detail-page .payments-table tbody tr:nth-child(even):hover {
+  background: rgba(139, 92, 246, 0.08);
+}
+
+/* Payment Number Badge */
+.statement-detail-page .payment-number {
+  width: 60px;
+}
+
+.statement-detail-page .number-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 32px;
+  padding: 0 0.6rem;
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+/* Client Cell */
+.statement-detail-page .client-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.statement-detail-page .client-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.statement-detail-page .client-phone {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* Loan Cell */
+.statement-detail-page .loan-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.statement-detail-page .loan-id {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-weight: 600;
+  color: #a78bfa;
+  font-size: 0.85rem;
+}
+
+.statement-detail-page .loan-type {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+/* Amount Cells */
+.statement-detail-page .amount {
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-weight: 500;
+}
+
+.statement-detail-page .amount.commission {
+  color: #4ade80;
+}
+
+.statement-detail-page .amount.to-pay {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.statement-detail-page .amount.paid {
+  color: #60a5fa;
+}
+
+/* Status Pill */
+.statement-detail-page .status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.statement-detail-page .status-pill.pending {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.statement-detail-page .status-pill.paid {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.statement-detail-page .status-pill.partial {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.statement-detail-page .status-pill.overdue {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.statement-detail-page .status-pill.absorbed {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.statement-detail-page .status-pill.not-reported {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.statement-detail-page .status-pill.forgiven {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f472b6;
+}
+
+.statement-detail-page .status-pill.cancelled {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.statement-detail-page .status-icon {
+  font-size: 0.8rem;
+}
+
+/* Text Alignment */
+.statement-detail-page .text-right {
+  text-align: right;
+}
+
+.statement-detail-page .text-center {
+  text-align: center;
+}
+
+/* ============================================================
+   TOTALS FOOTER - Resumen financiero
+   ============================================================ */
+.statement-detail-page .totals-footer {
+  margin-top: 1.5rem;
+  padding: 1.75rem 2rem;
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.statement-detail-page .totals-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  justify-content: center;
+}
+
+.statement-detail-page .total-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1rem 1.75rem;
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-color);
+  min-width: 150px;
+  transition: all 0.25s ease;
+}
+
+.statement-detail-page .total-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--text-secondary);
+}
+
+.statement-detail-page .total-item.highlight {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.statement-detail-page .total-item.final {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.statement-detail-page .total-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statement-detail-page .total-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+.statement-detail-page .total-value.success {
+  color: #4ade80;
+}
+
+.statement-detail-page .total-value.info {
+  color: #60a5fa;
+}
+
+.statement-detail-page .total-value.danger {
+  color: #f87171;
+}
+
+/* ============================================================
+   ABONOS SECTION - Historial de pagos
+   ============================================================ */
+.statement-detail-page .abonos-section {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 2rem 2.5rem;
+  margin-top: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.statement-detail-page .abonos-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.75rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.statement-detail-page .abonos-section .section-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.statement-detail-page .abonos-section .abonos-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 10px;
+  background: var(--brand-gradient);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: 16px;
+}
+
+.statement-detail-page .btn-add-abono {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.statement-detail-page .btn-add-abono:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
+}
+
+/* Empty state for abonos */
+.statement-detail-page .empty-abonos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3.5rem 2rem;
+  text-align: center;
+  background: var(--surface-elevated);
+  border-radius: 12px;
+  border: 2px dashed var(--border-color);
+}
+
+.statement-detail-page .empty-abonos .empty-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.statement-detail-page .empty-abonos p {
+  color: var(--text-secondary);
+  margin: 0 0 1.75rem 0;
+  font-size: 0.95rem;
+}
+
+.statement-detail-page .btn-first-abono {
+  padding: 0.85rem 1.75rem;
+  background: var(--brand-gradient);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.statement-detail-page .btn-first-abono:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+}
+
+/* Abonos List */
+.statement-detail-page .abonos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.statement-detail-page .abono-card {
+  display: grid;
+  grid-template-columns: 200px 1fr auto auto;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 1.75rem;
+  background: var(--surface-elevated);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.statement-detail-page .abono-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #10b981;
+  border-radius: 4px 0 0 4px;
+}
+
+.statement-detail-page .abono-card:hover {
+  border-color: #10b981;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
+  transform: translateX(4px);
+}
+
+/* Botón Eliminar Abono */
+.statement-detail-page .btn-delete-abono {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+  opacity: 0.5;
+}
+
+.statement-detail-page .abono-card:hover .btn-delete-abono {
+  opacity: 1;
+}
+
+.statement-detail-page .btn-delete-abono:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #f87171;
+  transform: scale(1.08);
+}
+
+/* Abono Amount */
+.statement-detail-page .abono-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.statement-detail-page .abono-amount .amount {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #4ade80;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+.statement-detail-page .abono-amount .method {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  background: var(--surface-card);
+  padding: 0.3rem 0.85rem;
+  border-radius: 6px;
+  display: inline-block;
+  width: fit-content;
+  border: 1px solid var(--border-color);
+}
+
+/* Abono Details */
+.statement-detail-page .abono-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.statement-detail-page .abono-date,
+.statement-detail-page .abono-reference,
+.statement-detail-page .abono-notes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.statement-detail-page .abono-details .icon {
+  font-size: 1rem;
+  opacity: 0.7;
+}
+
+.statement-detail-page .abono-notes {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+/* Abono Meta */
+.statement-detail-page .abono-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.statement-detail-page .abono-meta .registered-by {
+  font-weight: 600;
+}
+
+/* Loading state small */
+.statement-detail-page .loading-state.small {
+  padding: 2.5rem;
+}
+
+.statement-detail-page .loading-state.small .spinner {
+  width: 36px;
+  height: 36px;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1200px) {
+  .statement-detail-page .summary-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .statement-detail-page {
+    padding: 1.25rem;
+  }
+
+  .statement-detail-page .header-content {
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.5rem;
+  }
+
+  .statement-detail-page .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .statement-detail-page .content-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .statement-detail-page .toolbar-left,
+  .statement-detail-page .toolbar-right {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .statement-detail-page .abono-card {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  .statement-detail-page .abono-amount {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .statement-detail-page .abono-meta {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .statement-detail-page .abonos-section {
+    padding: 1.5rem;
+  }
+
+  .statement-detail-page .abonos-section .section-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .statement-detail-page .header-main {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .statement-detail-page .header-meta {
+    justify-content: center;
+  }
+
+  .statement-detail-page .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .statement-detail-page .summary-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 1.25rem;
+  }
+
+  .statement-detail-page .card-value {
+    font-size: 1.2rem;
+  }
+
+  .statement-detail-page .totals-grid {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .statement-detail-page .total-item {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .statement-detail-page .header-content {
+    padding: 1.25rem;
+  }
+}
+
+/* ============================================================
+   PRINT STYLES - Optimizado para reportes impresos
+   ============================================================ */
+@media print {
+  .statement-detail-page {
+    padding: 0;
+    background: white !important;
+    color: #000 !important;
+    max-width: 100%;
+  }
+
+  .statement-detail-page .btn-back,
+  .statement-detail-page .content-toolbar .toolbar-right,
+  .statement-detail-page .btn-add-abono,
+  .statement-detail-page .btn-delete-abono,
+  .statement-detail-page .btn-evidence,
+  .statement-detail-page .btn-first-abono,
+  .statement-detail-page .meta-badge-link {
+    display: none !important;
+  }
+
+  .statement-detail-page .header-content,
+  .statement-detail-page .summary-card,
+  .statement-detail-page .table-section,
+  .statement-detail-page .totals-footer,
+  .statement-detail-page .abonos-section,
+  .statement-detail-page .abono-card {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    break-inside: avoid;
+    background: white !important;
+  }
+
+  .statement-detail-page .header-content::before {
+    background: #333 !important;
+  }
+
+  .statement-detail-page * {
+    color: #000 !important;
+  }
+
+  .statement-detail-page .card-value.success,
+  .statement-detail-page .total-value.success,
+  .statement-detail-page .abono-amount .amount {
+    color: #059669 !important;
+  }
+
+  .statement-detail-page .card-value.danger,
+  .statement-detail-page .total-value.danger {
+    color: #dc2626 !important;
+  }
+
+  .statement-detail-page .card-value.info,
+  .statement-detail-page .total-value.info {
+    color: #2563eb !important;
+  }
+
+  .statement-detail-page .payments-table {
+    font-size: 0.75rem;
+  }
+
+  .statement-detail-page .payments-table th,
+  .statement-detail-page .payments-table td {
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+  }
+
+  .statement-detail-page .payments-table thead {
+    background: #f0f0f0 !important;
+  }
+
+  .statement-detail-page .summary-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+  }
+
+  .statement-detail-page .summary-card {
+    padding: 0.75rem;
+  }
+
+  .statement-detail-page .summary-card::before {
+    width: 3px;
+  }
+
+  .statement-detail-page .status-pill,
+  .statement-detail-page .status-badge-large,
+  .statement-detail-page .meta-badge {
+    border: 1px solid #ccc !important;
+    background: #f5f5f5 !important;
+  }
+
+  .statement-detail-page .number-badge {
+    background: #f0f0f0 !important;
+    border: 1px solid #ccc !important;
+    color: #333 !important;
+  }
+
+  /* Header de impresión */
+  .statement-detail-page .header-content {
+    padding: 1rem;
+  }
+
+  .statement-detail-page .associate-avatar {
+    width: 48px;
+    height: 48px;
+    background: #333 !important;
+  }
+
+  .statement-detail-page .header-info h1 {
+    font-size: 1.4rem;
+  }
+}

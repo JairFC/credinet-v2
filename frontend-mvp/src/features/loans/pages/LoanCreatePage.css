@@ -1,7 +1,7 @@
 .loan-create-page {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 0;
+  max-width: none;
+  margin: 0;
 }
 
 .page-header {
@@ -23,28 +23,32 @@
 .header-left h1 {
   margin: 0;
   font-size: 28px;
-  color: #1a1a1a;
+  color: var(--text-primary);
 }
 
 .btn-back {
   padding: 8px 16px;
-  background: #f5f5f5;
-  border: 1px solid #ddd;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
+  color: var(--text-secondary);
 }
 
 .btn-back:hover {
-  background: #e8e8e8;
+  background: var(--surface-hover);
+  border-color: var(--border-default);
+  color: var(--text-primary);
 }
 
 .loan-form-container {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 30px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
 .loan-form {
@@ -54,18 +58,19 @@
 }
 
 .form-section {
-  border: 1px solid #e8e8e8;
-  border-radius: 8px;
-  padding: 20px;
-  background: #fafafa;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  background: var(--surface-card);
+  margin-bottom: var(--space-4);
 }
 
 .form-section h2 {
   margin: 0 0 20px 0;
   font-size: 18px;
-  color: #333;
+  color: var(--text-primary);
   padding-bottom: 10px;
-  border-bottom: 2px solid #4CAF50;
+  border-bottom: 2px solid var(--brand-primary);
 }
 
 .form-row {
@@ -83,7 +88,7 @@
 
 .form-group label {
   font-weight: 600;
-  color: #333;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -91,18 +96,20 @@
 .form-group select,
 .form-group textarea {
   padding: 10px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   font-size: 14px;
   transition: border-color 0.2s;
-  background: white;
+  background: var(--surface-card);
+  color: var(--text-primary);
 }
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #4CAF50;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(139, 38, 53, 0.14);
 }
 
 .form-group input.error,
@@ -117,13 +124,13 @@
 }
 
 .error-message {
-  color: #f44336;
+  color: var(--status-error);
   font-size: 12px;
   margin-top: 4px;
 }
 
 .form-hint {
-  color: #666;
+  color: var(--text-tertiary);
   font-size: 12px;
   font-style: italic;
   margin-top: 4px;
@@ -134,7 +141,7 @@
   justify-content: flex-end;
   gap: 12px;
   padding-top: 20px;
-  border-top: 1px solid #e8e8e8;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .btn-primary,
@@ -208,6 +215,114 @@
   border: 1px solid #dee2e6;
 }
 
+/* Campo de Monto con botones */
+.amount-group-full-width {
+  grid-column: 1 / -1;
+  /* Ocupa todo el ancho */
+}
+
+.amount-buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.amount-btn {
+  padding: 12px 8px;
+  background: white;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+  color: #495057;
+}
+
+.amount-btn:hover:not(:disabled) {
+  border-color: #667eea;
+  background: #f8f9ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.15);
+}
+
+.amount-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.amount-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.amount-btn.custom-btn {
+  background: #f8f9fa;
+  font-size: 13px;
+}
+
+.amount-btn.custom-btn.active {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border-color: #28a745;
+}
+
+.custom-amount-input {
+  margin-top: 10px;
+}
+
+.custom-amount-input input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #28a745;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.custom-amount-input input:focus {
+  outline: none;
+  border-color: #20c997;
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+}
+
+/* =============================================================================
+   LOAN SUMMARY PREVIEW - Los estilos se movieron a LoanSummaryPreview.css
+   ============================================================================= */
+
+/* Loading state */
+.calculation-loading {
+  text-align: center;
+  padding: var(--space-8);
+  background: var(--surface-elevated);
+  border: 2px dashed var(--border-subtle);
+  border-radius: var(--radius-xl);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.calculation-loading p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: var(--text-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .loan-create-page {
@@ -226,4 +341,877 @@
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .amount-buttons-grid {
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 8px;
+  }
+
+  .amount-btn {
+    padding: 10px 6px;
+    font-size: 13px;
+  }
+
+  .loan-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-card {
+    padding: 16px;
+  }
+
+  .highlight-amount {
+    font-size: 18px !important;
+  }
+
+  .success-amount {
+    font-size: 15px !important;
+  }
+}
+
+/* =============================================================================
+   THEME OVERRIDES (Dark/Light) - scoped to .loan-create-page
+   This neutralizes legacy hardcoded whites within this page.
+   ============================================================================= */
+
+.loan-create-page .page-header,
+.loan-create-page .header-content {
+  background: transparent !important;
+}
+
+.loan-create-page .loading-container {
+  color: var(--text-secondary) !important;
+}
+
+.loan-create-page .profile-info {
+  background: var(--surface-elevated) !important;
+  color: var(--text-secondary) !important;
+}
+
+.loan-create-page .profile-rates,
+.loan-create-page .profile-terms {
+  color: var(--text-secondary) !important;
+}
+
+.loan-create-page .disabled-input {
+  background: var(--surface-elevated) !important;
+  color: var(--text-tertiary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.loan-create-page .btn-primary {
+  background: var(--brand-gradient) !important;
+}
+
+.loan-create-page .btn-primary:hover:not(:disabled) {
+  filter: brightness(1.03);
+}
+
+.loan-create-page .btn-secondary {
+  background: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-subtle) !important;
+}
+
+.loan-create-page .btn-secondary:hover:not(:disabled) {
+  background: var(--surface-hover) !important;
+  border-color: var(--border-default) !important;
+}
+
+/* Amount buttons */
+.loan-create-page .amount-btn {
+  background: var(--surface-card) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-secondary) !important;
+}
+
+.loan-create-page .amount-btn:hover:not(:disabled) {
+  border-color: var(--brand-primary) !important;
+  background: var(--surface-hover) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+/* Loading state para cálculos */
+.loan-create-page .calculation-loading {
+  background: var(--surface-elevated) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.loan-create-page .calculation-loading p {
+  color: var(--text-tertiary) !important;
+}
+
+/* Renewal section */
+.loan-create-page .renewal-hint,
+.loan-create-page .pagination-info {
+  color: var(--text-secondary) !important;
+}
+
+.loan-create-page .renewal-pagination {
+  border-top-color: var(--border-subtle) !important;
+}
+
+.loan-create-page .pagination-btn {
+  background: var(--surface-card) !important;
+  border-color: var(--status-warning-border) !important;
+  color: var(--status-warning) !important;
+}
+
+.loan-create-page .pagination-btn:hover:not(:disabled) {
+  background: var(--status-warning-bg) !important;
+}
+
+.loan-create-page .active-loan-card {
+  background: var(--surface-card) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+.loan-create-page .loan-card-header {
+  background: var(--surface-elevated) !important;
+  border-bottom-color: var(--border-subtle) !important;
+}
+
+.loan-create-page .loan-id,
+.loan-create-page .loan-detail .value {
+  color: var(--text-primary) !important;
+}
+
+.loan-create-page .loan-detail .label {
+  color: var(--text-tertiary) !important;
+}
+
+.loan-create-page .loan-status.active {
+  background: var(--status-success-bg) !important;
+  color: var(--status-success) !important;
+  border: 1px solid var(--status-success-border) !important;
+}
+
+/* ============================================
+   ESTILOS DE RENOVACIÓN DE PRÉSTAMOS
+   ============================================ */
+
+.renewal-section {
+  background: linear-gradient(135deg, #fff3e0 0%, #fff8e1 100%);
+  border: 2px solid #ff9800;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 25px;
+}
+
+/* Header colapsable */
+.renewal-header-collapsible {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.renewal-header-collapsible:hover:not(.expanded) {
+  background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);
+}
+
+.renewal-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.renewal-icon {
+  font-size: 14px;
+  transition: transform 0.3s ease;
+}
+
+.renewal-header-collapsible.expanded .renewal-icon {
+  transform: rotate(90deg);
+}
+
+.renewal-section h3 {
+  margin: 0;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.renewal-badge-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.renewal-header-summary {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.summary-total {
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 4px 12px;
+  border-radius: 8px;
+}
+
+/* Contenido colapsable */
+.renewal-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease-out, padding 0.35s ease-out;
+  padding: 0 20px;
+}
+
+.renewal-content.expanded {
+  max-height: 1500px; /* Suficiente para el contenido */
+  padding: 20px;
+}
+
+.renewal-content.collapsed {
+  max-height: 0;
+  padding: 0 20px;
+}
+
+.renewal-hint {
+  color: #666;
+  margin: 0 0 15px 0;
+  font-size: 14px;
+}
+
+/* Paginación de préstamos */
+.renewal-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.pagination-btn {
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #ff9800;
+  color: #e65100;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #ff9800;
+  color: white;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.active-loans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.active-loan-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.loan-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #eee;
+}
+
+.loan-id {
+  font-weight: 600;
+  color: #333;
+}
+
+.loan-status {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.loan-status.active {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.loan-card-body {
+  padding: 15px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.loan-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.loan-detail .label {
+  font-size: 12px;
+  color: #666;
+}
+
+.loan-detail .value {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.loan-detail.highlight .value {
+  color: #d32f2f;
+  font-size: 17px;
+}
+
+.btn-renew {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  color: white;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-renew:hover {
+  background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);
+}
+
+/* Tarjeta de renovación seleccionada */
+.renewal-selected-card {
+  background: #e8f5e9;
+  border: 2px solid #4caf50;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.renewal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: #4caf50;
+}
+
+.renewal-badge {
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.btn-cancel-renewal {
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.btn-cancel-renewal:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.renewal-summary {
+  padding: 15px;
+}
+
+.renewal-summary h4 {
+  margin: 0 0 15px 0;
+  color: #2e7d32;
+  font-size: 16px;
+}
+
+.renewal-detail {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.renewal-detail .label {
+  color: #555;
+  font-size: 14px;
+}
+
+.renewal-detail .value {
+  font-weight: 600;
+  color: #333;
+}
+
+.renewal-detail .value.highlight {
+  color: #d32f2f;
+  font-size: 16px;
+}
+
+.renewal-detail.important {
+  background: #fff9c4;
+  margin: 10px -15px;
+  padding: 10px 15px;
+  border-bottom: none;
+}
+
+.renewal-detail.important .label {
+  color: #6d4c00;
+}
+
+.renewal-detail.important .value {
+  color: #f57c00;
+}
+
+.renewal-detail.highlight-box {
+  background: #ffebee;
+  margin: 10px -15px;
+  padding: 12px 15px;
+  border-left: 4px solid #d32f2f;
+}
+
+.renewal-detail.highlight-box .label {
+  color: #c62828;
+  font-weight: 600;
+}
+
+.renewal-detail.highlight-box .value {
+  color: #d32f2f;
+  font-size: 18px;
+}
+
+.renewal-notes {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.renewal-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.renewal-note.warning {
+  background: #fff3e0;
+  color: #e65100;
+  border-left: 3px solid #ff9800;
+}
+
+.renewal-note.info {
+  background: #e3f2fd;
+  color: #1565c0;
+  border-left: 3px solid #2196f3;
+}
+
+.renewal-note.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-left: 3px solid #4caf50;
+}
+
+.renewal-note strong {
+  font-weight: 600;
+}
+
+.renewal-loading {
+  padding: 15px;
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+/* Responsive para renovación */
+@media (max-width: 768px) {
+  .loan-card-body {
+    grid-template-columns: 1fr;
+  }
+
+  .renewal-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .renewal-detail {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+/* =============================================================================
+   DARK MODE COMPLETE OVERRIDES
+   Corrige TODOS los elementos con colores hardcodeados
+   ============================================================================= */
+
+/* Form Section Cards */
+[data-theme="dark"] .loan-create-page .form-section {
+  background: var(--surface-card);
+  border-color: var(--border-subtle);
+}
+
+/* Inputs, Selects, Textareas */
+[data-theme="dark"] .loan-create-page .form-group input,
+[data-theme="dark"] .loan-create-page .form-group select,
+[data-theme="dark"] .loan-create-page .form-group textarea {
+  background: var(--surface-elevated);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .loan-create-page .form-group input::placeholder,
+[data-theme="dark"] .loan-create-page .form-group textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+[data-theme="dark"] .loan-create-page .form-group input:focus,
+[data-theme="dark"] .loan-create-page .form-group select:focus,
+[data-theme="dark"] .loan-create-page .form-group textarea:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(139, 38, 53, 0.25);
+}
+
+/* Select dropdown arrow */
+[data-theme="dark"] .loan-create-page .form-group select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23999' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  appearance: none;
+}
+
+/* Profile Info Box */
+[data-theme="dark"] .loan-create-page .profile-info {
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+[data-theme="dark"] .loan-create-page .profile-rates,
+[data-theme="dark"] .loan-create-page .profile-terms {
+  color: var(--text-secondary);
+}
+
+/* Disabled Input */
+[data-theme="dark"] .loan-create-page .disabled-input {
+  background: var(--surface-muted);
+  color: var(--text-tertiary);
+  border-color: var(--border-subtle);
+}
+
+/* Amount Buttons */
+[data-theme="dark"] .loan-create-page .amount-btn {
+  background: var(--surface-elevated);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .loan-create-page .amount-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--brand-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .loan-create-page .amount-btn.active {
+  background: var(--brand-gradient);
+  border-color: var(--brand-primary);
+  color: white;
+}
+
+[data-theme="dark"] .loan-create-page .amount-btn.custom-btn {
+  background: var(--surface-muted);
+}
+
+[data-theme="dark"] .loan-create-page .amount-btn.custom-btn.active {
+  background: linear-gradient(135deg, var(--status-success) 0%, #20c997 100%);
+  border-color: var(--status-success);
+}
+
+/* Custom Amount Input */
+[data-theme="dark"] .loan-create-page .custom-amount-input input {
+  background: var(--surface-elevated);
+  border-color: var(--status-success);
+  color: var(--text-primary);
+}
+
+/* Summary Cards */
+[data-theme="dark"] .loan-create-page .summary-card {
+  background: var(--surface-card);
+  border-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .loan-create-page .summary-card h3 {
+  color: var(--text-secondary);
+  border-bottom-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .loan-create-page .summary-card.info-card {
+  border-color: var(--status-info);
+}
+
+[data-theme="dark"] .loan-create-page .summary-card.info-card h3 {
+  color: var(--status-info);
+  border-bottom-color: var(--status-info);
+}
+
+[data-theme="dark"] .loan-create-page .summary-card.client-card {
+  border-color: var(--brand-primary);
+}
+
+[data-theme="dark"] .loan-create-page .summary-card.client-card h3 {
+  color: var(--brand-primary);
+  border-bottom-color: var(--brand-primary);
+}
+
+[data-theme="dark"] .loan-create-page .summary-card.associate-card {
+  border-color: var(--status-success);
+}
+
+[data-theme="dark"] .loan-create-page .summary-card.associate-card h3 {
+  color: var(--status-success);
+  border-bottom-color: var(--status-success);
+}
+
+[data-theme="dark"] .loan-create-page .summary-item {
+  border-bottom-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .loan-create-page .summary-item .label {
+  color: var(--text-tertiary);
+}
+
+[data-theme="dark"] .loan-create-page .summary-item .value {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .loan-create-page .summary-item.primary .value {
+  color: var(--brand-primary);
+}
+
+[data-theme="dark"] .loan-create-page .highlight-amount {
+  color: var(--brand-primary);
+}
+
+/* Badges */
+[data-theme="dark"] .loan-create-page .summary-item .badge {
+  background: var(--status-warning-bg);
+  color: var(--status-warning);
+  border: 1px solid var(--status-warning-border);
+}
+
+[data-theme="dark"] .loan-create-page .summary-item .badge-commission {
+  background: var(--status-info-bg);
+  color: var(--status-info);
+  border: 1px solid var(--status-info-border);
+}
+
+[data-theme="dark"] .loan-create-page .success-amount {
+  color: var(--status-success);
+  background: var(--status-success-bg);
+  border: 1px solid var(--status-success-border);
+}
+
+/* Calculation Loading */
+[data-theme="dark"] .loan-create-page .calculation-loading {
+  background: var(--surface-elevated);
+  border-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .loan-create-page .calculation-loading p {
+  color: var(--text-tertiary);
+}
+
+/* Loading Container */
+[data-theme="dark"] .loan-create-page .loading-container {
+  color: var(--text-secondary);
+}
+
+/* Buttons */
+[data-theme="dark"] .loan-create-page .btn-primary {
+  background: var(--brand-gradient);
+  color: white;
+}
+
+[data-theme="dark"] .loan-create-page .btn-primary:disabled {
+  background: var(--surface-muted);
+  color: var(--text-tertiary);
+}
+
+[data-theme="dark"] .loan-create-page .btn-secondary {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .loan-create-page .btn-secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-default);
+}
+
+/* Form Actions Footer */
+[data-theme="dark"] .loan-create-page .form-actions {
+  border-top-color: var(--border-subtle);
+  background: transparent;
+}
+
+/* Preview Title */
+[data-theme="dark"] .loan-create-page .preview-title {
+  color: var(--text-primary);
+}
+
+/* Renewal Section - Dark Mode */
+[data-theme="dark"] .loan-create-page .renewal-section {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 193, 7, 0.08) 100%);
+  border-color: var(--status-warning);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-header-collapsible {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.8) 0%, rgba(245, 124, 0, 0.9) 100%);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-content {
+  background: var(--surface-card);
+}
+
+[data-theme="dark"] .loan-create-page .active-loan-card {
+  background: var(--surface-card);
+  border-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .loan-create-page .loan-card-header {
+  background: var(--surface-elevated);
+  border-bottom-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .loan-create-page .loan-card-body {
+  background: var(--surface-card);
+}
+
+[data-theme="dark"] .loan-create-page .loan-id,
+[data-theme="dark"] .loan-create-page .loan-detail .value {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .loan-create-page .loan-detail .label {
+  color: var(--text-tertiary);
+}
+
+[data-theme="dark"] .loan-create-page .loan-status.active {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  border: 1px solid var(--status-success-border);
+}
+
+/* Renewal Notes */
+[data-theme="dark"] .loan-create-page .renewal-note.warning {
+  background: rgba(255, 152, 0, 0.15);
+  color: var(--status-warning);
+  border-left-color: var(--status-warning);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-note.info {
+  background: rgba(33, 150, 243, 0.15);
+  color: var(--status-info);
+  border-left-color: var(--status-info);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-note.success {
+  background: rgba(76, 175, 80, 0.15);
+  color: var(--status-success);
+  border-left-color: var(--status-success);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-loading {
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-detail {
+  border-bottom-color: var(--border-subtle);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-detail .label {
+  color: var(--text-tertiary);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-detail .value {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-detail.highlight-box {
+  background: rgba(211, 47, 47, 0.15);
+  border-left-color: var(--status-error);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-detail.highlight-box .label {
+  color: var(--status-error);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-detail.highlight-box .value {
+  color: var(--status-error);
+}
+
+/* Pagination dentro del form */
+[data-theme="dark"] .loan-create-page .pagination-btn {
+  background: var(--surface-elevated);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .loan-create-page .pagination-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
+
+/* Renewal Hint */
+[data-theme="dark"] .loan-create-page .renewal-hint {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .loan-create-page .renewal-pagination {
+  border-top-color: var(--border-subtle);
+}
+
+/* Form hints and errors */
+[data-theme="dark"] .loan-create-page .form-hint {
+  color: var(--text-tertiary);
+}
+
+[data-theme="dark"] .loan-create-page .error-message {
+  color: var(--status-error);
 }

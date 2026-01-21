@@ -1,0 +1,85 @@
+# =============================================================================
+# CrediNet v2.0 - Variables de Entorno para PRODUCCIÓN
+# =============================================================================
+# INSTRUCCIONES:
+# 1. Copia este archivo como .env en el servidor de producción
+# 2. Genera nuevos valores para SECRET_KEY y POSTGRES_PASSWORD
+# 3. Cambia la IP 10.5.26.141 por la IP correcta del servidor
+# =============================================================================
+
+# =============================================================================
+# POSTGRES DATABASE
+# =============================================================================
+POSTGRES_USER=credinet_user
+# ⚠️ CAMBIAR: Generar con: openssl rand -base64 24
+POSTGRES_PASSWORD=CAMBIAR_ESTE_PASSWORD_EN_PRODUCCION
+POSTGRES_DB=credinet_db
+POSTGRES_PORT=5432
+
+# =============================================================================
+# BACKEND API
+# =============================================================================
+BACKEND_PORT=8000
+
+# Application Environment
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=WARNING
+
+# JWT Security
+# ⚠️ CAMBIAR: Generar con: openssl rand -hex 32
+SECRET_KEY=CAMBIAR_ESTA_CLAVE_SECRETA_64_CARACTERES_MINIMO_PRODUCCION
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=480  # 8 horas para producción
+
+# CORS Origins - Cambiar IP por la del servidor de producción
+# Formato: URLs separadas por comas, sin espacios
+CORS_ORIGINS=http://localhost:5173,http://10.5.26.141:5173,http://10.5.26.141:8000
+
+# File Upload
+MAX_UPLOAD_SIZE=10485760  # 10MB en bytes
+
+# =============================================================================
+# FRONTEND
+# =============================================================================
+FRONTEND_PORT=5173
+
+# Vite Environment Variables
+# ⚠️ CAMBIAR: IP del servidor de producción
+VITE_API_URL=http://10.5.26.141:8000
+VITE_APP_NAME=CrediNet V2
+VITE_APP_VERSION=2.0.0
+
+# Desactivar hot reload en producción
+CHOKIDAR_USEPOLLING=false
+WATCHPACK_POLLING=false
+
+# =============================================================================
+# DOCKER
+# =============================================================================
+DOCKER_TARGET=production
+
+# =============================================================================
+# NOTAS DE SEGURIDAD
+# =============================================================================
+# 
+# 1. NUNCA subir este archivo a Git
+# 2. Guardar copia segura de las credenciales generadas
+# 3. Rotar SECRET_KEY cada 6 meses
+# 4. Backup de BD antes de cambiar POSTGRES_PASSWORD
+#
+# =============================================================================
+# COMANDOS PARA GENERAR CREDENCIALES SEGURAS:
+# =============================================================================
+#
+# Para SECRET_KEY (64 caracteres hex):
+#   openssl rand -hex 32
+#
+# Para POSTGRES_PASSWORD (32 caracteres base64):
+#   openssl rand -base64 24
+#
+# Ejemplo de salida:
+#   SECRET_KEY=7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b
+#   POSTGRES_PASSWORD=xYz123AbCdEfGhIjKlMnOpQr
+#
+# =============================================================================

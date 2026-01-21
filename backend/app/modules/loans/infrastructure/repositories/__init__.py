@@ -126,7 +126,7 @@ class PostgreSQLLoanRepository(LoanRepository):
     Interactúa con funciones DB críticas:
     - calculate_first_payment_date() ⭐ ORÁCULO DEL DOBLE CALENDARIO
     - calculate_loan_remaining_balance()
-    - check_associate_credit_available()
+    - check_associate_available_credit()
     """
     
     def __init__(self, session: AsyncSession):
@@ -371,7 +371,7 @@ class PostgreSQLLoanRepository(LoanRepository):
     # VALIDACIONES Y HELPERS ⭐ FUNCIONES DB
     # =============================================================================
     
-    async def check_associate_credit_available(
+    async def check_associate_available_credit(
         self,
         associate_user_id: int,
         amount: Decimal
@@ -379,7 +379,7 @@ class PostgreSQLLoanRepository(LoanRepository):
         """
         Verifica si el asociado tiene crédito disponible suficiente.
         
-        Usa la función DB: check_associate_credit_available()
+        Usa la función DB: check_associate_available_credit()
         
         Args:
             associate_user_id: ID del usuario asociado
@@ -406,13 +406,14 @@ class PostgreSQLLoanRepository(LoanRepository):
         associate_profile_id = profile_row[0]
         
         # Llamar función DB con el associate_profile_id correcto
-        query = select(
-            func.check_associate_credit_available(
-                associate_profile_id,
-                amount
-            )
+        # Usar text() con cast explícito a NUMERIC para evitar error de tipo
+        credit_check_query = text(
+            "SELECT check_associate_available_credit(:profile_id, :amount::numeric)"
         )
-        result = await self.session.execute(query)
+        result = await self.session.execute(
+            credit_check_query,
+            {"profile_id": associate_profile_id, "amount": float(amount)}
+        )
         has_credit = result.scalar()
         
         return bool(has_credit)

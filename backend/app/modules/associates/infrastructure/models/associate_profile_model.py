@@ -31,10 +31,21 @@ class AssociateProfileModel(Base):
     consecutive_on_time_payments = Column(Integer, default=0)
     clients_in_agreement = Column(Integer, default=0)
     last_level_evaluation_date = Column(DateTime(timezone=True))
-    credit_used = Column(Numeric(12, 2), nullable=False, default=0)
+    
+    # === CAMPOS DE CRÉDITO REFACTORIZADOS ===
+    # pending_payments_total: Suma de associate_payment de pagos PENDING
+    # Representa lo que el asociado aún debe cobrar a clientes y entregar a CrediCuenta
+    pending_payments_total = Column(Numeric(12, 2), nullable=False, default=0)
+    
     credit_limit = Column(Numeric(12, 2), nullable=False, default=0)
-    credit_available = Column(Numeric(12, 2), Computed("(credit_limit - credit_used)"), nullable=False)
+    
+    # available_credit: Columna computada = credit_limit - pending_payments_total - consolidated_debt
+    available_credit = Column(Numeric(12, 2), Computed("(credit_limit - pending_payments_total - consolidated_debt)"), nullable=False)
+    
     credit_last_updated = Column(DateTime(timezone=True))
-    debt_balance = Column(Numeric(12, 2), nullable=False, default=0)
+    
+    # consolidated_debt: Deuda consolidada (statements cerrados + convenios - pagos)
+    # Deuda firme que el asociado debe a CrediCuenta
+    consolidated_debt = Column(Numeric(12, 2), nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.current_timestamp(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.current_timestamp(), onupdate=func.current_timestamp(), nullable=False)

@@ -1,0 +1,267 @@
+================================================================================
+PROMPT COMPLETO PARA SERVIDOR DESTINO (credicuenta3 - 10.5.26.141)
+================================================================================
+Copia TODO este contenido y pégalo en el chat de Claude/Copilot del VSCode
+conectado al servidor destino.
+================================================================================
+
+Necesito migrar el sistema Credinet v2.0 a este servidor. Este es un sistema de gestión de créditos con:
+- Backend: FastAPI (Python)
+- Frontend: React + Vite
+- Base de datos: PostgreSQL 15
+- Todo containerizado con Docker Compose
+
+## INFORMACIÓN DEL PROYECTO
+
+- Repositorio: https://github.com/JairFC/credinet-v2.git
+- Rama a usar: feature/fix-rate-profiles-flexibility
+- Usuario GitHub: JairFC
+
+## PASO 1: DIAGNÓSTICO INICIAL
+
+Ejecuta este comando de diagnóstico completo:
+
+```bash
+echo "========================================"
+echo "DIAGNÓSTICO DEL SERVIDOR DESTINO"
+echo "========================================"
+echo ""
+echo "=== 1. SISTEMA OPERATIVO ==="
+uname -a
+cat /etc/os-release | head -5
+echo ""
+echo "=== 2. USUARIO Y PERMISOS ==="
+whoami
+groups
+echo ""
+echo "=== 3. DOCKER ==="
+docker --version 2>/dev/null || echo "Docker NO instalado"
+docker compose version 2>/dev/null || echo "Docker Compose NO instalado"
+echo ""
+echo "=== 4. CONTENEDORES ACTUALES ==="
+docker ps -a 2>/dev/null || echo "No se puede listar contenedores"
+echo ""
+echo "=== 5. ESPACIO EN DISCO ==="
+df -h / /home 2>/dev/null
+echo ""
+echo "=== 6. MEMORIA ==="
+free -h
+echo ""
+echo "=== 7. GIT ==="
+git --version 2>/dev/null || echo "Git NO instalado"
+echo ""
+echo "=== 8. DIRECTORIO DE TRABAJO ==="
+pwd
+ls -la
+echo ""
+echo "=== 9. DIRECTORIO PROYECTOS ==="
+ls -la ~/proyectos/ 2>/dev/null || echo "No existe ~/proyectos - se creará"
+echo ""
+echo "=== 10. CONFIGURACIÓN GIT ==="
+git config --global user.name 2>/dev/null || echo "Sin user.name"
+git config --global user.email 2>/dev/null || echo "Sin user.email"
+echo ""
+echo "=== 11. RED ==="
+ip addr show | grep -E "inet " | head -5
+echo ""
+echo "=== 12. PUERTOS EN USO ==="
+ss -tlnp 2>/dev/null | grep -E "5432|8000|5173" || echo "Puertos 5432, 8000, 5173 libres"
+echo ""
+echo "========================================"
+echo "FIN DEL DIAGNÓSTICO"
+echo "========================================"
+```
+
+Dame los resultados y continuamos con la instalación.
+
+## PASO 2: PREPARAR DIRECTORIO Y CLONAR
+
+Una vez tengas el diagnóstico, ejecutaremos:
+
+```bash
+# Crear directorio de proyectos si no existe
+mkdir -p ~/proyectos
+cd ~/proyectos
+
+# Clonar el repositorio (rama específica)
+git clone -b feature/fix-rate-profiles-flexibility https://github.com/JairFC/credinet-v2.git
+
+# Entrar al proyecto
+cd credinet-v2
+
+# Verificar que estamos en la rama correcta
+git branch
+git log --oneline -3
+```
+
+## PASO 3: CONFIGURAR VARIABLES DE ENTORNO
+
+El sistema necesita 3 archivos .env:
+
+### 3.1 Archivo raíz `.env`:
+```bash
+cat > .env << 'EOF'
+# =============================================================================
+# CREDINET v2.0 - Production Environment
+# =============================================================================
+
+# POSTGRES DATABASE
+POSTGRES_USER=credinet_user
+POSTGRES_PASSWORD=CrediNet2026_Prod_Secure!
+POSTGRES_DB=credinet_db
+POSTGRES_PORT=5432
+
+# BACKEND API
+BACKEND_PORT=8000
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=INFO
+SECRET_KEY=CAMBIAR_ESTO_CON_openssl_rand_hex_32
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+CORS_ORIGINS=http://10.5.26.141:5173,http://10.5.26.141:8000,http://localhost:5173,http://localhost:8000
+MAX_UPLOAD_SIZE=10485760
+
+# FRONTEND
+FRONTEND_PORT=5173
+VITE_API_URL=http://10.5.26.141:8000
+VITE_APP_NAME=CrediNet V2
+VITE_APP_VERSION=2.0.0
+CHOKIDAR_USEPOLLING=true
+WATCHPACK_POLLING=true
+
+# DOCKER
+DOCKER_TARGET=production
+EOF
+
+# Generar SECRET_KEY seguro
+SECRET_KEY=$(openssl rand -hex 32)
+sed -i "s/CAMBIAR_ESTO_CON_openssl_rand_hex_32/$SECRET_KEY/" .env
+echo "SECRET_KEY generado: $SECRET_KEY"
+```
+
+### 3.2 Backend `.env`:
+```bash
+cat > backend/.env << 'EOF'
+DATABASE_URL=postgresql://credinet_user:CrediNet2026_Prod_Secure!@credinet-postgres:5432/credinet_db
+SECRET_KEY=mismo_que_el_principal
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+ENVIRONMENT=production
+DEBUG=false
+EOF
+```
+
+### 3.3 Frontend `.env`:
+```bash
+cat > frontend-mvp/.env << 'EOF'
+VITE_API_URL=http://10.5.26.141:8000
+VITE_APP_NAME=CrediNet V2
+VITE_APP_VERSION=2.0.0
+EOF
+```
+
+## PASO 4: LEVANTAR CON DOCKER COMPOSE
+
+```bash
+# Construir y levantar en background
+docker compose up -d --build
+
+# Ver el progreso de construcción
+docker compose logs -f
+
+# (Ctrl+C para salir de los logs cuando estén listos)
+```
+
+Espera hasta ver que los 3 contenedores estén "healthy":
+- credinet-postgres
+- credinet-backend  
+- credinet-frontend
+
+Verificar estado:
+```bash
+docker ps
+```
+
+## PASO 5: EJECUTAR LIMPIEZA DE DATOS (FACTORY RESET)
+
+El init.sql viene con datos de prueba. Para limpiarlos:
+
+```bash
+# Ejecutar factory reset
+docker exec -i credinet-postgres psql -U credinet_user -d credinet_db < db/v2.0/scripts/factory_reset.sql
+```
+
+Esto elimina:
+- ❌ Préstamos de prueba
+- ❌ Pagos de prueba
+- ❌ Usuarios de prueba (excepto admin, dev, jair)
+
+Preserva:
+- ✅ Catálogos (roles, niveles, estados)
+- ✅ legacy_payment_table (28 registros para cálculos)
+- ✅ cut_periods (288 períodos de corte)
+- ✅ rate_profiles (perfiles de tasas)
+- ✅ Usuarios del sistema
+
+## PASO 6: VERIFICACIÓN FINAL
+
+```bash
+# Verificar estado de la base de datos
+docker exec credinet-postgres psql -U credinet_user -d credinet_db -c "
+SELECT 
+    (SELECT COUNT(*) FROM users) as usuarios,
+    (SELECT COUNT(*) FROM loans) as prestamos,
+    (SELECT COUNT(*) FROM payments) as pagos,
+    (SELECT COUNT(*) FROM legacy_payment_table) as tabla_legacy,
+    (SELECT COUNT(*) FROM cut_periods) as periodos,
+    (SELECT COUNT(*) FROM roles) as roles;
+"
+
+# Verificar API
+curl -s http://localhost:8000/api/v1/health || curl -s http://localhost:8000/docs
+
+# Verificar Frontend
+curl -I http://localhost:5173
+```
+
+**Resultado esperado después del factory reset:**
+- usuarios: 3 (admin, dev, jair)
+- prestamos: 0
+- pagos: 0
+- tabla_legacy: 28
+- periodos: 288
+- roles: 5
+
+## PASO 7: PROBAR ACCESO WEB
+
+Acceder desde el navegador a:
+- Frontend: http://10.5.26.141:5173
+- API Docs: http://10.5.26.141:8000/docs
+
+Credenciales de prueba:
+- Usuario: admin / Password: Admin123!
+- Usuario: dev / Password: Dev123!
+
+================================================================================
+NOTAS IMPORTANTES
+================================================================================
+
+1. SOBRE LOS CORTES AUTOMÁTICOS:
+   El sistema procesa cortes automáticamente los días 8 y 23 de cada mes.
+   El scheduler está en backend/app/core/scheduler.py
+
+2. SOBRE LA IP:
+   Si la IP del servidor es diferente a 10.5.26.141, cambia todas las 
+   referencias en los archivos .env
+
+3. SOBRE HTTPS:
+   Para producción real, deberías configurar un reverse proxy (nginx) 
+   con certificados SSL.
+
+4. SOBRE BACKUPS:
+   Configura backups automáticos de PostgreSQL con pg_dump
+
+================================================================================
+FIN DEL PROMPT - COPIA HASTA AQUÍ
+================================================================================

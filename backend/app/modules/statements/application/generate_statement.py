@@ -47,14 +47,14 @@ class GenerateStatementUseCase:
             raise ValueError("Due date must be after generation date")
         
         # Validate: amounts must be non-negative
-        if dto.total_amount_collected < 0 or dto.total_commission_owed < 0:
+        if dto.total_amount_collected < 0 or dto.total_to_credicuenta < 0:
             raise ValueError("Amounts cannot be negative")
         
-        # Validate: commission must not exceed collected amount
-        if dto.total_commission_owed > dto.total_amount_collected:
+        # Validate: total_to_credicuenta must not exceed collected amount
+        if dto.total_to_credicuenta > dto.total_amount_collected:
             raise ValueError(
-                "Commission cannot exceed collected amount "
-                f"(commission: {dto.total_commission_owed}, "
+                "Amount to CrediCuenta cannot exceed collected amount "
+                f"(to_credicuenta: {dto.total_to_credicuenta}, "
                 f"collected: {dto.total_amount_collected})"
             )
         
@@ -82,7 +82,8 @@ class GenerateStatementUseCase:
             cut_period_id=dto.cut_period_id,
             total_payments_count=dto.total_payments_count,
             total_amount_collected=dto.total_amount_collected,
-            total_commission_owed=dto.total_commission_owed,
+            total_to_credicuenta=dto.total_to_credicuenta,
+            commission_earned=dto.commission_earned,
             commission_rate_applied=dto.commission_rate_applied,
             status_id=status_id,
             generated_date=dto.generated_date,

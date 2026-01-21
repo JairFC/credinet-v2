@@ -25,6 +25,8 @@ class SimulatorRequest(BaseModel):
     term_biweeks: int = Field(..., description="Plazo en quincenas", gt=0, le=52)
     profile_code: str = Field(..., description="Código del perfil de tasa")
     approval_date: Optional[date] = Field(default=None, description="Fecha de aprobación (default: hoy)")
+    custom_interest_rate: Optional[Decimal] = Field(default=None, description="Tasa de interés personalizada (solo para profile_code='custom')")
+    custom_commission_rate: Optional[Decimal] = Field(default=None, description="Tasa de comisión personalizada (solo para profile_code='custom')")
 
 
 class AmortizationRowDTO(BaseModel):
@@ -35,7 +37,10 @@ class AmortizationRowDTO(BaseModel):
     client_payment: Decimal = Field(..., description="Pago del cliente")
     associate_payment: Decimal = Field(..., description="Pago del asociado")
     commission: Decimal = Field(..., description="Comisión de este pago")
-    remaining_balance: Decimal = Field(..., description="Saldo restante")
+    remaining_balance: Decimal = Field(..., description="Saldo restante del cliente")
+    total_pending_balance: Decimal = Field(..., description="Total pendiente del cliente (incluye intereses)")
+    associate_remaining_balance: Decimal = Field(..., description="Saldo restante del asociado")
+    associate_total_pending: Decimal = Field(..., description="Total pendiente del asociado")
 
 
 class ClientTotalsDTO(BaseModel):
@@ -104,24 +109,60 @@ async def simulate_loan(
 ):
     """
     Simula un préstamo y genera tabla de amortización completa.
+    Soporta perfiles estáticos (legacy, standard) y dinámicos (custom con tasas personalizadas).
     """
     try:
         approval_date = request.approval_date or date.today()
         
-        # Llamar directamente a la función SQL con bind parameters
-        calc_result = await session.execute(
-            text("SELECT * FROM calculate_loan_payment(:amount, :term, :profile)"),
-            {"amount": float(request.amount), "term": request.term_biweeks, "profile": request.profile_code}
-        )
-        calc_row = calc_result.fetchone()
-        
-        if not calc_row:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Perfil '{request.profile_code}' no encontrado"
+        # ====================================================================
+        # BRANCH 1: PERFIL CUSTOM con tasas dinámicas
+        # ====================================================================
+        if request.profile_code == 'custom':
+            # Validar que se proporcionen ambas tasas
+            if request.custom_interest_rate is None or request.custom_commission_rate is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Para perfil 'custom' se requieren custom_interest_rate y custom_commission_rate"
+                )
+            
+            # Llamar a función custom con tasas dinámicas
+            calc_result = await session.execute(
+                text("SELECT * FROM calculate_loan_payment_custom(:amount, :term, :interest_rate, :commission_rate)"),
+                {
+                    "amount": float(request.amount),
+                    "term": request.term_biweeks,
+                    "interest_rate": float(request.custom_interest_rate),
+                    "commission_rate": float(request.custom_commission_rate)
+                }
             )
+            calc_row = calc_result.fetchone()
+            
+            if not calc_row:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Error al calcular préstamo custom"
+                )
         
-        # Obtener info del perfil
+        # ====================================================================
+        # BRANCH 2: PERFILES ESTÁTICOS (legacy, standard) - NO MODIFICAR
+        # ====================================================================
+        else:
+            # Llamar a función estándar (legacy y standard funcionan con esta)
+            calc_result = await session.execute(
+                text("SELECT * FROM calculate_loan_payment(:amount, :term, :profile)"),
+                {"amount": float(request.amount), "term": request.term_biweeks, "profile": request.profile_code}
+            )
+            calc_row = calc_result.fetchone()
+            
+            if not calc_row:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Perfil '{request.profile_code}' no encontrado"
+                )
+        
+        # ====================================================================
+        # Obtener información del perfil
+        # ====================================================================
         profile_result = await session.execute(
             text("SELECT code, name FROM rate_profiles WHERE code = :code"),
             {"code": request.profile_code}
@@ -134,16 +175,32 @@ async def simulate_loan(
                 detail=f"Perfil '{request.profile_code}' no encontrado"
             )
         
-        # Obtener tabla de amortización
-        amort_result = await session.execute(
-            text("SELECT * FROM simulate_loan(:amount, :term, :profile, :date)"),
-            {
-                "amount": float(request.amount),
-                "term": request.term_biweeks,
-                "profile": request.profile_code,
-                "date": approval_date
-            }
-        )
+        # ====================================================================
+        # Obtener tabla de amortización (BRANCH según perfil)
+        # ====================================================================
+        if request.profile_code == 'custom':
+            # Usar función custom con tasas dinámicas
+            amort_result = await session.execute(
+                text("SELECT * FROM simulate_loan_custom(:amount, :term, :interest_rate, :commission_rate, :date)"),
+                {
+                    "amount": float(request.amount),
+                    "term": request.term_biweeks,
+                    "interest_rate": float(request.custom_interest_rate),
+                    "commission_rate": float(request.custom_commission_rate),
+                    "date": approval_date
+                }
+            )
+        else:
+            # Usar función estándar (legacy, standard)
+            amort_result = await session.execute(
+                text("SELECT * FROM simulate_loan(:amount, :term, :profile, :date)"),
+                {
+                    "amount": float(request.amount),
+                    "term": request.term_biweeks,
+                    "profile": request.profile_code,
+                    "date": approval_date
+                }
+            )
         amort_rows = amort_result.fetchall()
         
         # Calcular fecha final (último pago)
@@ -172,18 +229,31 @@ async def simulate_loan(
             )
         )
         
-        amortization_table = [
-            AmortizationRowDTO(
-                payment_number=row[0],
+        amortization_table = []
+        total_payments = len(amort_rows)
+        
+        for row in amort_rows:
+            payment_num = row[0]
+            client_payment = Decimal(str(row[3]))
+            associate_payment = Decimal(str(row[4]))
+            
+            # Calcular saldos totales pendientes (pagos restantes × pago por quincena)
+            remaining_payments = total_payments - payment_num + 1
+            total_pending_balance = remaining_payments * client_payment
+            associate_total_pending = remaining_payments * associate_payment
+            
+            amortization_table.append(AmortizationRowDTO(
+                payment_number=payment_num,
                 payment_date=row[1],
                 cut_period=row[2],
-                client_payment=Decimal(str(row[3])),
-                associate_payment=Decimal(str(row[4])),
+                client_payment=client_payment,
+                associate_payment=associate_payment,
                 commission=Decimal(str(row[5])),
-                remaining_balance=Decimal(str(row[6]))
-            )
-            for row in amort_rows
-        ]
+                remaining_balance=Decimal(str(row[6])),
+                total_pending_balance=total_pending_balance,
+                associate_remaining_balance=Decimal(str(row[7])) if row[7] is not None else Decimal("0"),
+                associate_total_pending=associate_total_pending
+            ))
         
         return SimulatorResponseDTO(
             summary=summary,

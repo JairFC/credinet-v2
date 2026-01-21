@@ -223,7 +223,9 @@ const DebtItemsTable = ({ items }) => {
         </thead>
         <tbody>
           {items.map((item, index) => {
-            const remaining = item.debt_amount - item.paid_amount;
+            const debtAmount = item.debt_amount || 0;
+            const paidAmount = item.paid_amount || 0;
+            const remaining = debtAmount - paidAmount;
             const isLiquidated = item.is_liquidated;
 
             return (
@@ -251,14 +253,14 @@ const DebtItemsTable = ({ items }) => {
                   textAlign: 'right',
                   fontWeight: '600'
                 }}>
-                  ${item.debt_amount.toFixed(2)}
+                  ${debtAmount.toFixed(2)}
                 </td>
                 <td style={{
                   padding: '12px',
                   textAlign: 'right',
                   color: 'var(--color-success)'
                 }}>
-                  ${item.paid_amount.toFixed(2)}
+                  ${paidAmount.toFixed(2)}
                 </td>
                 <td style={{
                   padding: '12px',
@@ -435,7 +437,7 @@ const DebtPaymentsTable = ({ payments, allPayments }) => {
                     fontWeight: '600',
                     color: 'var(--color-success)'
                   }}>
-                    ${payment.payment_amount.toFixed(2)}
+                    ${(payment.payment_amount || 0).toFixed(2)}
                   </td>
                   <td style={{ padding: '12px' }}>
                     <span style={{
@@ -460,7 +462,7 @@ const DebtPaymentsTable = ({ payments, allPayments }) => {
                             backgroundColor: 'var(--color-surface-tertiary)',
                             borderRadius: '4px'
                           }}>
-                            <strong>Item #{item.debt_item_id}:</strong> ${item.amount_applied.toFixed(2)}
+                            <strong>Item #{item.debt_item_id}:</strong> ${(item.amount_applied || 0).toFixed(2)}
                             {item.liquidated && (
                               <span style={{ marginLeft: '8px', color: 'var(--color-success)' }}>
                                 ✅ Liquidado

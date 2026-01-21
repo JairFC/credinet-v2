@@ -120,8 +120,8 @@ export default function RegistrarPagoModal({
                     <span className="amount-highlight">{formatCurrency(statement.total_amount_collected || 0)}</span>
                   </div>
                   <div className="info-item">
-                    <label>Comisión:</label>
-                    <span>{formatCurrency(statement.total_commission_owed || 0)}</span>
+                    <label>Adeudo a CrediCuenta:</label>
+                    <span>{formatCurrency(statement.total_to_credicuenta || 0)}</span>
                   </div>
                   <div className="info-item">
                     <label>Pagado:</label>
@@ -130,7 +130,7 @@ export default function RegistrarPagoModal({
                   <div className="info-item">
                     <label>Pendiente:</label>
                     <span className="amount-pending">
-                      {formatCurrency((statement.total_amount_collected - statement.total_commission_owed) - (statement.paid_amount || 0))}
+                      {formatCurrency((statement.total_to_credicuenta || 0) - (statement.paid_amount || 0))}
                     </span>
                   </div>
                 </div>

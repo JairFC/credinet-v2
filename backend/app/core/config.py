@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24  # 24 hours
     refresh_token_expire_days: int = 7  # 7 days
     
-    # CORS
-    cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://192.168.98.98:5174,http://192.168.98.98:5173,http://172.28.0.1:5174"
+    # CORS - Incluir todas las IPs de la red local
+    cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://192.168.98.98:5174,http://192.168.98.98:5173,http://192.168.98.98:8000,http://172.28.0.1:5174,http://172.28.0.1:5173"
 
     
     @property

@@ -1,12 +1,16 @@
 import { AuthProvider } from '@/app/providers/AuthProvider';
+import { ThemeProvider } from '@/app/providers/ThemeProvider';
 import AppRoutes from '@/app/routes';
+import '@/styles/design-system.css';
 import './App.css';
 
 function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

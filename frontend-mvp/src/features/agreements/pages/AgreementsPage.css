@@ -1,0 +1,466 @@
+/**
+ * AgreementsPage.css - Página de Convenios de Pago
+ * Todas las clases scopeadas con .agreements-page
+ */
+
+.agreements-page {
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: var(--surface-ground, #0f0f0f);
+  min-height: 100vh;
+}
+
+/* ===================== HEADER ===================== */
+.agreements-page .page-header {
+  margin-bottom: 1.5rem;
+}
+
+.agreements-page .header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.agreements-page .header-left h1 {
+  font-size: 1.75rem;
+  margin: 0 0 0.25rem 0;
+  color: var(--text-primary, #f3f4f6);
+}
+
+.agreements-page .subtitle {
+  color: var(--text-secondary, #9ca3af);
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.agreements-page .header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* ===================== STATS GRID ===================== */
+.agreements-page .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.agreements-page .stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--surface-card, #1a1a1a);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  border-left: 4px solid var(--border-color, #2a2a2a);
+  border: 1px solid var(--border-color, #2a2a2a);
+}
+
+.agreements-page .stat-card.active {
+  border-left: 4px solid #4caf50;
+  background: linear-gradient(135deg, var(--surface-card, #1a1a1a) 0%, rgba(76, 175, 80, 0.1) 100%);
+}
+
+.agreements-page .stat-card.completed {
+  border-left: 4px solid #2196f3;
+  background: linear-gradient(135deg, var(--surface-card, #1a1a1a) 0%, rgba(33, 150, 243, 0.1) 100%);
+}
+
+.agreements-page .stat-card.debt {
+  border-left: 4px solid #ff9800;
+  background: linear-gradient(135deg, var(--surface-card, #1a1a1a) 0%, rgba(255, 152, 0, 0.1) 100%);
+}
+
+.agreements-page .stat-icon {
+  font-size: 2rem;
+}
+
+.agreements-page .stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.agreements-page .stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #f3f4f6);
+}
+
+.agreements-page .stat-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #9ca3af);
+}
+
+/* ===================== FILTERS ===================== */
+.agreements-page .filters-section {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.agreements-page .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.agreements-page .filter-group label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #9ca3af);
+  font-weight: 500;
+}
+
+.agreements-page .filter-group select,
+.agreements-page .filter-group input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color, #2a2a2a);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  min-width: 150px;
+  background: var(--surface-elevated, #1a1a1a);
+  color: var(--text-primary, #f3f4f6);
+}
+
+.agreements-page .filter-group.search input {
+  min-width: 280px;
+}
+
+/* ===================== AGREEMENTS GRID ===================== */
+.agreements-page .agreements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.agreements-page .agreement-card {
+  background: var(--surface-card, #1a1a1a);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--border-color, #2a2a2a);
+}
+
+.agreements-page .agreement-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.agreements-page .agreement-card.status-active {
+  border-top: 3px solid #4caf50;
+}
+
+.agreements-page .agreement-card.status-completed {
+  border-top: 3px solid #2196f3;
+}
+
+.agreements-page .agreement-card.status-defaulted {
+  border-top: 3px solid #f44336;
+}
+
+.agreements-page .agreement-card.status-cancelled {
+  border-top: 3px solid #ff9800;
+}
+
+.agreements-page .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  background: var(--surface-elevated, #222);
+  border-bottom: 1px solid var(--border-color, #2a2a2a);
+}
+
+.agreements-page .agreement-number {
+  font-weight: 700;
+  color: var(--text-primary, #f3f4f6);
+  font-size: 1rem;
+}
+
+/* Status badges */
+.agreements-page .status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.agreements-page .status-badge.default {
+  background: var(--surface-hover, #2a2a2a);
+  color: var(--text-secondary, #9ca3af);
+}
+
+.agreements-page .status-badge.success {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+}
+
+.agreements-page .status-badge.info {
+  background: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+}
+
+.agreements-page .status-badge.danger {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+}
+
+.agreements-page .status-badge.warning {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+}
+
+.agreements-page .card-body {
+  padding: 1.25rem;
+}
+
+.agreements-page .associate-info {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color, #2a2a2a);
+}
+
+.agreements-page .associate-info .label {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #9ca3af);
+  display: block;
+}
+
+.agreements-page .associate-info .value {
+  font-weight: 600;
+  color: var(--text-primary, #f3f4f6);
+  font-size: 1rem;
+}
+
+.agreements-page .financial-info {
+  margin-bottom: 1rem;
+}
+
+.agreements-page .info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.35rem 0;
+}
+
+.agreements-page .info-row .label {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #9ca3af);
+}
+
+.agreements-page .info-row .value {
+  font-weight: 500;
+  color: var(--text-primary, #e5e7eb);
+}
+
+.agreements-page .info-row .value.amount {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f44336;
+}
+
+/* Progress Section */
+.agreements-page .progress-section {
+  background: var(--surface-elevated, #222);
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.agreements-page .progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary, #9ca3af);
+}
+
+.agreements-page .progress-bar {
+  height: 8px;
+  background: var(--surface-ground, #1a1a1a);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.agreements-page .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50, #8bc34a);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.agreements-page .progress-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  color: var(--text-secondary, #888);
+}
+
+.agreements-page .card-footer {
+  padding: 0.75rem 1.25rem;
+  background: var(--surface-elevated, #222);
+  border-top: 1px solid var(--border-color, #2a2a2a);
+}
+
+.agreements-page .card-footer .date {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #9ca3af);
+}
+
+/* ===================== BUTTONS ===================== */
+.agreements-page .btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.agreements-page .btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.agreements-page .btn-primary {
+  background: var(--brand-gradient, linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%));
+  color: white;
+}
+
+.agreements-page .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.agreements-page .btn-secondary {
+  background: var(--surface-elevated, #2a2a2a);
+  color: var(--text-primary, #f3f4f6);
+  border: 1px solid var(--border-color, #3a3a3a);
+}
+
+.agreements-page .btn-secondary:hover {
+  background: var(--surface-hover, #333);
+}
+
+.agreements-page .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===================== EMPTY STATE ===================== */
+.agreements-page .empty-state {
+  text-align: center;
+  padding: 3rem;
+  background: var(--surface-card, #1a1a1a);
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #2a2a2a);
+}
+
+.agreements-page .empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.agreements-page .empty-state h3 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary, #f3f4f6);
+}
+
+.agreements-page .empty-state p {
+  color: var(--text-secondary, #9ca3af);
+  margin: 0 0 1.5rem 0;
+}
+
+/* ===================== LOADING ===================== */
+.agreements-page .loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem;
+}
+
+.agreements-page .spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color, #2a2a2a);
+  border-top: 3px solid var(--brand-primary, #6366F1);
+  border-radius: 50%;
+  animation: agreements-spin 1s linear infinite;
+}
+
+@keyframes agreements-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ===================== ERROR ===================== */
+.agreements-page .error-message {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(244, 67, 54, 0.15);
+  border-radius: 8px;
+  color: #f44336;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+/* ===================== PAGINATION ===================== */
+.agreements-page .pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.agreements-page .page-info {
+  color: var(--text-secondary, #9ca3af);
+  font-size: 0.9rem;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 768px) {
+  .agreements-page .header-content {
+    flex-direction: column;
+  }
+  
+  .agreements-page .header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+  
+  .agreements-page .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .agreements-page .filters-section {
+    flex-direction: column;
+  }
+  
+  .agreements-page .filter-group select,
+  .agreements-page .filter-group input,
+  .agreements-page .filter-group.search input {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .agreements-page .agreements-grid {
+    grid-template-columns: 1fr;
+  }
+}

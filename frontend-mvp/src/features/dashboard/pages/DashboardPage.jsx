@@ -3,6 +3,14 @@ import { useAuth } from '@/app/providers/AuthProvider';
 import { dashboardService } from '@/shared/api/services';
 import './DashboardPage.css';
 
+// Using CSS custom properties for theme-aware colors
+const STAT_COLORS = {
+  brand: 'var(--brand-primary)',
+  info: 'var(--status-info)',
+  success: 'var(--status-success)',
+  warning: 'var(--status-warning)'
+};
+
 const DashboardPage = () => {
   const { user } = useAuth();
 
@@ -40,8 +48,8 @@ const DashboardPage = () => {
         id: 1,
         title: 'Préstamos Activos',
         value: stats.active_loans.toString(),
-        icon: '�',
-        color: '#667eea',
+        icon: '📋',
+        color: STAT_COLORS.brand,
         trend: `${stats.total_loans} total en sistema`
       },
       {
@@ -49,7 +57,7 @@ const DashboardPage = () => {
         title: 'Pagos Pendientes',
         value: stats.pending_payments_count.toString(),
         icon: '⏰',
-        color: '#f093fb',
+        color: STAT_COLORS.warning,
         trend: `$${Number(stats.pending_payments_amount).toLocaleString('es-MX', { maximumFractionDigits: 0 })} pendientes`
       },
       {
@@ -57,15 +65,15 @@ const DashboardPage = () => {
         title: 'Cobrado Este Mes',
         value: `$${Number(stats.collected_this_month).toLocaleString('es-MX', { maximumFractionDigits: 0 })}`,
         icon: '💵',
-        color: '#4facfe',
+        color: STAT_COLORS.success,
         trend: `$${Number(stats.collected_today).toLocaleString('es-MX', { maximumFractionDigits: 0 })} hoy`
       },
       {
         id: 4,
         title: 'Total Clientes',
         value: stats.total_clients.toString(),
-        icon: '�',
-        color: '#43e97b',
+        icon: '👥',
+        color: STAT_COLORS.info,
         trend: `${stats.pending_loans} préstamos pendientes`
       }
     ];
@@ -84,10 +92,10 @@ const DashboardPage = () => {
   ];
 
   const quickActions = [
-    { id: 1, label: 'Nuevo Préstamo', icon: '➕', color: '#667eea' },
-    { id: 2, label: 'Registrar Pago', icon: '💳', color: '#f093fb' },
-    { id: 3, label: 'Ver Reportes', icon: '📊', color: '#4facfe' },
-    { id: 4, label: 'Gestionar Asociados', icon: '👤', color: '#43e97b' }
+    { id: 1, label: 'Nuevo Préstamo', icon: '➕' },
+    { id: 2, label: 'Registrar Pago', icon: '💳' },
+    { id: 3, label: 'Ver Reportes', icon: '📊' },
+    { id: 4, label: 'Gestionar Clientes', icon: '👤' }
   ];
 
   // Loading state
@@ -149,8 +157,18 @@ const DashboardPage = () => {
       {/* Stats Cards */}
       <div className="stats-grid">
         {statsCards.map(stat => (
-          <div key={stat.id} className="stat-card" style={{ borderLeftColor: stat.color }}>
-            <div className="stat-icon" style={{ background: `${stat.color}20`, color: stat.color }}>
+          <div 
+            key={stat.id} 
+            className="stat-card" 
+            style={{ '--stat-color': stat.color }}
+          >
+            <div 
+              className="stat-icon" 
+              style={{ 
+                background: `color-mix(in srgb, ${stat.color} 15%, transparent)`, 
+                color: stat.color 
+              }}
+            >
               {stat.icon}
             </div>
             <div className="stat-content">

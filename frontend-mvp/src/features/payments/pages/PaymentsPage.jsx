@@ -103,12 +103,12 @@ export default function PaymentsPage() {
       // Importar loansService
       const { loansService } = await import('@/shared/api/services');
 
-      // Obtener préstamos activos (status_id = 2 APPROVED o 3 ACTIVE)
+      // Obtener préstamos activos (status_id = 2 = ACTIVE)
       const response = await loansService.getAll();
       const allLoans = response.data?.items || response.data || [];
 
-      // Filtrar solo préstamos APPROVED (2) o ACTIVE (3)
-      const active = allLoans.filter(loan => loan.status_id === 2 || loan.status_id === 3);
+      // Filtrar solo préstamos ACTIVE (status_id = 2)
+      const active = allLoans.filter(loan => loan.status_id === 2);
       setActiveLoans(active);
     } catch (err) {
       console.error('Error loading active loans:', err);
@@ -130,11 +130,12 @@ export default function PaymentsPage() {
     // Pagados reales (2)
     PAID: 3,
     PAID_PARTIAL: 8,
-    // Ficticios (4)
+    // Ficticios (5)
     PAID_BY_ASSOCIATE: 9,
     PAID_NOT_REPORTED: 10,
     FORGIVEN: 11,
-    CANCELLED: 12
+    CANCELLED: 12,
+    IN_AGREEMENT: 13  // En convenio
   };
 
   const getStatusInfo = (status_id) => {
@@ -153,7 +154,8 @@ export default function PaymentsPage() {
       9: { text: 'Absorbido', class: 'badge-purple', filter: 'paid', canPay: false },
       10: { text: 'No Reportado', class: 'badge-brown', filter: 'paid', canPay: false },
       11: { text: 'Perdonado', class: 'badge-gray', filter: 'paid', canPay: false },
-      12: { text: 'Cancelado', class: 'badge-black', filter: 'paid', canPay: false }
+      12: { text: 'Cancelado', class: 'badge-black', filter: 'paid', canPay: false },
+      13: { text: 'En Convenio', class: 'badge-info', filter: 'paid', canPay: false }
     };
     return statusMap[status_id] || {
       text: 'Desconocido',

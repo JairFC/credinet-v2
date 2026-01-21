@@ -116,7 +116,8 @@ export const loansApi = {
     }
 
     // Actualizar loan
-    loan.status = "APPROVED";
+    // ACTIVE = status_id 2 (unico estado para préstamos activos)
+    loan.status = "ACTIVE";
     loan.status_id = 2;
     loan.associate_id = data.associate_id;
     loan.approved_by = data.approved_by;
@@ -132,7 +133,7 @@ export const loansApi = {
     return {
       success: true,
       loan_id: id,
-      status: "APPROVED",
+      status: "ACTIVE",
       payments_generated: loan.term_biweeks,
       first_payment_date: "2025-11-15",
       message: "Préstamo aprobado exitosamente"

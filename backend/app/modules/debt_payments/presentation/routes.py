@@ -49,8 +49,8 @@ def register_debt_payment(
     1. Liquida primero los items de deuda más antiguos (created_at ASC)
     2. Si el pago cubre completamente un item → is_liquidated = true
     3. Si el pago es parcial → reduce el amount del item
-    4. Actualiza debt_balance en associate_profiles
-    5. Libera crédito automáticamente (credit_available se recalcula)
+    4. Actualiza consolidated_debt en associate_profiles
+    5. Libera crédito automáticamente (available_credit se recalcula)
     6. Registra el detalle en applied_breakdown_items (JSONB)
     
     **Permissions**: admin, auxiliar_administrativo
@@ -171,7 +171,7 @@ def get_associate_debt_summary(
     Obtiene resumen completo de deuda de un asociado.
     
     Utiliza la vista v_associate_debt_summary que incluye:
-    - Deuda actual (debt_balance)
+    - Deuda actual (consolidated_debt)
     - Items pendientes y liquidados
     - Total pagado a deuda
     - Fechas de deuda más antigua y último pago
@@ -196,4 +196,144 @@ def get_associate_debt_summary(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching debt summary: {str(e)}"
+        )
+
+
+@router.get(
+    "/associates-with-debt",
+    summary="List all associates with pending debt",
+    description="Returns a list of all associates who have accumulated debt"
+)
+def list_associates_with_debt(
+    include_zero: bool = Query(False, description="Include associates with zero debt balance"),
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """
+    Lista todos los asociados que tienen deuda acumulada.
+    
+    Ideal para:
+    - Dashboard de gestión de deudas
+    - Reportes de cartera vencida
+    - Identificar asociados que necesitan seguimiento
+    
+    **Permissions**: admin, auxiliar_administrativo
+    """
+    try:
+        from sqlalchemy import text
+        
+        # Obtener asociados con deuda desde la tabla associate_accumulated_balances
+        where_clause = "" if include_zero else "WHERE total_debt > 0"
+        
+        result = db.execute(text(f"""
+            SELECT 
+                aab.user_id,
+                u.first_name || ' ' || u.last_name as associate_name,
+                ap.id as associate_profile_id,
+                COALESCE(SUM(aab.accumulated_debt), 0) as total_debt,
+                COUNT(DISTINCT aab.cut_period_id) as periods_with_debt,
+                MIN(aab.created_at) as oldest_debt_date,
+                MAX(aab.updated_at) as last_update,
+                ap.consolidated_debt as profile_consolidated_debt,
+                ap.credit_limit,
+                ap.available_credit
+            FROM associate_accumulated_balances aab
+            JOIN users u ON u.id = aab.user_id
+            LEFT JOIN associate_profiles ap ON ap.user_id = aab.user_id
+            GROUP BY aab.user_id, u.first_name, u.last_name, ap.id, ap.consolidated_debt, ap.credit_limit, ap.available_credit
+            {where_clause}
+            ORDER BY total_debt DESC
+        """)).fetchall()
+        
+        return {
+            "success": True,
+            "count": len(result),
+            "data": [
+                {
+                    "user_id": row[0],
+                    "associate_name": row[1],
+                    "associate_profile_id": row[2],
+                    "total_debt": float(row[3]) if row[3] else 0.0,
+                    "periods_with_debt": row[4],
+                    "oldest_debt_date": row[5].isoformat() if row[5] else None,
+                    "last_update": row[6].isoformat() if row[6] else None,
+                    "profile_consolidated_debt": float(row[7]) if row[7] else 0.0,
+                    "credit_limit": float(row[8]) if row[8] else 0.0,
+                    "available_credit": float(row[9]) if row[9] else 0.0
+                }
+                for row in result
+            ]
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error listing associates with debt: {str(e)}"
+        )
+
+
+@router.get(
+    "/associates/{user_id}/debt-details",
+    summary="Get detailed debt breakdown for an associate",
+    description="Returns detailed information about each debt item for an associate"
+)
+def get_associate_debt_details(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user_id: int = Depends(get_current_user_id)
+):
+    """
+    Obtiene el desglose detallado de deudas de un asociado.
+    
+    Muestra:
+    - Cada período con deuda
+    - Detalles de statements que generaron la deuda
+    - Montos originales, pagados y pendientes
+    
+    **Permissions**: admin, auxiliar_administrativo, asociado (solo su propia deuda)
+    """
+    try:
+        from sqlalchemy import text
+        
+        # Obtener registros de deuda acumulada
+        result = db.execute(text("""
+            SELECT 
+                aab.id,
+                aab.cut_period_id,
+                cp.cut_code,
+                aab.accumulated_debt,
+                aab.debt_details,
+                aab.created_at,
+                aab.updated_at
+            FROM associate_accumulated_balances aab
+            JOIN cut_periods cp ON cp.id = aab.cut_period_id
+            WHERE aab.user_id = :user_id
+            ORDER BY aab.created_at ASC
+        """), {"user_id": user_id}).fetchall()
+        
+        # Calcular totales
+        total_debt = sum(float(row[3]) for row in result)
+        
+        return {
+            "success": True,
+            "user_id": user_id,
+            "total_debt": total_debt,
+            "debt_items": [
+                {
+                    "id": row[0],
+                    "cut_period_id": row[1],
+                    "cut_code": row[2],
+                    "accumulated_debt": float(row[3]),
+                    "debt_details": row[4],  # JSONB con detalles de statements
+                    "created_at": row[5].isoformat() if row[5] else None,
+                    "updated_at": row[6].isoformat() if row[6] else None
+                }
+                for row in result
+            ]
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching debt details: {str(e)}"
         )

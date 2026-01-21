@@ -1,15 +1,26 @@
 /**
  * AssociateDetailPage - Vista detallada de un asociado con desglose de deuda
  * 
+ * OPTIMIZADO: Secciones colapsables con lazy loading
+ * 
  * Muestra:
- * - Información general del asociado
- * - Estado de crédito (límite, usado, disponible)
- * - DesgloseDeuda con sistema FIFO
+ * - Información general del asociado (siempre visible)
+ * - Estado de crédito (siempre visible)
+ * - Préstamos del asociado (colapsable, lazy load)
+ * - Clientes del asociado (colapsable, lazy load)
+ * - Desglose de deuda (colapsable, lazy load)
+ * - Historial de deudas (colapsable, lazy load)
+ * - Auditoría (colapsable, lazy load)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import DesgloseDeuda from '../../../shared/components/DesgloseDeuda';
+import CollapsibleSection from '../../../shared/components/CollapsibleSection';
+import DeudaUnificada from '../../../shared/components/DeudaUnificada';
+import AuditHistory from '../../../shared/components/AuditHistory';
+import PrestamosAsociado from '../../../shared/components/PrestamosAsociado';
+import RegistrarAbonoDeudaModal from '../components/RegistrarAbonoDeudaModal';
+import ClientesAsociado from '../components/ClientesAsociado';
 import { apiClient } from '../../../shared/api/apiClient';
 import ENDPOINTS from '../../../shared/api/endpoints';
 import './AssociateDetailPage.css';
@@ -19,14 +30,14 @@ const AssociateDetailPage = () => {
   const [associate, setAssociate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showAbonoModal, setShowAbonoModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    if (associateId) {
-      fetchAssociateData();
-    }
-  }, [associateId]);
+  // Estados para contadores de badges (cargados bajo demanda)
+  const [loansCount, setLoansCount] = useState(null);
+  const [clientsCount, setClientsCount] = useState(null);
 
-  const fetchAssociateData = async () => {
+  const fetchAssociateData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -39,6 +50,43 @@ const AssociateDetailPage = () => {
     } finally {
       setLoading(false);
     }
+  }, [associateId]);
+
+  useEffect(() => {
+    if (associateId) {
+      fetchAssociateData();
+    }
+  }, [associateId, fetchAssociateData]);
+
+  // Cargar contadores de badges (ligero, para mostrar en headers colapsados)
+  const fetchBadgeCounts = useCallback(async () => {
+    if (!associate?.user_id) return;
+
+    try {
+      // Obtener conteo de préstamos
+      const loansRes = await apiClient.get(`${ENDPOINTS.loans.list}?associate_user_id=${associate.user_id}&limit=1`);
+      setLoansCount(loansRes.data?.total || 0);
+
+      // Obtener conteo de clientes
+      const clientsRes = await apiClient.get(`/api/v1/associates/${associateId}/clients?limit=1`);
+      setClientsCount(clientsRes.data?.data?.total || 0);
+    } catch (err) {
+      console.error('Error fetching badge counts:', err);
+    }
+  }, [associate?.user_id, associateId]);
+
+  useEffect(() => {
+    if (associate) {
+      fetchBadgeCounts();
+    }
+  }, [associate, fetchBadgeCounts]);
+
+  const handleAbonoSuccess = (data) => {
+    console.log('✅ Abono registrado:', data);
+    // Refrescar datos del asociado
+    fetchAssociateData();
+    // Forzar refresh de componentes hijos
+    setRefreshKey(prev => prev + 1);
   };
 
   if (loading) {
@@ -73,20 +121,35 @@ const AssociateDetailPage = () => {
   }
 
   // Convertir valores numéricos que vienen como strings
+  // NOMBRES ACTUALIZADOS (Backend v2.0):
+  // - pending_payments_total: lo que el asociado debe cobrar/entregar
+  // - consolidated_debt: deuda consolidada (statements + convenios)
+  // - available_credit: crédito disponible
   const creditLimit = parseFloat(associate.credit_limit) || 0;
-  const creditUsed = parseFloat(associate.credit_used) || 0;
-  const creditAvailable = parseFloat(associate.credit_available) || 0;
-  const debtBalance = parseFloat(associate.debt_balance) || 0;
+  const pendingPaymentsTotal = parseFloat(associate.pending_payments_total) || 0;
+  const availableCredit = parseFloat(associate.available_credit) || 0;
+  const consolidatedDebt = parseFloat(associate.consolidated_debt) || 0;
 
+  // Uso de crédito = pending_payments_total + consolidated_debt
+  const totalCreditUsed = pendingPaymentsTotal + consolidatedDebt;
   const creditUsagePercent = creditLimit > 0
-    ? (creditUsed / creditLimit) * 100
+    ? (totalCreditUsed / creditLimit) * 100
     : 0;
 
   return (
     <div className="associate-detail-page">
-      {/* Header */}
+      {/* Header con nombre del asociado */}
       <div className="page-header">
-        <h1>👤 Detalle del Asociado</h1>
+        <div className="header-info">
+          <h1>{associate.full_name || `${associate.first_name || ''} ${associate.last_name || ''}`.trim() || 'Asociado'}</h1>
+          <div className="header-meta">
+            <span className={`status-badge ${associate.active ? 'active' : 'inactive'}`}>
+              {associate.active ? '● Activo' : '○ Inactivo'}
+            </span>
+            <span className="associate-id">ID: #{associate.id}</span>
+            {associate.username && <span className="username">@{associate.username}</span>}
+          </div>
+        </div>
         <button
           className="btn btn-secondary"
           onClick={() => window.history.back()}
@@ -95,129 +158,185 @@ const AssociateDetailPage = () => {
         </button>
       </div>
 
-      {/* Información General */}
-      <div className="associate-info-card">
-        <div className="info-section">
-          <h2>📋 Información General</h2>
-          <div className="info-grid">
-            <div className="info-item">
-              <span className="label">ID:</span>
-              <span className="value">#{associate.id}</span>
+      {/* Estado de Crédito - SIEMPRE VISIBLE (Hero Section) */}
+      <div className="credit-hero-card">
+        <div className="credit-stats">
+          <div className="credit-stat">
+            <div className="stat-label">Límite de Crédito</div>
+            <div className="stat-value">
+              ${creditLimit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </div>
-            <div className="info-item">
-              <span className="label">Usuario:</span>
-              <span className="value">{associate.username || 'N/A'}</span>
+          </div>
+
+          <div className="credit-stat">
+            <div className="stat-label">Pagos Pendientes</div>
+            <div className="stat-value stat-warning">
+              ${pendingPaymentsTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </div>
-            <div className="info-item">
-              <span className="label">Nombre:</span>
-              <span className="value">{associate.full_name || `${associate.first_name || ''} ${associate.last_name || ''}`.trim() || 'N/A'}</span>
+            <div className="stat-hint">Por cobrar a clientes</div>
+          </div>
+
+          <div className="credit-stat">
+            <div className="stat-label">Crédito Disponible</div>
+            <div className="stat-value stat-success">
+              ${availableCredit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </div>
-            <div className="info-item">
-              <span className="label">Email:</span>
-              <span className="value">{associate.email || 'N/A'}</span>
+          </div>
+
+          <div className="credit-stat">
+            <div className="stat-label">Deuda Consolidada</div>
+            <div className="stat-value stat-danger">
+              ${consolidatedDebt.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </div>
-            <div className="info-item">
-              <span className="label">Teléfono:</span>
-              <span className="value">{associate.phone_number || 'N/A'}</span>
-            </div>
-            <div className="info-item">
-              <span className="label">Nivel:</span>
-              <span className="value badge badge-info">
-                Nivel {associate.level_id || 'N/A'}
-              </span>
-            </div>
-            <div className="info-item">
-              <span className="label">Estado:</span>
-              <span className={`value badge ${associate.active ? 'badge-success' : 'badge-danger'}`}>
-                {associate.active ? '✓ Activo' : '✗ Inactivo'}
-              </span>
-            </div>
-            <div className="info-item">
-              <span className="label">Comisión:</span>
-              <span className="value">{associate.default_commission_rate}%</span>
-            </div>
+            <div className="stat-hint">Statements + Convenios</div>
+            {consolidatedDebt > 0 && (
+              <button
+                onClick={() => setShowAbonoModal(true)}
+                className="btn-abono-inline"
+              >
+                💰 Abonar
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Estado de Crédito */}
-        <div className="credit-section">
-          <h2>💳 Estado de Crédito</h2>
-
-          <div className="credit-stats">
-            <div className="credit-stat">
-              <div className="stat-label">Límite de Crédito</div>
-              <div className="stat-value">
-                ${creditLimit.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-
-            <div className="credit-stat">
-              <div className="stat-label">Crédito Usado</div>
-              <div className="stat-value stat-warning">
-                ${creditUsed.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-
-            <div className="credit-stat">
-              <div className="stat-label">Crédito Disponible</div>
-              <div className="stat-value stat-success">
-                ${creditAvailable.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
-
-            <div className="credit-stat">
-              <div className="stat-label">Deuda Total</div>
-              <div className="stat-value stat-danger">
-                ${debtBalance.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </div>
-            </div>
+        {/* Barra de progreso */}
+        <div className="credit-progress-container">
+          <div className="credit-progress-bar">
+            <div
+              className="credit-progress-fill"
+              style={{
+                width: `${Math.min(creditUsagePercent, 100)}%`,
+                backgroundColor: creditUsagePercent > 90 ? '#ef4444' : creditUsagePercent > 70 ? '#f59e0b' : '#10b981'
+              }}
+            />
           </div>
-
-          {/* Métricas adicionales */}
-          <div className="metrics-grid">
-            <div className="metric-item">
-              <span className="metric-label">Períodos con crédito completo:</span>
-              <span className="metric-value">{associate.consecutive_full_credit_periods || 0}</span>
-            </div>
-            <div className="metric-item">
-              <span className="metric-label">Pagos puntuales consecutivos:</span>
-              <span className="metric-value">{associate.consecutive_on_time_payments || 0}</span>
-            </div>
-            <div className="metric-item">
-              <span className="metric-label">Clientes en acuerdo:</span>
-              <span className="metric-value">{associate.clients_in_agreement || 0}</span>
-            </div>
-          </div>
-
-          {/* Barra de progreso de crédito */}
-          <div className="credit-progress-container">
-            <div className="credit-progress-bar">
-              <div
-                className="credit-progress-fill"
-                style={{
-                  width: `${Math.min(creditUsagePercent, 100)}%`,
-                  backgroundColor: creditUsagePercent > 90 ? '#dc3545' : creditUsagePercent > 70 ? '#ffc107' : '#28a745'
-                }}
-              />
-            </div>
-            <div className="credit-progress-label">
-              {creditUsagePercent.toFixed(1)}% del crédito utilizado
-            </div>
+          <div className="credit-progress-label">
+            {creditUsagePercent.toFixed(1)}% del crédito utilizado
           </div>
         </div>
       </div>
 
-      {/* Desglose de Deuda */}
-      <div className="debt-section">
-        <h2>📊 Desglose de Deuda (FIFO)</h2>
-        {associateId ? (
-          <DesgloseDeuda associateId={associateId} />
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECCIONES COLAPSABLES (Lazy Loading)
+          ═══════════════════════════════════════════════════════════════════ */}
+
+      {/* Información del Asociado */}
+      <CollapsibleSection
+        title="Información del Asociado"
+        icon="📋"
+        subtitle="Datos personales, contacto y métricas"
+        badge={`Nivel ${associate.level_id || '?'}`}
+        badgeColor="info"
+      >
+        <div className="info-grid">
+          <div className="info-item">
+            <span className="label">Email</span>
+            <span className="value">{associate.email || 'N/A'}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Teléfono</span>
+            <span className="value">{associate.phone_number || 'N/A'}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Nivel</span>
+            <span className="value badge badge-info">Nivel {associate.level_id || 'N/A'}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Períodos con crédito completo</span>
+            <span className="value">{associate.consecutive_full_credit_periods || 0}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Pagos puntuales consecutivos</span>
+            <span className="value">{associate.consecutive_on_time_payments || 0}</span>
+          </div>
+          <div className="info-item">
+            <span className="label">Clientes en acuerdo</span>
+            <span className="value">{associate.clients_in_agreement || 0}</span>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Préstamos del Asociado */}
+      <CollapsibleSection
+        title="Préstamos del Asociado"
+        icon="📋"
+        subtitle="Préstamos gestionados por este asociado • Click para expandir"
+        badge={loansCount}
+        badgeColor={loansCount > 0 ? 'primary' : 'info'}
+      >
+        {associate.user_id ? (
+          <PrestamosAsociado associateUserId={associate.user_id} key={`prestamos-${refreshKey}`} />
         ) : (
-          <div className="alert alert-info">
-            No se puede cargar el desglose de deuda sin un ID de asociado válido.
+          <div className="alert alert-warning">
+            No se puede cargar préstamos sin ID de usuario del asociado.
           </div>
         )}
-      </div>
+      </CollapsibleSection>
+
+      {/* Clientes del Asociado */}
+      <CollapsibleSection
+        title="Clientes del Asociado"
+        icon="👥"
+        subtitle="Personas que han solicitado préstamos a través de este asociado"
+        badge={clientsCount}
+        badgeColor={clientsCount > 0 ? 'success' : 'info'}
+      >
+        {associateId ? (
+          <ClientesAsociado associateId={parseInt(associateId)} key={`clientes-${refreshKey}`} />
+        ) : (
+          <div className="alert alert-warning">
+            No se puede cargar clientes sin ID de asociado.
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Deuda del Asociado - Vista Unificada */}
+      <CollapsibleSection
+        title="Deuda del Asociado"
+        icon="💰"
+        subtitle="Deuda consolidada: statements cerrados + convenios activos"
+        badge={consolidatedDebt > 0 ? `$${consolidatedDebt.toLocaleString('es-MX')}` : '✓ Sin deuda'}
+        badgeColor={consolidatedDebt > 0 ? 'danger' : 'success'}
+      >
+        {associateId ? (
+          <DeudaUnificada 
+            associateId={associateId} 
+            consolidatedDebt={consolidatedDebt}
+            onAbonarClick={() => setShowAbonoModal(true)}
+            key={`deuda-${refreshKey}`} 
+          />
+        ) : (
+          <div className="alert alert-info">
+            No se puede cargar la deuda sin un ID de asociado válido.
+          </div>
+        )}
+      </CollapsibleSection>
+
+      {/* Historial de Auditoría */}
+      {associate?.user_id && (
+        <CollapsibleSection
+          title="Historial de Cambios"
+          icon="🔍"
+          subtitle="Quién creó y modificó este registro"
+        >
+          <AuditHistory
+            tableName="users"
+            recordId={associate.user_id}
+            title=""
+          />
+        </CollapsibleSection>
+      )}
+
+      {/* Modal de Abono a Deuda */}
+      <RegistrarAbonoDeudaModal
+        isOpen={showAbonoModal}
+        onClose={() => setShowAbonoModal(false)}
+        associateId={parseInt(associateId)}
+        associateName={associate?.full_name || `${associate?.first_name || ''} ${associate?.last_name || ''}`.trim()}
+        currentDebt={consolidatedDebt}
+        onSuccess={handleAbonoSuccess}
+      />
     </div>
   );
 };

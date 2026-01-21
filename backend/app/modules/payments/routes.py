@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_db
+from app.core.dependencies import require_admin
 from app.modules.payments.application.dtos import (
     RegisterPaymentDTO,
     PaymentResponseDTO,
@@ -29,7 +30,11 @@ from app.modules.payments.application.use_cases import (
 from app.modules.payments.infrastructure.repositories.pg_payment_repository import PgPaymentRepository
 
 
-router = APIRouter(prefix="/payments", tags=["Payments"])
+router = APIRouter(
+    prefix="/payments",
+    tags=["Payments"],
+    dependencies=[Depends(require_admin)]  # 🔒 Solo admins
+)
 
 
 # =============================================================================

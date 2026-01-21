@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { loansService } from '@/shared/api/services';
 import TablaAmortizacion from '../components/simulator/TablaAmortizacion';
+import LoanSummaryDisplay from '../components/LoanSummaryDisplay';
 import './LoanDetailPage.css';
 
 /**
@@ -24,6 +25,13 @@ export default function LoanDetailPage() {
   const [amortization, setAmortization] = useState(null);
   const [amortizationLoading, setAmortizationLoading] = useState(false);
   const [isSimulation, setIsSimulation] = useState(false);
+
+  // Estado para modal de eliminación con doble confirmación
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    step: 1, // 1 = primera confirmación, 2 = segunda confirmación
+    deleting: false
+  });
 
   useEffect(() => {
     if (id) {
@@ -76,12 +84,13 @@ export default function LoanDetailPage() {
   const getStatusInfo = (status_id) => {
     const statusMap = {
       1: { text: 'Pendiente Aprobación', class: 'badge-warning', icon: '⏳' },
-      2: { text: 'Aprobado', class: 'badge-info', icon: '✅' },
-      3: { text: 'Activo', class: 'badge-success', icon: '💰' },
-      4: { text: 'Liquidado', class: 'badge-success', icon: '✔️' },
-      5: { text: 'En Mora', class: 'badge-danger', icon: '⚠️' },
-      6: { text: 'Rechazado', class: 'badge-danger', icon: '❌' },
-      7: { text: 'Cancelado', class: 'badge-secondary', icon: '🚫' },
+      2: { text: 'Activo', class: 'badge-success', icon: '💰' },
+      4: { text: 'Completado', class: 'badge-info', icon: '✔️' },
+      5: { text: 'Pagado', class: 'badge-success', icon: '✅' },
+      6: { text: 'En Mora', class: 'badge-danger', icon: '⚠️' },
+      7: { text: 'Rechazado', class: 'badge-danger', icon: '❌' },
+      8: { text: 'Cancelado', class: 'badge-secondary', icon: '🚫' },
+      9: { text: 'En Convenio', class: 'badge-info', icon: '📋' },
     };
     return statusMap[status_id] || { text: 'Desconocido', class: 'badge-secondary', icon: '❓' };
   };
@@ -129,9 +138,86 @@ export default function LoanDetailPage() {
     const totalCommission = parseFloat(loan.total_commission);
     if (!isNaN(totalCommission)) return totalCommission;
 
-    const commissionPerPayment = parseFloat(loan.commission_per_payment);
+    // Calcular comisión por pago: monto × commission_rate%
+    const amount = parseFloat(loan.amount);
+    const commissionRate = parseFloat(loan.commission_rate);
     const termBiweeks = parseInt(loan.term_biweeks);
-    return (!isNaN(commissionPerPayment) && !isNaN(termBiweeks)) ? (commissionPerPayment * termBiweeks) : 0;
+
+    if (!isNaN(amount) && !isNaN(commissionRate) && !isNaN(termBiweeks)) {
+      const commissionPerPayment = (amount * commissionRate) / 100;
+      return commissionPerPayment * termBiweeks;
+    }
+
+    return 0;
+  };
+
+  const calculateAssociatePayment = () => {
+    if (!loan) return 0;
+    const associatePayment = parseFloat(loan.associate_payment);
+    if (!isNaN(associatePayment)) return associatePayment;
+
+    // Pago asociado = pago cliente - comisión
+    const biweeklyPayment = parseFloat(loan.payment_amount || loan.biweekly_payment);
+    const amount = parseFloat(loan.amount);
+    const commissionRate = parseFloat(loan.commission_rate);
+
+    if (!isNaN(biweeklyPayment) && !isNaN(amount) && !isNaN(commissionRate)) {
+      const commissionPerPayment = (amount * commissionRate) / 100;
+      return biweeklyPayment - commissionPerPayment;
+    }
+
+    return 0;
+  };
+
+  const calculateAssociateTotal = () => {
+    if (!loan) return 0;
+    const associateTotal = parseFloat(loan.associate_total);
+    if (!isNaN(associateTotal)) return associateTotal;
+
+    // Total asociado = pago asociado × plazo
+    const associatePayment = calculateAssociatePayment();
+    const termBiweeks = parseInt(loan.term_biweeks);
+
+    if (!isNaN(associatePayment) && !isNaN(termBiweeks)) {
+      return associatePayment * termBiweeks;
+    }
+
+    return 0;
+  };
+
+  // ============ FUNCIONES DE ELIMINACIÓN ============
+  const canDeleteLoan = () => {
+    // No permitir eliminar préstamos PAID_OFF (4), DEFAULTED (5), CANCELLED (7)
+    if (!loan) return false;
+    const forbiddenStates = [4, 5, 7];
+    return !forbiddenStates.includes(loan.status_id);
+  };
+
+  const handleDeleteClick = () => {
+    setDeleteModal({ isOpen: true, step: 1, deleting: false });
+  };
+
+  const handleDeleteFirstConfirm = () => {
+    setDeleteModal(prev => ({ ...prev, step: 2 }));
+  };
+
+  const handleDeleteFinalConfirm = async () => {
+    setDeleteModal(prev => ({ ...prev, deleting: true }));
+
+    try {
+      await loansService.forceDelete(id);
+      navigate('/prestamos', {
+        state: { message: `Préstamo #${id} eliminado exitosamente` }
+      });
+    } catch (err) {
+      console.error('Error deleting loan:', err);
+      alert(err.response?.data?.detail || 'Error al eliminar el préstamo');
+      setDeleteModal({ isOpen: false, step: 1, deleting: false });
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({ isOpen: false, step: 1, deleting: false });
   };
 
   // ============ RENDER ============
@@ -203,7 +289,7 @@ export default function LoanDetailPage() {
           </div>
         </div>
         <div className="header-actions">
-          {loan.status_id === 3 && (
+          {loan.status_id === 2 && (
             <button
               className="btn-primary"
               onClick={() => navigate(`/pagos?loan_id=${loan.id}`)}
@@ -211,8 +297,103 @@ export default function LoanDetailPage() {
               📅 Ver Pagos
             </button>
           )}
+          {canDeleteLoan() && (
+            <button
+              className="btn-danger"
+              onClick={handleDeleteClick}
+            >
+              🗑️ Eliminar
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Modal de Eliminación con Doble Confirmación */}
+      {deleteModal.isOpen && (
+        <div className="delete-modal-overlay">
+          <div className="delete-modal">
+            {deleteModal.step === 1 ? (
+              <>
+                <div className="delete-modal-header warning">
+                  <span className="icon">⚠️</span>
+                  <h2>¿Eliminar Préstamo #{loan.id}?</h2>
+                </div>
+                <div className="delete-modal-body">
+                  <p className="warning-text">
+                    Esta acción eliminará permanentemente:
+                  </p>
+                  <ul className="delete-list">
+                    <li>El préstamo por <strong>{formatCurrency(loan.amount)}</strong></li>
+                    <li>Todos los pagos programados ({amortization?.length || loan.term_biweeks} quincenas)</li>
+                    {loan.associate_user_id && loan.status_id >= 2 && (
+                      <li>Se liberará el crédito del asociado</li>
+                    )}
+                  </ul>
+                  <p className="info-text">
+                    Cliente: <strong>{loan.client_name || `Usuario #${loan.user_id}`}</strong>
+                  </p>
+                </div>
+                <div className="delete-modal-actions">
+                  <button
+                    className="btn-cancel"
+                    onClick={handleDeleteCancel}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="btn-warning"
+                    onClick={handleDeleteFirstConfirm}
+                  >
+                    Continuar →
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="delete-modal-header danger">
+                  <span className="icon">🚨</span>
+                  <h2>Confirmación Final</h2>
+                </div>
+                <div className="delete-modal-body">
+                  <p className="danger-text">
+                    <strong>¡ATENCIÓN!</strong> Esta acción es <strong>IRREVERSIBLE</strong>.
+                  </p>
+                  <p className="confirm-text">
+                    ¿Estás completamente seguro de eliminar el Préstamo #{loan.id}?
+                  </p>
+                  <div className="final-warning">
+                    <span className="icon">⛔</span>
+                    <span>No podrás recuperar esta información</span>
+                  </div>
+                </div>
+                <div className="delete-modal-actions">
+                  <button
+                    className="btn-cancel"
+                    onClick={handleDeleteCancel}
+                    disabled={deleteModal.deleting}
+                  >
+                    ← Volver
+                  </button>
+                  <button
+                    className="btn-danger-confirm"
+                    onClick={handleDeleteFinalConfirm}
+                    disabled={deleteModal.deleting}
+                  >
+                    {deleteModal.deleting ? (
+                      <>
+                        <span className="spinner"></span>
+                        Eliminando...
+                      </>
+                    ) : (
+                      '🗑️ Sí, Eliminar Definitivamente'
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="loan-detail-container">
         {/* Sección: Información General */}
@@ -237,6 +418,9 @@ export default function LoanDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Sección: Resumen del Préstamo (Componente nuevo) */}
+        <LoanSummaryDisplay loan={loan} />
 
         {/* Sección: Cliente y Asociado */}
         <div className="detail-section">

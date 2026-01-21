@@ -1,0 +1,79 @@
+================================================================================
+RESUMEN DE CORRECCIÓN: TABLA LEGACY - MIGRACIÓN 020
+================================================================================
+Fecha: 2025-11-18
+Fuente de verdad: TABLA PRESTAMOS CREDICUENTA - CALCULO VALES.pdf
+
+ACCIONES A REALIZAR:
+================================================================================
+
+✅ 1. CREAR RESPALDO
+   - Tabla: legacy_payment_table_backup_before_pdf_fix
+   - Contiene: Todos los datos actuales antes de modificar
+
+❌ 2. CORREGIR 23 MONTOS (Pagos de Asociado Incorrectos)
+   Monto      | DB Actual | PDF Correcto | Diferencia
+   -----------|-----------|--------------|------------
+   $8,000     | $886      | $878         | -$8
+   $9,000     | $996      | $987         | -$9
+   $10,000    | $1,105    | $1,095       | -$10
+   $11,000    | $1,220    | $1,215       | -$5
+   $12,000    | $1,330    | $1,324       | -$6
+   $13,000    | $1,440    | $1,432       | -$8
+   $14,000    | $1,550    | $1,541       | -$9
+   $15,000    | $1,660    | $1,648       | -$12
+   $16,000    | $1,770    | $1,756       | -$14
+   $17,000    | $1,880    | $1,865       | -$15
+   $18,000    | $1,990    | $1,974       | -$16
+   $19,000    | $2,100    | $2,082       | -$18
+   $20,000    | $2,210    | $2,190       | -$20
+   $21,000    | $2,320    | $2,310       | -$10
+   $22,000    | $2,430    | $2,419       | -$11
+   $23,000    | $2,540    | $2,527       | -$13
+   $24,000    | $2,650    | $2,636       | -$14
+   $25,000    | $2,760    | $2,743       | -$17
+   $26,000    | $2,870    | $2,851       | -$19
+   $27,000    | $2,980    | $2,960       | -$20
+   $28,000    | $3,090    | $3,069       | -$21
+   $29,000    | $3,200    | $3,177       | -$23
+   $30,000    | $3,310    | $3,285       | -$25
+
+✅ 3. MANTENER 5 MONTOS SIN CAMBIOS (Ya están correctos)
+   - $3,000, $4,000, $5,000, $6,000, $7,000
+
+🗑️ 4. ELIMINAR 1 MONTO (No aparece en PDF oficial)
+   - $7,500 (NO existe en el PDF, será eliminado completamente)
+
+♻️ 5. REGENERAR TABLA DE REFERENCIA
+   - Eliminar registros legacy de rate_profile_reference_table
+   - Insertar nuevamente desde legacy_payment_table con valores corregidos
+
+RESULTADO FINAL:
+================================================================================
+- Total de registros: 28 (exactamente como el PDF)
+- Registros corregidos: 23
+- Registros sin cambios: 5
+- Registros eliminados: 1
+
+IMPACTO:
+================================================================================
+✅ Afecta:
+   - Nuevas simulaciones con perfil legacy
+   - Nuevos préstamos con perfil legacy
+   - Tabla rate_profile_reference_table
+
+❌ NO Afecta:
+   - Préstamos ya existentes (tienen valores guardados)
+   - Otros perfiles (standard, premium, etc.)
+   - Estados de cuenta históricos
+
+ARCHIVO DE MIGRACIÓN:
+================================================================================
+/db/v2.0/modules/migration_020_fix_legacy_associate_payments_from_pdf.sql
+
+PARA APLICAR:
+================================================================================
+docker compose exec postgres psql -U credinet_user -d credinet_db \
+  -f /docker-entrypoint-initdb.d/modules/migration_020_fix_legacy_associate_payments_from_pdf.sql
+
+================================================================================

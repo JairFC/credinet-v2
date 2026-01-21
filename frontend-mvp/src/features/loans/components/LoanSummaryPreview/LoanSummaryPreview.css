@@ -1,0 +1,543 @@
+/**
+ * LoanSummaryPreview - Estilos CSS
+ * 
+ * Diseño profesional con:
+ * - Prefijo único "lsp-" para evitar conflictos
+ * - Soporte completo para dark/light mode
+ * - Animaciones sutiles
+ * - Layout responsivo
+ */
+
+/* ============================================
+   CONTAINER PRINCIPAL
+   ============================================ */
+.loan-summary-preview {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.lsp-header {
+  padding: 24px 28px;
+  background: linear-gradient(135deg, 
+    rgba(139, 38, 53, 0.08) 0%, 
+    rgba(139, 38, 53, 0.03) 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: center;
+}
+
+.lsp-header-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  background: linear-gradient(135deg, #8B2635 0%, #a83246 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(139, 38, 53, 0.3);
+}
+
+.lsp-header-icon svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+}
+
+.lsp-header-title {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.lsp-header-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+/* ============================================
+   PROGRESS BAR DECORATIVO
+   ============================================ */
+.lsp-progress-bar {
+  height: 3px;
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.lsp-progress-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, 
+    #8B2635 0%, 
+    #3498db 50%, 
+    #27ae60 100%);
+  animation: lsp-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes lsp-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ============================================
+   GRID DE CARDS
+   ============================================ */
+.lsp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+
+/* ============================================
+   CARDS BASE
+   ============================================ */
+.lsp-card {
+  padding: 24px;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  transition: background 0.2s ease;
+}
+
+.lsp-card:last-child {
+  border-right: none;
+}
+
+.lsp-card:hover {
+  background: var(--surface-elevated);
+}
+
+/* Card Headers */
+.lsp-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border-subtle);
+}
+
+.lsp-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.lsp-card-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.lsp-card-icon--info {
+  background: rgba(52, 152, 219, 0.12);
+  color: #3498db;
+}
+
+.lsp-card-icon--client {
+  background: rgba(139, 38, 53, 0.12);
+  color: #8B2635;
+}
+
+.lsp-card-icon--associate {
+  background: rgba(39, 174, 96, 0.12);
+  color: #27ae60;
+}
+
+.lsp-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+/* Card Body */
+.lsp-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ============================================
+   CARD VARIANTS - Bordes superiores de color
+   ============================================ */
+.lsp-card--info {
+  position: relative;
+}
+
+.lsp-card--info::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3498db, #2980b9);
+}
+
+.lsp-card--client {
+  position: relative;
+}
+
+.lsp-card--client::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #8B2635, #a83246);
+}
+
+.lsp-card--associate {
+  position: relative;
+}
+
+.lsp-card--associate::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+}
+
+/* ============================================
+   ROWS (Filas de datos)
+   ============================================ */
+.lsp-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  gap: 12px;
+}
+
+.lsp-row-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.lsp-row-value {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+}
+
+.lsp-row-value--lg {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lsp-row-value--muted {
+  color: var(--text-tertiary);
+}
+
+.lsp-row-meta {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.lsp-row--highlight {
+  background: var(--surface-elevated);
+  padding: 10px 12px;
+  margin: 0 -12px;
+  border-radius: 8px;
+}
+
+/* ============================================
+   DIVIDER
+   ============================================ */
+.lsp-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 8px 0;
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+.lsp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lsp-badge--profile {
+  background: rgba(139, 38, 53, 0.1);
+  color: #8B2635;
+  border: 1px solid rgba(139, 38, 53, 0.2);
+}
+
+.lsp-badge--custom {
+  background: rgba(155, 89, 182, 0.1);
+  color: #9b59b6;
+  border: 1px solid rgba(155, 89, 182, 0.2);
+}
+
+/* ============================================
+   TAGS (Para tasas e información destacada)
+   ============================================ */
+.lsp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.lsp-tag small {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: none;
+  opacity: 0.85;
+}
+
+.lsp-tag--warning {
+  background: linear-gradient(135deg, rgba(243, 156, 18, 0.15) 0%, rgba(230, 126, 34, 0.1) 100%);
+  color: #d35400;
+  border: 1px solid rgba(243, 156, 18, 0.3);
+}
+
+.lsp-tag--info {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.15) 0%, rgba(41, 128, 185, 0.1) 100%);
+  color: #2980b9;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+/* ============================================
+   FEATURED (Valores destacados grandes)
+   ============================================ */
+.lsp-featured {
+  background: var(--surface-elevated);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 8px;
+  text-align: center;
+  border: 1px solid var(--border-subtle);
+}
+
+.lsp-featured-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lsp-featured-value {
+  display: block;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.lsp-featured-value--client {
+  background: linear-gradient(135deg, #8B2635 0%, #a83246 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.lsp-featured-value--associate {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================
+   EARNINGS BOX (Ganancia del asociado)
+   ============================================ */
+.lsp-earnings {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.lsp-earnings-content {
+  background: linear-gradient(135deg, 
+    rgba(39, 174, 96, 0.12) 0%, 
+    rgba(46, 204, 113, 0.08) 100%);
+  border: 1px solid rgba(39, 174, 96, 0.25);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.lsp-earnings-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #27ae60;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.lsp-earnings-label svg {
+  color: #27ae60;
+}
+
+.lsp-earnings-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #27ae60;
+  text-shadow: 0 2px 4px rgba(39, 174, 96, 0.15);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 1024px) {
+  .lsp-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .lsp-card {
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  
+  .lsp-card:last-child {
+    border-bottom: none;
+  }
+  
+  /* En móvil, añadir borde izquierdo de color en lugar de superior */
+  .lsp-card--info::before,
+  .lsp-card--client::before,
+  .lsp-card--associate::before {
+    top: 0;
+    left: 0;
+    right: auto;
+    bottom: 0;
+    width: 4px;
+    height: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .lsp-header {
+    padding: 20px;
+  }
+  
+  .lsp-card {
+    padding: 20px 16px;
+  }
+  
+  .lsp-featured-value {
+    font-size: 24px;
+  }
+  
+  .lsp-earnings-value {
+    font-size: 20px;
+  }
+  
+  .lsp-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .lsp-row-value {
+    text-align: left;
+  }
+  
+  .lsp-tag {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* ============================================
+   DARK MODE ADJUSTMENTS
+   ============================================ */
+[data-theme="dark"] .lsp-header {
+  background: linear-gradient(135deg, 
+    rgba(139, 38, 53, 0.15) 0%, 
+    rgba(139, 38, 53, 0.05) 100%);
+}
+
+[data-theme="dark"] .lsp-tag--warning {
+  background: linear-gradient(135deg, rgba(243, 156, 18, 0.2) 0%, rgba(230, 126, 34, 0.15) 100%);
+  color: #f39c12;
+  border-color: rgba(243, 156, 18, 0.4);
+}
+
+[data-theme="dark"] .lsp-tag--info {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.2) 0%, rgba(41, 128, 185, 0.15) 100%);
+  color: #3498db;
+  border-color: rgba(52, 152, 219, 0.4);
+}
+
+[data-theme="dark"] .lsp-earnings-content {
+  background: linear-gradient(135deg, 
+    rgba(39, 174, 96, 0.18) 0%, 
+    rgba(46, 204, 113, 0.12) 100%);
+  border-color: rgba(39, 174, 96, 0.35);
+}
+
+[data-theme="dark"] .lsp-earnings-label,
+[data-theme="dark"] .lsp-earnings-value,
+[data-theme="dark"] .lsp-earnings-label svg {
+  color: #2ecc71;
+}
+
+[data-theme="dark"] .lsp-badge--profile {
+  background: rgba(139, 38, 53, 0.2);
+  color: #e74c3c;
+  border-color: rgba(139, 38, 53, 0.35);
+}
+
+[data-theme="dark"] .lsp-badge--custom {
+  background: rgba(155, 89, 182, 0.2);
+  color: #bb8fce;
+  border-color: rgba(155, 89, 182, 0.35);
+}
+
+/* Fix para gradientes en dark mode */
+[data-theme="dark"] .lsp-featured-value--client {
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+[data-theme="dark"] .lsp-featured-value--associate {
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

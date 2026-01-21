@@ -15,6 +15,7 @@ def _map_model_to_entity(model: CutPeriodModel) -> CutPeriod:
     return CutPeriod(
         id=model.id,
         cut_number=model.cut_number,
+        cut_code=model.cut_code,  # Usar el código de la BD directamente
         period_start_date=model.period_start_date,
         period_end_date=model.period_end_date,
         status_id=model.status_id,

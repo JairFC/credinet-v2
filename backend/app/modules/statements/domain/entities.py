@@ -23,7 +23,8 @@ class Statement:
     # Statistics
     total_payments_count: int
     total_amount_collected: Decimal
-    total_commission_owed: Decimal
+    total_to_credicuenta: Decimal
+    commission_earned: Decimal
     commission_rate_applied: Decimal
     
     # Status
@@ -52,7 +53,7 @@ class Statement:
     @property
     def is_paid(self) -> bool:
         """Check if statement is fully paid."""
-        return self.paid_date is not None and self.paid_amount == self.total_commission_owed
+        return self.paid_date is not None and self.paid_amount == self.total_to_credicuenta
     
     @property
     def is_overdue(self) -> bool:
@@ -72,4 +73,4 @@ class Statement:
     def remaining_amount(self) -> Decimal:
         """Calculate remaining amount to pay."""
         paid = self.paid_amount or Decimal("0.00")
-        return self.total_commission_owed + self.late_fee_amount - paid
+        return self.total_to_credicuenta + self.late_fee_amount - paid

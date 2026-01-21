@@ -182,6 +182,9 @@ class LoanResponseDTO(BaseModel):
     commission_per_payment: Optional[Decimal] = Field(None, description="Comisión por pago quincenal")
     associate_payment: Optional[Decimal] = Field(None, description="Pago quincenal al asociado (hacia CrediCuenta)")
     
+    # ⭐ Información de renovación (si aplica)
+    renewal_info: Optional[dict] = Field(None, description="Información de renovación si este préstamo reemplaza otro")
+    
     model_config = ConfigDict(from_attributes=True)
 
 

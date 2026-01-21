@@ -76,6 +76,42 @@ docker exec -i credinet_db psql -U credinet_user -d credinet_db < db/migrations/
 
 ---
 
+### 📅 Automatización de Cortes
+
+#### `auto_cut_docker.sh` ⭐ NUEVO
+**Propósito**: Script de corte automático de períodos quincenales  
+**Uso**: 
+```bash
+./scripts/auto_cut_docker.sh              # Ejecuta corte (si es día 8 o 23)
+./scripts/auto_cut_docker.sh --check      # Solo verifica estado
+./scripts/auto_cut_docker.sh --recover    # Recupera cortes atrasados
+./scripts/auto_cut_docker.sh --dry-run    # Simula sin cambios
+./scripts/auto_cut_docker.sh --force      # Fuerza ejecución
+```
+**Qué hace**:
+- Verifica si es día de corte (8 o 23 del mes)
+- Cambia período de PENDING → CUTOFF
+- Genera statements en estado DRAFT para cada asociado
+- Recupera cortes que no se ejecutaron (--recover)
+
+**Configuración CRON para producción**:
+```bash
+# Ejecutar a las 00:00 todos los días (script verifica si es día de corte)
+0 0 * * * cd /home/credicuenta/proyectos/credinet-v2 && ./scripts/auto_cut_docker.sh >> logs/auto_cut.log 2>&1
+```
+
+#### `auto_cut_scheduler.py`
+**Propósito**: Versión Python del script de corte (alternativa)  
+**Uso**: 
+```bash
+# Requiere variables de entorno: DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
+python scripts/auto_cut_scheduler.py --check
+python scripts/auto_cut_scheduler.py --recover
+```
+**Nota**: Usar `auto_cut_docker.sh` si el proyecto corre en Docker.
+
+---
+
 ## 🆕 Scripts Recomendados para Crear
 
 ### `validate_system.sh` (TODO)

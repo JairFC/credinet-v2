@@ -49,7 +49,7 @@ class ListStatementsUseCase:
         offset: int = 0
     ) -> List[Statement]:
         """List statements by status."""
-        valid_statuses = ['GENERATED', 'SENT', 'PAID', 'PARTIAL_PAID', 'OVERDUE', 'CANCELLED']
+        valid_statuses = ['DRAFT', 'COLLECTING', 'PAID', 'PARTIAL', 'OVERDUE', 'ABSORBED']
         
         if status_name not in valid_statuses:
             raise ValueError(

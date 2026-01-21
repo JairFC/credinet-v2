@@ -62,3 +62,6 @@ frontend/.vite/
 db/deprecated/backups/*.sql
 !db/deprecated/backups/.gitkeep
 archive_legacy/
+backups/*.tar.gz
+backups/*.tar.gz
+frontend-mvp/.vite/

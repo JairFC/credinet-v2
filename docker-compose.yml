@@ -1,5 +1,3 @@
-version: '3.8'
-
 # =============================================================================
 # CREDINET v2.0 - Docker Compose Configuration
 # =============================================================================
@@ -141,8 +139,10 @@ services:
 volumes:
   postgres_data:
     name: credinet-postgres-data
+    external: true
   backend_uploads:
     name: credinet-backend-uploads
+    external: true
 
 # =============================================================================
 # NETWORKS

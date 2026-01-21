@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_async_db
+from app.core.dependencies import require_admin
 from app.modules.clients.application.dtos import (
     ClientResponseDTO,
     ClientListItemDTO,
@@ -28,7 +29,11 @@ from app.modules.guarantors.infrastructure.models.guarantor_model import Guarant
 from app.modules.beneficiaries.infrastructure.models.beneficiary_model import BeneficiaryModel
 
 
-router = APIRouter(prefix="/clients", tags=["Clients"])
+router = APIRouter(
+    prefix="/clients",
+    tags=["Clients"],
+    dependencies=[Depends(require_admin)]  # 🔒 Solo admins
+)
 
 
 def get_client_repository(db: AsyncSession = Depends(get_async_db)) -> PgClientRepository:
@@ -141,7 +146,7 @@ async def search_eligible_clients(
                 # Contar préstamos activos
                 func.count(
                     case(
-                        (LoanModel.status_id.in_([2, 3, 4]), LoanModel.id),  # APPROVED, ACTIVE o IN_COLLECTION
+                        (LoanModel.status_id.in_([2, 4]), LoanModel.id),  # ACTIVE o COMPLETED
                         else_=None
                     )
                 ).label('active_loans'),

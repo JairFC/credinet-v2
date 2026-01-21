@@ -1,5 +1,5 @@
 """Modelo SQLAlchemy para cut_periods"""
-from sqlalchemy import Column, Integer, Numeric, Date, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Numeric, Date, DateTime, ForeignKey, String
 from sqlalchemy.sql import func
 
 from app.core.database import Base
@@ -11,6 +11,7 @@ class CutPeriodModel(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     cut_number = Column(Integer, nullable=False)
+    cut_code = Column(String(10), nullable=True)  # Ej: Dec08-2025
     period_start_date = Column(Date, nullable=False)
     period_end_date = Column(Date, nullable=False)
     status_id = Column(Integer, nullable=False)

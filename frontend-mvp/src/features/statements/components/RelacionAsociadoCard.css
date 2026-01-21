@@ -1,0 +1,365 @@
+/**
+ * RelacionAsociadoCard.css - Estilo Futurista
+ * Prefijo: rac- para evitar conflictos
+ */
+
+/* === CARD BASE === */
+.rac-card {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.rac-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.5), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.rac-card:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(59, 130, 246, 0.1);
+  transform: translateY(-2px);
+}
+
+.rac-card:hover::before {
+  opacity: 1;
+}
+
+.rac-card--preview {
+  border: 2px dashed rgba(139, 92, 246, 0.5);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.05));
+}
+
+.rac-card--no-payments {
+  opacity: 0.5;
+}
+
+.rac-card--no-payments:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* === CONTENT ROW === */
+.rac-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: 16px 20px;
+}
+
+/* === LEFT: Avatar + Info === */
+.rac-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 220px;
+}
+
+.rac-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 
+    0 4px 15px rgba(59, 130, 246, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.rac-avatar--inactive {
+  background: linear-gradient(135deg, #475569, #334155);
+  box-shadow: none;
+}
+
+.rac-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rac-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.rac-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.rac-code {
+  font-family: 'SF Mono', 'Menlo', monospace;
+  color: #64748b;
+}
+
+.rac-payments {
+  color: #64748b;
+}
+
+/* === CENTER: Amounts === */
+.rac-amounts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex: 1;
+  justify-content: center;
+}
+
+.rac-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.rac-amount-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.rac-amount-value {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #f1f5f9;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+.rac-amount-value--success {
+  color: #34d399;
+  text-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.rac-amount-value--danger {
+  color: #f87171;
+  text-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+/* === RIGHT: Status + Actions === */
+.rac-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.rac-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid;
+}
+
+.rac-status-icon {
+  font-size: 0.75rem;
+}
+
+/* Status Colors - Futuristic */
+.rac-status--draft {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.rac-status--collecting {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+}
+
+.rac-status--settling {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+}
+
+.rac-status--closed,
+.rac-status--paid {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #a5b4fc;
+}
+
+.rac-status--partial {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.rac-status--overdue {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+.rac-status--absorbed {
+  background: rgba(100, 116, 139, 0.15);
+  border-color: rgba(100, 116, 139, 0.4);
+  color: #94a3b8;
+}
+
+/* === BUTTONS === */
+.rac-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.rac-btn--primary {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(5, 150, 105, 0.2));
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #34d399;
+}
+
+.rac-btn--primary:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.5), rgba(5, 150, 105, 0.3));
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
+  transform: translateY(-2px);
+}
+
+.rac-btn--secondary {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #94a3b8;
+}
+
+.rac-btn--secondary:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #f1f5f9;
+}
+
+/* === PROGRESS === */
+.rac-progress {
+  padding: 0 20px 16px;
+}
+
+.rac-progress-bar {
+  height: 4px;
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rac-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 10px currentColor;
+}
+
+.rac-progress-fill--draft { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.rac-progress-fill--collecting { background: linear-gradient(90deg, #10b981, #34d399); }
+.rac-progress-fill--settling { background: linear-gradient(90deg, #ef4444, #f87171); }
+.rac-progress-fill--closed,
+.rac-progress-fill--paid { background: linear-gradient(90deg, #6366f1, #a5b4fc); }
+.rac-progress-fill--partial { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.rac-progress-fill--overdue { background: linear-gradient(90deg, #ef4444, #f87171); }
+.rac-progress-fill--absorbed { background: linear-gradient(90deg, #64748b, #94a3b8); }
+
+.rac-progress-info {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+/* === EMPTY BADGE === */
+.rac-empty-badge {
+  font-size: 0.8rem;
+  color: #64748b;
+  padding: 8px 16px;
+  background: rgba(100, 116, 139, 0.15);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+  border-radius: 10px;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 1024px) {
+  .rac-content {
+    flex-wrap: wrap;
+  }
+  
+  .rac-left {
+    min-width: auto;
+    flex: 1;
+  }
+  
+  .rac-amounts {
+    order: 3;
+    width: 100%;
+    justify-content: space-around;
+    padding-top: var(--space-3);
+    border-top: 1px solid rgba(148, 163, 184, 0.1);
+  }
+}
+
+@media (max-width: 640px) {
+  .rac-content {
+    padding: 12px 16px;
+  }
+  
+  .rac-avatar {
+    width: 42px;
+    height: 42px;
+    font-size: 0.9rem;
+    border-radius: 12px;
+  }
+  
+  .rac-amount-value {
+    font-size: 0.85rem;
+  }
+  
+  .rac-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+  }
+}

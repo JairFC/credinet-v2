@@ -3,13 +3,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
 import { generateUsername, generatePassword, generateTempEmail, generateCurp } from '../../utils/credentialsGenerator';
 import { getStates } from '../../api/services/zipCodeService';
 import { useFieldValidation } from '../../hooks/useFieldValidation';
@@ -199,39 +192,37 @@ export const PersonalDataSection = ({
 
           <div className="space-y-2">
             <Label htmlFor="gender">Género *</Label>
-            <Select
+            <select
               id="gender"
               value={formData.gender || ''}
-              onValueChange={(value) => onChange({ gender: value })}
+              onChange={(e) => onChange({ gender: e.target.value })}
               required
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
-              <SelectValue placeholder="Seleccionar género" />
-              <SelectContent>
-                <SelectItem value="M">Masculino</SelectItem>
-                <SelectItem value="F">Femenino</SelectItem>
-              </SelectContent>
-            </Select>
+              <option value="">Seleccionar género...</option>
+              <option value="H">Hombre</option>
+              <option value="M">Mujer</option>
+            </select>
           </div>
         </div>
 
         {/* Estado de nacimiento */}
         <div className="space-y-2">
           <Label htmlFor="birth_state">Estado de Nacimiento *</Label>
-          <Select
+          <select
             id="birth_state"
             value={formData.birth_state || ''}
-            onValueChange={(value) => onChange({ birth_state: value })}
+            onChange={(e) => onChange({ birth_state: e.target.value })}
             required
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 max-h-[200px]"
           >
-            <SelectValue placeholder="Seleccionar estado" />
-            <SelectContent className="max-h-[200px]">
-              {states.map((state) => (
-                <SelectItem key={state.code} value={state.code}>
-                  {state.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <option value="">Seleccionar estado...</option>
+            {states.map((state) => (
+              <option key={state.code} value={state.code}>
+                {state.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* CURP generado - SIEMPRE VISIBLE */}
