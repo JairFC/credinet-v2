@@ -64,3 +64,4 @@ db/deprecated/backups/*.sql
 archive_legacy/
 backups/*.tar.gz
 backups/*.tar.gz
+frontend-mvp/.vite/
