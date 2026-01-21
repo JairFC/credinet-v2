@@ -111,10 +111,7 @@ export default function AssociateCreatePage() {
     if (!formData.credit_limit || parseFloat(formData.credit_limit) <= 0) {
       errors.push({ field: 'credit_limit', message: 'La línea de crédito debe ser mayor a 0' });
     }
-    const rate = parseFloat(formData.default_commission_rate);
-    if (isNaN(rate) || rate < 0 || rate > 100) {
-      errors.push({ field: 'default_commission_rate', message: 'Tasa de comisión inválida (0-100%)' });
-    }
+    // La comisión se calcula automáticamente al crear préstamos, no se valida aquí
 
     return errors.length > 0 ? errors : null;
   };

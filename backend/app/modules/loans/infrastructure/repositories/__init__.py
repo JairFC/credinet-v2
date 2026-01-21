@@ -406,13 +406,14 @@ class PostgreSQLLoanRepository(LoanRepository):
         associate_profile_id = profile_row[0]
         
         # Llamar función DB con el associate_profile_id correcto
-        query = select(
-            func.check_associate_available_credit(
-                associate_profile_id,
-                amount
-            )
+        # Usar text() con cast explícito a NUMERIC para evitar error de tipo
+        credit_check_query = text(
+            "SELECT check_associate_available_credit(:profile_id, :amount::numeric)"
         )
-        result = await self.session.execute(query)
+        result = await self.session.execute(
+            credit_check_query,
+            {"profile_id": associate_profile_id, "amount": float(amount)}
+        )
         has_credit = result.scalar()
         
         return bool(has_credit)

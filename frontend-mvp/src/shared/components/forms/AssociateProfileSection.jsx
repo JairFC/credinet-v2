@@ -82,29 +82,7 @@ export const AssociateProfileSection = ({
           )}
         </div>
 
-        {/* Solo Tasa de Comisión - crédito se define automáticamente por nivel */}
-        <div className="space-y-2">
-          <Label htmlFor="default_commission_rate">
-            Tasa de Comisión (%) <span className="text-red-500">*</span>
-          </Label>
-          <div className="relative">
-            <Input
-              id="default_commission_rate"
-              type="number"
-              value={formData.default_commission_rate || '5.00'}
-              onChange={(e) => onChange({ default_commission_rate: e.target.value })}
-              placeholder="5.00"
-              min="0"
-              max="100"
-              step="0.01"
-            />
-            <span className="absolute right-3 top-2 text-gray-500">%</span>
-          </div>
-          <p className="text-xs text-gray-500">
-            Comisión por préstamo otorgado
-          </p>
-        </div>
-
+        {/* Nota informativa - la comisión se calcula automáticamente al crear préstamos */}
         <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-3">
           <p className="text-sm text-blue-800 dark:text-blue-200">
             💡 El nivel determina el límite de crédito disponible. Este límite disminuye conforme se usa.
