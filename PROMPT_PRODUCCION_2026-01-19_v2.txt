@@ -1,0 +1,100 @@
+# Prompt para Servidor de Producción - Credinet v2.0
+# Fecha: 2026-01-19
+# Servidor: 10.5.26.141 (ZeroTier)
+
+## CONTEXTO
+
+Estoy en el servidor de PRODUCCIÓN de Credinet v2.0.
+- IP: 10.5.26.141 (acceso via ZeroTier)
+- El servidor de desarrollo (192.168.98.98) ya tiene todo funcionando y sincronizado con GitHub
+- Necesito actualizar producción con los últimos cambios desde `main`
+
+## CAMBIOS INCLUIDOS EN ESTA ACTUALIZACIÓN
+
+1. **Sistema Multi-Rol Cliente↔Asociado** (endpoints listos, UI pendiente)
+   - `GET /api/v1/associates/check-user/{user_id}`
+   - `POST /api/v1/associates/promote-to-associate/{user_id}`
+   - `POST /api/v1/associates/add-client-role/{user_id}`
+   - `GET /api/v1/associates/user-roles/{user_id}`
+
+2. **Correcciones UI**:
+   - Fix error renovación préstamo (check_associate_available_credit type)
+   - Removido campo comisión del formulario de asociado
+   - Corregido color nombre en detalle de asociado
+   - Mejorados skeleton loaders para tema oscuro
+
+3. **Limpieza Git**:
+   - Removidos archivos .vite del tracking
+   - Actualizado .gitignore
+
+## PASOS PARA ACTUALIZAR PRODUCCIÓN
+
+```bash
+# 1. Conectar al servidor de producción
+ssh credicuenta@10.5.26.141
+
+# 2. Ir al proyecto
+cd /home/credicuenta/proyectos/credinet-v2
+
+# 3. Verificar estado actual
+git status
+git branch
+
+# 4. Actualizar desde GitHub
+git fetch origin
+git checkout main
+git pull origin main
+
+# 5. Verificar que no hay .vite (debería estar vacío)
+ls -la frontend-mvp/.vite/ 2>/dev/null || echo "No hay .vite - correcto"
+
+# 6. Reconstruir y reiniciar servicios
+docker compose down
+docker compose up -d --build
+
+# 7. Verificar servicios
+docker compose ps
+docker compose logs --tail=50 backend
+docker compose logs --tail=50 frontend
+
+# 8. Verificar acceso
+curl http://localhost:8000/api/v1/health
+```
+
+## VERIFICAR CONFIGURACIÓN DE PRODUCCIÓN
+
+Asegurar que estos archivos tengan la IP correcta (10.5.26.141):
+- `docker-compose.yml` - VITE_API_URL
+- `frontend-mvp/vite.config.js` - server.host si aplica
+
+## PRUEBAS POST-DEPLOYMENT
+
+1. ✅ Login funciona
+2. ✅ Dashboard carga
+3. ✅ Lista de asociados carga (loaders mejorados)
+4. ✅ Lista de clientes carga
+5. ✅ Crear asociado sin campo comisión
+6. ✅ Detalle asociado - nombre visible (color blanco)
+7. ✅ Renovar préstamo - sin error de tipo
+
+## NOTAS IMPORTANTES
+
+- El servidor de producción debe estar en rama `main`
+- El servidor de desarrollo está en rama `develop`
+- Ambas ramas están sincronizadas actualmente (commit: a711ae8)
+- Los endpoints de multi-rol están listos pero la UI para usarlos aún no está creada
+
+## TROUBLESHOOTING
+
+Si hay problemas de permisos con .vite:
+```bash
+sudo rm -rf frontend-mvp/.vite
+docker compose restart frontend
+```
+
+Si Docker tiene problemas de red:
+```bash
+docker network prune
+docker compose down -v
+docker compose up -d --build
+```
