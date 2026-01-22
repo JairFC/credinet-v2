@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#C4252D"/>
+      <stop offset="100%" style="stop-color:#8B1A22"/>
+    </linearGradient>
+    <linearGradient id="innerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="100%" style="stop-color:#f1f5f9"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="url(#brandGradient)"/>
+  <!-- Inner circle for depth -->
+  <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+  <!-- Letter C stylized -->
+  <path d="M42 24c-2-4-6-6-10-6-8 0-14 6-14 14s6 14 14 14c4 0 8-2 10-6" 
+        fill="none" 
+        stroke="url(#innerGradient)" 
+        stroke-width="5" 
+        stroke-linecap="round"/>
+  <!-- Decorative line -->
+  <path d="M44 28l4-4" 
+        fill="none" 
+        stroke="url(#innerGradient)" 
+        stroke-width="3" 
+        stroke-linecap="round"/>
+  <path d="M44 40l4 4" 
+        fill="none" 
+        stroke="url(#innerGradient)" 
+        stroke-width="3" 
+        stroke-linecap="round"/>
+</svg>

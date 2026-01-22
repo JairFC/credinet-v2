@@ -109,14 +109,15 @@ export default function ClientsPage() {
   if (loading) {
     return (
       <div className="clients-page">
-        <div className="page-header">
-          <h1>Gestión de Clientes</h1>
-        </div>
-        <div className="loading-container">
-          <div className="skeleton-table">
-            <div className="skeleton-row"></div>
-            <div className="skeleton-row"></div>
-            <div className="skeleton-row"></div>
+        <div className="loading-screen">
+          <div className="loading-content">
+            <div className="loading-spinner">
+              <div className="spinner-ring"></div>
+              <div className="spinner-ring"></div>
+              <div className="spinner-ring"></div>
+            </div>
+            <h2 className="loading-title">Cargando clientes...</h2>
+            <p className="loading-subtitle">Por favor espere</p>
           </div>
         </div>
       </div>
@@ -245,8 +246,9 @@ export default function ClientsPage() {
                     <span className="phone-text">{client.phone_number || '—'}</span>
                   </td>
                   <td className="col-status">
-                    <span className={`status-pill ${client.active ? 'active' : 'inactive'}`}>
-                      {client.active ? '✓ ACTIVO' : '✗ Inactivo'}
+                    <span className={`status-badge ${client.active ? 'status-active' : 'status-inactive'}`}>
+                      <span className="status-dot"></span>
+                      {client.active ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
                   <td className="col-actions">

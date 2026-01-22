@@ -130,14 +130,15 @@ export default function AssociatesManagementPage() {
   if (loading) {
     return (
       <div className="associates-page">
-        <div className="page-header">
-          <h1>Gestión de Asociados</h1>
-        </div>
-        <div className="loading-container">
-          <div className="skeleton-table">
-            <div className="skeleton-row"></div>
-            <div className="skeleton-row"></div>
-            <div className="skeleton-row"></div>
+        <div className="loading-screen">
+          <div className="loading-content">
+            <div className="loading-spinner">
+              <div className="spinner-ring"></div>
+              <div className="spinner-ring"></div>
+              <div className="spinner-ring"></div>
+            </div>
+            <h2 className="loading-title">Cargando asociados...</h2>
+            <p className="loading-subtitle">Por favor espere</p>
           </div>
         </div>
       </div>
