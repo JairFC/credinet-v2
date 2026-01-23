@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from app.core.database import get_db
 from app.modules.auth.routes import get_current_user
+from app.core.notifications import notify
 
 from ..application.dtos import (
     CreateStatementDTO,
@@ -390,15 +391,32 @@ async def register_statement_payment(
     db.commit()
     payment = result.fetchone()
     
-    # Obtener estado actualizado del statement
+    # Obtener estado actualizado del statement con nombre del asociado
     updated_statement = db.execute(text("""
         SELECT 
-            paid_amount,
-            total_to_credicuenta AS total_adeudado,
-            status_id
-        FROM associate_payment_statements
-        WHERE id = :id
+            aps.paid_amount,
+            aps.total_to_credicuenta AS total_adeudado,
+            aps.status_id,
+            aps.statement_number,
+            u.first_name || ' ' || u.last_name AS associate_name
+        FROM associate_payment_statements aps
+        JOIN users u ON u.id = aps.associate_id
+        WHERE aps.id = :id
     """), {"id": statement_id}).fetchone()
+    
+    remaining = max(0, float(updated_statement[1]) - (float(updated_statement[0]) if updated_statement[0] else 0.0))
+    new_status = "PAID" if updated_statement[2] == 3 else "PARTIAL" if updated_statement[2] == 4 else "COLLECTING"
+    
+    # 🔔 Notificación de abono registrado
+    try:
+        import asyncio
+        asyncio.create_task(notify.send(
+            title="Abono a Estado de Cuenta",
+            message=f"• Statement: {updated_statement[3] or f'#{statement_id}'}\n• Asociado: {updated_statement[4]}\n• Monto abono: ${payment_amount:,.2f}\n• Saldo restante: ${remaining:,.2f}\n• Estado: {new_status}",
+            level="info"
+        ))
+    except Exception as e:
+        print(f"⚠️ Error enviando notificación: {e}")
     
     return {
         "success": True,
@@ -407,8 +425,8 @@ async def register_statement_payment(
             "statement_id": statement_id,
             "payment_amount": payment_amount,
             "paid_amount_total": float(updated_statement[0]) if updated_statement[0] else 0.0,
-            "remaining_amount": max(0, float(updated_statement[1]) - (float(updated_statement[0]) if updated_statement[0] else 0.0)),
-            "status": "PAID" if updated_statement[2] == 3 else "PARTIAL" if updated_statement[2] == 4 else "COLLECTING",
+            "remaining_amount": remaining,
+            "status": new_status,
             "registered_at": payment[1].isoformat()
         }
     }

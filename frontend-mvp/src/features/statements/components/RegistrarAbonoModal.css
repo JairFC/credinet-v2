@@ -298,6 +298,18 @@
   padding: 0;
 }
 
+/* Amount Warning */
+.amount-warning {
+  margin: 0.5rem 0 0 0;
+  padding: 0.5rem 0.75rem;
+  background: #FEF3C7;
+  border: 1px solid #F59E0B;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #92400E;
+  font-weight: 500;
+}
+
 .btn-pay-full:hover {
   color: #3730A3;
 }
@@ -447,18 +459,18 @@
    CONFIRMATION OVERLAY
    =========================================== */
 .confirmation-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
-  z-index: 10;
+  z-index: 1100;
   padding: 1.5rem;
+  animation: fadeIn 0.15s ease;
 }
 
 .confirmation-card {
