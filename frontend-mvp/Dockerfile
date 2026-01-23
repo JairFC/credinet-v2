@@ -28,6 +28,11 @@ WORKDIR /app
 ENV VITE_HOST=0.0.0.0
 ENV VITE_PORT=5173
 
+# Build args para Vite (se pasan en build-time)
+ARG VITE_API_URL=http://10.5.26.141:8000
+ARG VITE_APP_NAME=CrediCuenta
+ARG VITE_APP_VERSION=2.0.0
+
 # Copiar archivos de dependencias primero (para aprovechar cache de Docker)
 COPY package.json package-lock.json ./
 
@@ -37,7 +42,11 @@ RUN npm ci --prefer-offline --no-audit --include=dev
 # Copiar el resto de los archivos del proyecto
 COPY . .
 
-# Build para producción (se puede actualizar con rebuild-frontend.sh)
+# Build para producción con variables de entorno
+# IMPORTANTE: Las variables VITE_* deben estar disponibles durante el build
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_APP_NAME=$VITE_APP_NAME
+ENV VITE_APP_VERSION=$VITE_APP_VERSION
 RUN npm run build
 
 # Exponer puerto

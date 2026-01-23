@@ -107,12 +107,16 @@ services:
     build:
       context: ./frontend-mvp
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://10.5.26.141:8000}
+        VITE_APP_NAME: ${VITE_APP_NAME:-CrediCuenta}
+        VITE_APP_VERSION: ${VITE_APP_VERSION:-2.0.0}
     container_name: credinet-frontend
     restart: unless-stopped
     environment:
-      # Vite Configuration (para build)
+      # Vite Configuration (para rebuild manual dentro del contenedor)
       - VITE_API_URL=${VITE_API_URL:-http://10.5.26.141:8000}
-      - VITE_APP_NAME=${VITE_APP_NAME:-CrediNet V2}
+      - VITE_APP_NAME=${VITE_APP_NAME:-CrediCuenta}
       - VITE_APP_VERSION=${VITE_APP_VERSION:-2.0.0}
     volumes:
       # Montar código fuente para poder hacer rebuild sin recrear contenedor
