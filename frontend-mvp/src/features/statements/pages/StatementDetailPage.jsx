@@ -129,7 +129,8 @@ export default function StatementDetailPage() {
   // Cargar abonos cuando tengamos el statement
   useEffect(() => {
     const stmtId = statement?.id || statementId;
-    if (stmtId) {
+    // Solo cargar si tenemos un ID válido (número positivo)
+    if (stmtId && !isNaN(stmtId) && parseInt(stmtId) > 0) {
       loadStatementAbonos(stmtId);
     }
   }, [statement?.id, statementId]);
@@ -179,6 +180,12 @@ export default function StatementDetailPage() {
   };
 
   const loadPayments = async () => {
+    // Verificar que tenemos un ID válido
+    if (!statementId || isNaN(statementId) || parseInt(statementId) <= 0) {
+      setPayments([]);
+      setLoadingPayments(false);
+      return;
+    }
     try {
       setLoadingPayments(true);
       const response = await apiClient.get(`/api/v1/statements/${statementId}/payments`);
