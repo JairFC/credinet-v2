@@ -229,6 +229,19 @@ EOF
         local backup_size=$(du -h "$latest_backup" 2>/dev/null | cut -f1)
         local backup_count=$(ls -1 "$BACKUP_DIR"/backup_*.sql.gz 2>/dev/null | wc -l)
         
+        # ☁️ Subir a Google Drive
+        local gdrive_status="❌ No configurado"
+        if command -v rclone &> /dev/null && rclone listremotes | grep -q "gdrive:"; then
+            log "Sincronizando con Google Drive..."
+            if rclone copy "$latest_backup" gdrive:credinet-backups/ --quiet; then
+                gdrive_status="✅ Sincronizado"
+                log_success "Backup subido a Google Drive"
+            else
+                gdrive_status="⚠️ Error al sincronizar"
+                log_warning "No se pudo subir a Google Drive"
+            fi
+        fi
+        
         log ""
         log_success "═══════════════════════════════════════════════════════════════"
         log_success "  BACKUP COMPLETADO EXITOSAMENTE"
@@ -242,7 +255,7 @@ EOF
         if [ -x "$PROJECT_DIR/scripts/send-notification.sh" ]; then
             "$PROJECT_DIR/scripts/send-notification.sh" \
                 "Backup Completado" \
-                "• Archivo: $(basename $latest_backup)\n• Tamaño: $backup_size\n• Total backups: $backup_count" \
+                "• Archivo: $(basename $latest_backup)\n• Tamaño: $backup_size\n• Total backups: $backup_count\n• Google Drive: $gdrive_status" \
                 "success"
         fi
         
