@@ -541,21 +541,33 @@ class LoanService:
         
         # 🔔 Notificación de préstamo aprobado
         try:
-            # Obtener nombre del asociado para la notificación
+            # Obtener nombres del asociado y cliente para la notificación
             from sqlalchemy import text
             result = await self.session.execute(
-                text("SELECT first_name || ' ' || last_name FROM users WHERE id = :id"),
-                {"id": loan.associate_user_id}
+                text("""
+                    SELECT 
+                        (SELECT first_name || ' ' || last_name FROM users WHERE id = :associate_id) AS associate_name,
+                        (SELECT first_name || ' ' || last_name FROM clients WHERE id = :client_id) AS client_name
+                """),
+                {"associate_id": loan.associate_user_id, "client_id": loan.user_id}
             )
-            associate_name = result.scalar() or f"ID #{loan.associate_user_id}"
+            names = result.fetchone()
+            associate_name = names[0] or f"ID #{loan.associate_user_id}" if names else f"ID #{loan.associate_user_id}"
+            client_name = names[1] or f"ID #{loan.user_id}" if names else f"ID #{loan.user_id}"
+            
+            # Calcular fecha aproximada de finalización
+            from datetime import timedelta
+            end_date = first_payment_date + timedelta(days=(loan.term_biweeks - 1) * 15)
             
             # Construir mensaje de notificación
             msg_parts = [
                 f"• ID: #{loan_id}",
+                f"• Cliente: {client_name}",
                 f"• Asociado: {associate_name}",
                 f"• Monto: ${loan.amount:,.2f}",
                 f"• Plazo: {loan.term_biweeks} quincenas",
-                f"• Pago quincenal: ${loan.biweekly_payment:,.2f}"
+                f"• Pago quincenal: ${loan.biweekly_payment:,.2f}",
+                f"• Fecha finalización: {end_date.strftime('%d/%m/%Y')}"
             ]
             if notes:
                 msg_parts.append(f"• Notas: {notes}")
