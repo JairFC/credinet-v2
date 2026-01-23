@@ -297,6 +297,9 @@ const Navbar = () => {
           </ul>
 
           <div className="navbar-user">
+            <Link to="/notificaciones" className="notification-icon" title="Notificaciones">
+              🔔
+            </Link>
             <div className="user-info">
               <div className="user-avatar">
                 {user?.first_name?.[0]}{user?.last_name?.[0]}
