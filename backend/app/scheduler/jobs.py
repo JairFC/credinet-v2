@@ -19,6 +19,7 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import text
 
 from app.core.database import async_engine
+from app.core.notifications import notify
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +208,15 @@ async def auto_cut_period_job():
             for change in changes:
                 logger.info(f"[{job_id}]    - {change['cut_code']}: {change['action']}")
             
+            # 🔔 Enviar notificación de corte exitoso
+            if changes:
+                changes_text = "\n".join([f"• {c['cut_code']}: {c['action']}" for c in changes])
+                await notify.send(
+                    title="Corte de Período Ejecutado",
+                    message=f"📅 Fecha: {today.isoformat()}\n\n{changes_text}",
+                    level="success"
+                )
+            
             return {
                 "status": "success",
                 "date": today.isoformat(),
@@ -215,6 +225,14 @@ async def auto_cut_period_job():
             
     except Exception as e:
         logger.error(f"[{job_id}] ❌ Error en job de corte: {str(e)}", exc_info=True)
+        
+        # 🔔 Enviar notificación de error
+        await notify.send(
+            title="⚠️ Error en Corte Automático",
+            message=f"El job de corte automático falló:\n\n{str(e)}",
+            level="error"
+        )
+        
         return {"status": "error", "error": str(e)}
 
 
