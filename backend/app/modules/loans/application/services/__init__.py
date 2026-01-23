@@ -541,9 +541,28 @@ class LoanService:
         
         # 🔔 Notificación de préstamo aprobado
         try:
+            # Obtener nombre del asociado para la notificación
+            from sqlalchemy import text
+            result = await self.session.execute(
+                text("SELECT first_name || ' ' || last_name FROM users WHERE id = :id"),
+                {"id": loan.associate_user_id}
+            )
+            associate_name = result.scalar() or f"ID #{loan.associate_user_id}"
+            
+            # Construir mensaje de notificación
+            msg_parts = [
+                f"• ID: #{loan_id}",
+                f"• Asociado: {associate_name}",
+                f"• Monto: ${loan.amount:,.2f}",
+                f"• Plazo: {loan.term_biweeks} quincenas",
+                f"• Pago quincenal: ${loan.biweekly_payment:,.2f}"
+            ]
+            if notes:
+                msg_parts.append(f"• Notas: {notes}")
+            
             await notify.send(
                 title="Préstamo Aprobado",
-                message=f"• ID: #{loan_id}\n• Monto: ${loan.amount:,.2f}\n• Plazo: {loan.term_biweeks} quincenas\n• Pago quincenal: ${loan.biweekly_payment:,.2f}",
+                message="\n".join(msg_parts),
                 level="success"
             )
         except Exception as e:
