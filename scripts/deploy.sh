@@ -353,8 +353,24 @@ rollback() {
             fi
             
             log_success "Rollback completado"
+            
+            # 🔔 Notificar rollback
+            if [ -x "$PROJECT_DIR/scripts/send-notification.sh" ]; then
+                "$PROJECT_DIR/scripts/send-notification.sh" \
+                    "⚠️ Rollback Ejecutado" \
+                    "Se ha revertido a commit: $last_commit\nEl deploy anterior falló." \
+                    "warning"
+            fi
         else
             log_error "Falló el rollback"
+            
+            # 🔔 Notificar fallo crítico
+            if [ -x "$PROJECT_DIR/scripts/send-notification.sh" ]; then
+                "$PROJECT_DIR/scripts/send-notification.sh" \
+                    "❌ ROLLBACK FALLÓ" \
+                    "No se pudo revertir a commit: $last_commit\n¡ATENCIÓN INMEDIATA REQUERIDA!" \
+                    "error"
+            fi
         fi
     else
         log_error "No se encontró información del commit anterior"
@@ -478,6 +494,15 @@ main() {
     if ! verify_health; then
         log_error "Los servicios no están healthy después del deploy"
         log_error "¿Deseas hacer rollback?"
+        
+        # 🔔 Notificar error
+        if [ -x "$PROJECT_DIR/scripts/send-notification.sh" ]; then
+            "$PROJECT_DIR/scripts/send-notification.sh" \
+                "⚠️ Deploy con Problemas" \
+                "Los servicios no están healthy después del deploy.\nSe ofreció rollback al usuario." \
+                "warning"
+        fi
+        
         if confirm "Rollback"; then
             rollback
         fi
@@ -490,6 +515,20 @@ main() {
     log_success "  ✅ DEPLOYMENT EXITOSO"
     log_success "═══════════════════════════════════════════════════════════════"
     echo ""
+    
+    # 🔔 Notificar éxito
+    if [ -x "$PROJECT_DIR/scripts/send-notification.sh" ]; then
+        local services_rebuilt=""
+        [ "$REBUILD_BACKEND" = true ] && services_rebuilt="${services_rebuilt}backend "
+        [ "$REBUILD_FRONTEND" = true ] && services_rebuilt="${services_rebuilt}frontend "
+        [ -z "$services_rebuilt" ] && services_rebuilt="ninguno (solo config)"
+        
+        "$PROJECT_DIR/scripts/send-notification.sh" \
+            "Deploy Exitoso" \
+            "• Branch: $BRANCH\n• Servicios: $services_rebuilt\n• Commit: $(git rev-parse --short HEAD)" \
+            "success"
+    fi
+    
     log_info "Servicios disponibles:"
     log_info "  Frontend: http://10.5.26.141:5173"
     log_info "  Backend:  http://10.5.26.141:8000"

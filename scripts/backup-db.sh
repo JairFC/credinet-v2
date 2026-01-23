@@ -224,6 +224,11 @@ EOF
         # Limpiar backups antiguos
         cleanup_old_backups
         
+        # Obtener info del backup para notificación
+        local latest_backup=$(ls -t "$BACKUP_DIR"/backup_*.sql.gz 2>/dev/null | head -1)
+        local backup_size=$(du -h "$latest_backup" 2>/dev/null | cut -f1)
+        local backup_count=$(ls -1 "$BACKUP_DIR"/backup_*.sql.gz 2>/dev/null | wc -l)
+        
         log ""
         log_success "═══════════════════════════════════════════════════════════════"
         log_success "  BACKUP COMPLETADO EXITOSAMENTE"
@@ -233,6 +238,14 @@ EOF
         # Mostrar stats
         show_backup_stats
         
+        # 🔔 Enviar notificación de éxito
+        if [ -x "$PROJECT_DIR/scripts/send-notification.sh" ]; then
+            "$PROJECT_DIR/scripts/send-notification.sh" \
+                "Backup Completado" \
+                "• Archivo: $(basename $latest_backup)\n• Tamaño: $backup_size\n• Total backups: $backup_count" \
+                "success"
+        fi
+        
         exit 0
     else
         log ""
@@ -240,6 +253,15 @@ EOF
         log_error "  BACKUP FALLÓ"
         log_error "═══════════════════════════════════════════════════════════════"
         log ""
+        
+        # 🔔 Enviar notificación de error
+        if [ -x "$PROJECT_DIR/scripts/send-notification.sh" ]; then
+            "$PROJECT_DIR/scripts/send-notification.sh" \
+                "⚠️ Backup FALLÓ" \
+                "El backup automático de la base de datos ha fallado.\nRevisa los logs: $LOG_FILE" \
+                "error"
+        fi
+        
         exit 1
     fi
 }
