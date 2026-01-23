@@ -89,44 +89,12 @@ send_telegram() {
 send_discord() {
     echo -e "${BLUE}💬 Enviando a Discord...${NC}"
     
-    # Payload JSON para Discord (embed rico)
-    PAYLOAD=$(cat <<EOF
-{
-    "username": "CrediNet Alertas",
-    "avatar_url": "https://cdn-icons-png.flaticon.com/512/2331/2331970.png",
-    "embeds": [{
-        "title": "🔔 Test de Notificaciones",
-        "description": "El sistema de notificaciones de CrediNet v2.0 está funcionando correctamente.",
-        "color": 5763719,
-        "fields": [
-            {
-                "name": "🖥️ Servidor",
-                "value": "\`$HOSTNAME\`",
-                "inline": true
-            },
-            {
-                "name": "📅 Timestamp",
-                "value": "\`$TIMESTAMP\`",
-                "inline": true
-            },
-            {
-                "name": "🎯 Eventos monitoreados",
-                "value": "• Scheduler (cortes de período)\n• Backups automáticos\n• Errores críticos\n• Login/Logout\n• Préstamos aprobados\n• Pagos registrados",
-                "inline": false
-            }
-        ],
-        "footer": {
-            "text": "CrediNet v2.0 • Sistema de Créditos"
-        },
-        "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    }]
-}
-EOF
-)
+    # Mensaje en una sola línea con \n para saltos (formato JSON válido)
+    local CONTENT="🔔 **CrediNet v2.0 - Test de Notificaciones**\n\n✅ El sistema de notificaciones está funcionando correctamente.\n\n📍 **Detalles:**\n• Servidor: \`$HOSTNAME\`\n• Timestamp: \`$TIMESTAMP\`\n\n🎯 **Eventos monitoreados:**\n• Scheduler (cortes de período)\n• Backups automáticos\n• Errores críticos\n• Login/Logout\n• Préstamos aprobados\n• Pagos registrados"
 
     RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$DISCORD_WEBHOOK_URL" \
         -H "Content-Type: application/json" \
-        -d "$PAYLOAD")
+        -d "{\"username\": \"CrediNet Alertas\", \"content\": \"$CONTENT\"}")
     
     if [ "$RESPONSE" = "204" ] || [ "$RESPONSE" = "200" ]; then
         echo -e "${GREEN}   ✅ Enviado exitosamente a Discord${NC}"
