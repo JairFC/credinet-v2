@@ -400,7 +400,7 @@ async def register_statement_payment(
             aps.statement_number,
             u.first_name || ' ' || u.last_name AS associate_name
         FROM associate_payment_statements aps
-        JOIN users u ON u.id = aps.associate_id
+        JOIN users u ON u.id = aps.user_id
         WHERE aps.id = :id
     """), {"id": statement_id}).fetchone()
     
