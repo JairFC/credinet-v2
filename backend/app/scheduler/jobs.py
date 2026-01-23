@@ -313,10 +313,11 @@ def start_scheduler():
         logger.warning("⚠️ Scheduler ya está corriendo")
         return
     
-    # Job de corte automático: días 8 y 23 a las 00:05
+    # Job de corte automático: días 8 y 23 a las 00:05 hora de México
+    # IMPORTANTE: El timezone debe ser explícito en el CronTrigger
     scheduler.add_job(
         auto_cut_period_job,
-        CronTrigger(day="8,23", hour=0, minute=5),
+        CronTrigger(day="8,23", hour=0, minute=5, timezone="America/Mexico_City"),
         id="auto_cut_period",
         name="Corte automático de períodos",
         replace_existing=True
