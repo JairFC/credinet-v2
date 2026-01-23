@@ -36,7 +36,7 @@ HOSTNAME=$(hostname)
 
 echo ""
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║${NC}  🔔  CrediNet v2.0 - Test de Notificaciones                    ${BLUE}║${NC}"
+echo -e "${BLUE}║${NC}  🔔  CrediCuenta - Test de Notificaciones                       ${BLUE}║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${YELLOW}📅 Timestamp:${NC} $TIMESTAMP"
@@ -51,7 +51,7 @@ send_telegram() {
     echo -e "${BLUE}📱 Enviando a Telegram ($chat_name)...${NC}"
     
     # Mensaje formateado en Markdown
-    MESSAGE="🔔 *CrediNet v2.0 - Test de Notificaciones*
+    MESSAGE="🔔 *CrediCuenta - Test de Notificaciones*
 
 ✅ El sistema de notificaciones está funcionando correctamente.
 
@@ -90,11 +90,11 @@ send_discord() {
     echo -e "${BLUE}💬 Enviando a Discord...${NC}"
     
     # Mensaje en una sola línea con \n para saltos (formato JSON válido)
-    local CONTENT="🔔 **CrediNet v2.0 - Test de Notificaciones**\n\n✅ El sistema de notificaciones está funcionando correctamente.\n\n📍 **Detalles:**\n• Servidor: \`$HOSTNAME\`\n• Timestamp: \`$TIMESTAMP\`\n\n🎯 **Eventos monitoreados:**\n• Scheduler (cortes de período)\n• Backups automáticos\n• Errores críticos\n• Login/Logout\n• Préstamos aprobados\n• Pagos registrados"
+    local CONTENT="🔔 **CrediCuenta - Test de Notificaciones**\n\n✅ El sistema de notificaciones está funcionando correctamente.\n\n📍 **Detalles:**\n• Servidor: \`$HOSTNAME\`\n• Timestamp: \`$TIMESTAMP\`\n\n🎯 **Eventos monitoreados:**\n• Scheduler (cortes de período)\n• Backups automáticos\n• Errores críticos\n• Login/Logout\n• Préstamos aprobados\n• Pagos registrados"
 
     RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$DISCORD_WEBHOOK_URL" \
         -H "Content-Type: application/json" \
-        -d "{\"username\": \"CrediNet Alertas\", \"content\": \"$CONTENT\"}")
+        -d "{\"username\": \"CrediCuenta Alertas\", \"content\": \"$CONTENT\"}")
     
     if [ "$RESPONSE" = "204" ] || [ "$RESPONSE" = "200" ]; then
         echo -e "${GREEN}   ✅ Enviado exitosamente a Discord${NC}"

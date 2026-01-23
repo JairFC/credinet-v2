@@ -121,7 +121,7 @@ class NotificationService:
                 response = await client.post(
                     self.discord_webhook,
                     json={
-                        "username": "CrediNet Backend",
+                        "username": "CrediCuenta Backend",
                         "content": content
                     }
                 )
