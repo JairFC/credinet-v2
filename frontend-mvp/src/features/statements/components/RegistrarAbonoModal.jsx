@@ -312,7 +312,6 @@ export default function RegistrarAbonoModal({
                 type="number"
                 step="0.01"
                 min="0.01"
-                max={pendingBalance}
                 value={paymentAmount}
                 onChange={e => setPaymentAmount(e.target.value)}
                 placeholder="0.00"
@@ -320,6 +319,11 @@ export default function RegistrarAbonoModal({
                 required
               />
             </div>
+            {parseFloat(paymentAmount) > pendingBalance && (
+              <p className="amount-warning">
+                ⚠️ El monto máximo permitido es {formatMoney(pendingBalance)}
+              </p>
+            )}
           </div>
 
           {/* Fecha */}

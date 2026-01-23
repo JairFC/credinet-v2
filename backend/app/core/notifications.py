@@ -113,10 +113,8 @@ class NotificationService:
             
         utc_ts, chi_ts = self._get_timestamps()
         
-        # Escapar mensaje para JSON
-        msg_escaped = message.replace("\n", "\\n").replace('"', '\\"')
-        
-        content = f"{emoji} **{title}**\\n\\n{msg_escaped}\\n\\n📍 Servidor: `{self.hostname}`\\n🕐 Chihuahua: `{chi_ts}`\\n🌐 UTC: `{utc_ts}`"
+        # Discord usa newlines normales en content, no hay que escapar
+        content = f"{emoji} **{title}**\n\n{message}\n\n📍 Servidor: `{self.hostname}`\n🕐 Chihuahua: `{chi_ts}`\n🌐 UTC: `{utc_ts}`"
         
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
