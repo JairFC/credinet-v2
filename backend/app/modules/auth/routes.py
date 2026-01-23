@@ -2,12 +2,13 @@
 Authentication Routes - FastAPI endpoints for auth module.
 Handles user authentication, registration, and token management.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_db
 from app.core.security import decode_access_token
+from app.core.notifications import notify
 from app.core.exceptions import (
     AuthenticationError,
     ValidationError,
@@ -104,6 +105,7 @@ async def get_current_user_id(
 )
 async def login(
     request: LoginRequest,
+    http_request: Request,
     auth_service: AuthService = Depends(get_auth_service)
 ):
     """
@@ -119,11 +121,43 @@ async def login(
     **Errors:**
     - 401: Invalid credentials or inactive account
     """
+    # Obtener IP del cliente
+    client_ip = http_request.client.host if http_request.client else "unknown"
+    forwarded_for = http_request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+    ip_address = forwarded_for or client_ip
+    
     try:
         response = await auth_service.login(request)
+        
+        # 🔔 Notificación de login exitoso
+        try:
+            import asyncio
+            asyncio.create_task(notify.send(
+                title="Login Exitoso",
+                message=f"• Usuario: {response.user.username}\n• Nombre: {response.user.full_name}\n• Rol: {', '.join(response.user.roles)}\n• IP: {ip_address}",
+                level="info",
+                to_personal=False,  # Solo al grupo, no personal
+                to_discord=True
+            ))
+        except Exception:
+            pass  # No fallar por notificación
+        
         return response
     
     except AuthenticationError as e:
+        # 🔔 Notificación de login fallido
+        try:
+            import asyncio
+            asyncio.create_task(notify.send(
+                title="Login Fallido",
+                message=f"• Usuario intentado: {request.username}\n• IP: {ip_address}\n• Razón: {str(e)}",
+                level="warning",
+                to_personal=False,
+                to_discord=True
+            ))
+        except Exception:
+            pass
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
@@ -345,7 +379,9 @@ async def change_password(
     description="Logout current user (client-side token removal)."
 )
 async def logout(
-    user_id: int = Depends(get_current_user_id)
+    http_request: Request,
+    user_id: int = Depends(get_current_user_id),
+    auth_service: AuthService = Depends(get_auth_service)
 ):
     """
     **Logout endpoint**
@@ -365,6 +401,29 @@ async def logout(
     **Errors:**
     - 401: Invalid or expired token
     """
+    # 🔔 Notificación de logout
+    try:
+        # Obtener info del usuario
+        user = await auth_service.get_current_user(user_id)
+        username = user.username if user else f"ID #{user_id}"
+        full_name = user.full_name if user else "Desconocido"
+        
+        # IP del cliente
+        client_ip = http_request.client.host if http_request.client else "unknown"
+        forwarded_for = http_request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        ip_address = forwarded_for or client_ip
+        
+        import asyncio
+        asyncio.create_task(notify.send(
+            title="Logout",
+            message=f"• Usuario: {username}\n• Nombre: {full_name}\n• IP: {ip_address}",
+            level="info",
+            to_personal=False,
+            to_discord=True
+        ))
+    except Exception:
+        pass  # No fallar por notificación
+    
     return MessageResponse(
         message=f"User {user_id} logged out successfully. Remove token from client."
     )
