@@ -542,12 +542,13 @@ class LoanService:
         # 🔔 Notificación de préstamo aprobado
         try:
             # Obtener nombres del asociado y cliente para la notificación
+            # Nota: Tanto clientes como asociados están en la tabla 'users'
             from sqlalchemy import text
             result = await self.session.execute(
                 text("""
                     SELECT 
                         (SELECT first_name || ' ' || last_name FROM users WHERE id = :associate_id) AS associate_name,
-                        (SELECT first_name || ' ' || last_name FROM clients WHERE id = :client_id) AS client_name
+                        (SELECT first_name || ' ' || last_name FROM users WHERE id = :client_id) AS client_name
                 """),
                 {"associate_id": loan.associate_user_id, "client_id": loan.user_id}
             )
