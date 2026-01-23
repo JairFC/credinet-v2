@@ -141,11 +141,6 @@ export default function PeriodoTimelineV2({
     // Estados con actividad real
     const activeStatuses = [3, 4, 6]; // CUTOFF, COLLECTING, SETTLING
     
-    // Encontrar el índice del período activo actual
-    const currentActiveIndex = allSorted.findIndex(p => 
-      p.status_id === 4 || p.status_id === 6 || p.status_id === 3
-    );
-    
     // Calcular horizonte: 6 meses hacia adelante desde hoy
     const today = new Date();
     const horizonDate = new Date(today);
@@ -165,14 +160,16 @@ export default function PeriodoTimelineV2({
       }
     });
     
-    // 2. Agregar el período activo actual
-    if (currentActiveIndex >= 0) {
-      const activePeriod = allSorted[currentActiveIndex];
-      if (!addedIds.has(activePeriod.id)) {
-        relevant.push(activePeriod);
-        addedIds.add(activePeriod.id);
+    // 2. Agregar TODOS los períodos activos (CUTOFF, COLLECTING, SETTLING)
+    // Puede haber múltiples: ej. uno en SETTLING y otro en COLLECTING
+    allSorted.forEach(p => {
+      if (activeStatuses.includes(p.status_id)) {
+        if (!addedIds.has(p.id)) {
+          relevant.push(p);
+          addedIds.add(p.id);
+        }
       }
-    }
+    });
     
     // 3. Agregar TODOS los períodos futuros hasta el horizonte (6 meses)
     allSorted.forEach(p => {
