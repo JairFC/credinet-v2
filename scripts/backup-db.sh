@@ -231,10 +231,12 @@ EOF
         
         # ☁️ Subir a Google Drive
         local gdrive_status="❌ No configurado"
+        local gdrive_link=""
         if command -v rclone &> /dev/null && rclone listremotes | grep -q "gdrive:"; then
             log "Sincronizando con Google Drive..."
             if rclone copy "$latest_backup" gdrive:credinet-backups/ --quiet; then
                 gdrive_status="✅ Sincronizado"
+                gdrive_link="https://drive.google.com/drive/folders/1GESaDOXif4eUPH2OD23Y9hAZtYE_DhE0"
                 log_success "Backup subido a Google Drive"
             else
                 gdrive_status="⚠️ Error al sincronizar"
@@ -252,10 +254,15 @@ EOF
         show_backup_stats
         
         # 🔔 Enviar notificación de éxito
+        local notify_msg="• Archivo: $(basename $latest_backup)\n• Tamaño: $backup_size\n• Total backups: $backup_count\n• Google Drive: $gdrive_status"
+        if [ -n "$gdrive_link" ]; then
+            notify_msg="$notify_msg\n• 📂 Ver en Drive: $gdrive_link"
+        fi
+        
         if [ -x "$PROJECT_DIR/scripts/send-notification.sh" ]; then
             "$PROJECT_DIR/scripts/send-notification.sh" \
                 "Backup Completado" \
-                "• Archivo: $(basename $latest_backup)\n• Tamaño: $backup_size\n• Total backups: $backup_count\n• Google Drive: $gdrive_status" \
+                "$notify_msg" \
                 "success"
         fi
         

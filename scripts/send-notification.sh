@@ -24,7 +24,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 if [ -f "$PROJECT_DIR/.env" ]; then
-    export $(grep -v '^#' "$PROJECT_DIR/.env" | grep -E '^(TELEGRAM_|DISCORD_)' | xargs)
+    export $(grep -v '^#' "$PROJECT_DIR/.env" | grep -E '^(TELEGRAM_|DISCORD_|SMTP_)' | xargs)
 fi
 
 # Parámetros
@@ -80,12 +80,38 @@ send_discord() {
         return 1
     fi
     
-    local DISCORD_MESSAGE="$EMOJI **$TITLE**\n\n$MESSAGE\n\n📍 Servidor: \`$HOSTNAME\`\n🕐 Hora: \`$TIMESTAMP_CHI\`\n🌐 UTC: \`$TIMESTAMP_UTC\`"
+    # Escapar el mensaje para JSON (reemplazar newlines reales)
+    local MSG_ESCAPED=$(echo -e "$MESSAGE" | sed ':a;N;$!ba;s/\n/\\n/g')
+    local DISCORD_CONTENT="$EMOJI **$TITLE**\n\n$MSG_ESCAPED\n\n📍 Servidor: \`$HOSTNAME\`\n🕐 Chihuahua: \`$TIMESTAMP_CHI\`\n🌐 UTC: \`$TIMESTAMP_UTC\`"
     
     curl -s -X POST "$DISCORD_WEBHOOK_URL" \
         -H "Content-Type: application/json" \
-        -d "{\"username\": \"CrediNet Alertas\", \"content\": \"$DISCORD_MESSAGE\"}" \
+        -d "{\"username\": \"CrediNet Alertas\", \"content\": \"$DISCORD_CONTENT\"}" \
         > /dev/null 2>&1 || true
+}
+
+# ==============================================================================
+# EMAIL (opcional - requiere SMTP_* en .env)
+# ==============================================================================
+send_email() {
+    # Requiere: SMTP_TO, SMTP_FROM en .env
+    # Usa msmtp o mailx si está configurado
+    if [ -z "$SMTP_TO" ] || ! command -v msmtp &> /dev/null; then
+        return 0  # Silenciosamente ignorar si no está configurado
+    fi
+    
+    local EMAIL_BODY="$EMOJI $TITLE
+
+$MESSAGE
+
+---
+📍 Servidor: $HOSTNAME
+🕐 Chihuahua: $TIMESTAMP_CHI
+🌐 UTC: $TIMESTAMP_UTC
+
+-- CrediNet Alertas"
+    
+    echo -e "$EMAIL_BODY" | msmtp -a default "$SMTP_TO" 2>/dev/null || true
 }
 
 # ==============================================================================
@@ -104,6 +130,9 @@ fi
 
 # Discord - Siempre
 send_discord
+
+# Email - Si está configurado
+send_email
 
 # Salir silenciosamente (no queremos que falle el script padre)
 exit 0
