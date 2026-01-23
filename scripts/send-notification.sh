@@ -32,8 +32,9 @@ TITLE="${1:-Notificación}"
 MESSAGE="${2:-Sin mensaje}"
 TYPE="${3:-info}"  # success, error, warning, info
 
-# Timestamp
-TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+# Timestamps - UTC y Chihuahua
+TIMESTAMP_UTC=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+TIMESTAMP_CHI=$(TZ='America/Chihuahua' date '+%Y-%m-%d %H:%M:%S CST')
 HOSTNAME=$(hostname)
 
 # Determinar emoji según tipo
@@ -60,7 +61,8 @@ send_telegram() {
 $MESSAGE
 
 📍 Servidor: \`$HOSTNAME\`
-📅 Fecha: \`$TIMESTAMP\`"
+🕐 Hora: \`$TIMESTAMP_CHI\`
+🌐 UTC: \`$TIMESTAMP_UTC\`"
     
     curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
         -d "chat_id=${chat_id}" \
@@ -78,7 +80,7 @@ send_discord() {
         return 1
     fi
     
-    local DISCORD_MESSAGE="$EMOJI **$TITLE**\n\n$MESSAGE\n\n📍 Servidor: \`$HOSTNAME\`\n📅 Fecha: \`$TIMESTAMP\`"
+    local DISCORD_MESSAGE="$EMOJI **$TITLE**\n\n$MESSAGE\n\n📍 Servidor: \`$HOSTNAME\`\n🕐 Hora: \`$TIMESTAMP_CHI\`\n🌐 UTC: \`$TIMESTAMP_UTC\`"
     
     curl -s -X POST "$DISCORD_WEBHOOK_URL" \
         -H "Content-Type: application/json" \
@@ -90,13 +92,13 @@ send_discord() {
 # ENVIAR A TODOS LOS CANALES
 # ==============================================================================
 
-# Telegram - Chat personal
+# Telegram - Chat personal (siempre)
 if [ -n "$TELEGRAM_CHAT_ID" ]; then
     send_telegram "$TELEGRAM_CHAT_ID"
 fi
 
-# Telegram - Grupo (solo errores y warnings para no spamear)
-if [ -n "$TELEGRAM_GROUP_ID" ] && [ "$TYPE" = "error" -o "$TYPE" = "warning" ]; then
+# Telegram - Grupo (siempre - el grupo es para el equipo)
+if [ -n "$TELEGRAM_GROUP_ID" ]; then
     send_telegram "$TELEGRAM_GROUP_ID"
 fi
 
