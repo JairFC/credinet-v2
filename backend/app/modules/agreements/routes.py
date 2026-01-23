@@ -32,6 +32,7 @@ from decimal import Decimal
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from app.core.database import get_async_db
+from app.modules.auth.routes import get_current_user
 from .application.dtos import AgreementResponseDTO, AgreementListItemDTO, PaginatedAgreementsDTO
 from .application.use_cases import ListAgreementsUseCase, GetAssociateAgreementsUseCase
 from .infrastructure.repositories import PgAgreementRepository
@@ -51,10 +52,10 @@ class CreateAgreementRequestDTO(BaseModel):
 
 class CreateAgreementFromLoansDTO(BaseModel):
     """DTO para crear convenio desde préstamos ACTIVOS."""
-    associate_profile_id: int
     loan_ids: List[int]  # IDs de préstamos activos a incluir en el convenio
     payment_plan_months: int  # 1-36 meses
-    start_date: date
+    associate_profile_id: Optional[int] = None  # Opcional, se deduce de los préstamos
+    start_date: Optional[date] = None  # Opcional, default: hoy
     notes: Optional[str] = None
 
 
@@ -274,7 +275,8 @@ async def get_agreement_detail(
 @router.post("", response_model=AgreementDetailDTO)
 async def create_agreement(
     data: CreateAgreementRequestDTO,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Crea un nuevo convenio de pago.
@@ -385,7 +387,7 @@ async def create_agreement(
         "monthly_payment_amount": monthly_payment,
         "start_date": data.start_date,
         "end_date": end_date,
-        "created_by": 1,  # TODO: Use authenticated user
+        "created_by": current_user["user_id"],
         "notes": data.notes
     })
     
@@ -453,7 +455,8 @@ async def create_agreement(
 @router.post("/from-loans", response_model=AgreementDetailDTO)
 async def create_agreement_from_loans(
     data: CreateAgreementFromLoansDTO,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     ⭐ NUEVO: Crea un convenio de pago desde préstamos ACTIVOS.
@@ -478,6 +481,28 @@ async def create_agreement_from_loans(
             detail="El plazo debe ser entre 1 y 36 meses"
         )
     
+    # Validate loans exist
+    if not data.loan_ids:
+        raise HTTPException(status_code=400, detail="Debe seleccionar al menos un préstamo")
+    
+    # Get start_date (default to today)
+    start_date = data.start_date or date.today()
+    
+    # If associate_profile_id not provided, get it from first loan
+    associate_profile_id = data.associate_profile_id
+    if not associate_profile_id:
+        loan_assoc_query = text("""
+            SELECT ap.id as profile_id
+            FROM loans l
+            JOIN associate_profiles ap ON ap.user_id = l.associate_user_id
+            WHERE l.id = :loan_id
+        """)
+        loan_assoc_result = await db.execute(loan_assoc_query, {"loan_id": data.loan_ids[0]})
+        loan_assoc = loan_assoc_result.fetchone()
+        if not loan_assoc:
+            raise HTTPException(status_code=400, detail="No se pudo determinar el asociado del préstamo")
+        associate_profile_id = loan_assoc.profile_id
+    
     # Validate associate exists
     assoc_query = text("""
         SELECT ap.*, CONCAT(u.first_name, ' ', u.last_name) as associate_name,
@@ -486,7 +511,7 @@ async def create_agreement_from_loans(
         LEFT JOIN users u ON ap.user_id = u.id
         WHERE ap.id = :associate_profile_id
     """)
-    assoc_result = await db.execute(assoc_query, {"associate_profile_id": data.associate_profile_id})
+    assoc_result = await db.execute(assoc_query, {"associate_profile_id": associate_profile_id})
     associate = assoc_result.fetchone()
     
     if not associate:
@@ -609,14 +634,14 @@ async def create_agreement_from_loans(
     """)
     
     result = await db.execute(insert_agreement, {
-        "associate_profile_id": data.associate_profile_id,
+        "associate_profile_id": associate_profile_id,
         "agreement_number": agreement_number,
         "total_debt_amount": total_to_move,
         "payment_plan_months": data.payment_plan_months,
         "monthly_payment_amount": monthly_payment,
-        "start_date": data.start_date,
+        "start_date": start_date,
         "end_date": end_date,
-        "created_by": 1,  # TODO: Use authenticated user
+        "created_by": current_user["user_id"],
         "notes": data.notes or f"Convenio creado desde {len(loans)} préstamo(s)"
     })
     
@@ -670,12 +695,12 @@ async def create_agreement_from_loans(
             updated_at = CURRENT_TIMESTAMP
         WHERE id = :associate_profile_id
     """), {
-        "associate_profile_id": data.associate_profile_id,
+        "associate_profile_id": associate_profile_id,
         "amount": total_to_move
     })
     
     # 7. Generate payment schedule
-    payment_date = data.start_date
+    payment_date = start_date
     for i in range(1, data.payment_plan_months + 1):
         # Last payment adjusts for rounding differences
         if i == data.payment_plan_months:
@@ -705,7 +730,7 @@ async def create_agreement_from_loans(
         FROM associate_profiles
         WHERE id = :associate_profile_id
     """)
-    verify_result = await db.execute(verify_query, {"associate_profile_id": data.associate_profile_id})
+    verify_result = await db.execute(verify_query, {"associate_profile_id": associate_profile_id})
     verify_row = verify_result.fetchone()
     available_credit_after = Decimal(str(verify_row.available_credit))
     

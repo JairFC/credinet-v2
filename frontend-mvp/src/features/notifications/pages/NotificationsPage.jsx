@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/app/providers/AuthProvider';
+import { apiClient } from '@/shared/api/apiClient';
 import './NotificationsPage.css';
 
 /**
@@ -13,6 +14,7 @@ const NotificationsPage = () => {
     discord: { configured: false, lastTest: null },
     email: { configured: false, lastTest: null }
   });
+  const [health, setHealth] = useState({ telegram: 'unknown', discord: 'unknown', email: 'unknown' });
   const [testing, setTesting] = useState(null);
   const [testResult, setTestResult] = useState(null);
   const [logs, setLogs] = useState([]);
@@ -20,23 +22,51 @@ const NotificationsPage = () => {
   useEffect(() => {
     fetchNotificationStatus();
     fetchRecentLogs();
+    fetchHealth();
+    // Actualizar health cada 30 segundos
+    const interval = setInterval(fetchHealth, 30000);
+    return () => clearInterval(interval);
   }, []);
+
+  const fetchHealth = async () => {
+    try {
+      const response = await fetch('/api/v1/notifications/health');
+      if (response.ok) {
+        const data = await response.json();
+        setHealth(data);
+      }
+    } catch {
+      setHealth({ telegram: 'error', discord: 'error', email: 'error' });
+    }
+  };
 
   const fetchNotificationStatus = async () => {
     try {
-      const response = await fetch('/api/v1/notifications/status');
-      if (response.ok) {
-        const data = await response.json();
-        setStatus(data);
+      const response = await apiClient.get('/api/v1/notifications/status');
+      if (response.status === 200) {
+        setStatus(response.data);
       }
     } catch (error) {
-      console.log('Usando estado por defecto (endpoint aún no implementado)');
-      // Estado por defecto basado en configuración conocida
-      setStatus({
-        telegram: { configured: true, lastTest: new Date().toISOString() },
-        discord: { configured: true, lastTest: new Date().toISOString() },
-        email: { configured: false, lastTest: null }
-      });
+      console.log('Error obteniendo estado de notificaciones:', error);
+      // Fallback al endpoint de health (sin auth)
+      try {
+        const healthRes = await fetch('/api/v1/notifications/health');
+        if (healthRes.ok) {
+          const health = await healthRes.json();
+          setStatus({
+            telegram: { configured: health.telegram === 'ok', lastTest: null },
+            discord: { configured: health.discord === 'ok', lastTest: null },
+            email: { configured: health.email === 'ok', lastTest: null }
+          });
+        }
+      } catch {
+        // Estado por defecto
+        setStatus({
+          telegram: { configured: true, lastTest: null },
+          discord: { configured: true, lastTest: null },
+          email: { configured: false, lastTest: null }
+        });
+      }
     }
   };
 
@@ -54,25 +84,22 @@ const NotificationsPage = () => {
     setTestResult(null);
     
     try {
-      const response = await fetch('/api/v1/notifications/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          channel,
-          title: '🧪 Prueba desde UI',
-          message: `Notificación de prueba enviada por ${user?.username || 'Admin'} desde la interfaz web.`
-        })
+      const response = await apiClient.post('/api/v1/notifications/test', { 
+        channel,
+        title: '🧪 Prueba desde UI',
+        message: `Notificación de prueba enviada por ${user?.username || 'Admin'} desde la interfaz web.`
       });
       
-      if (response.ok) {
-        setTestResult({ success: true, channel, message: 'Notificación enviada correctamente' });
+      if (response.status === 200 && response.data.success) {
+        setTestResult({ success: true, channel, message: response.data.message || 'Notificación enviada correctamente' });
         fetchNotificationStatus();
       } else {
-        setTestResult({ success: false, channel, message: 'Error al enviar notificación' });
+        setTestResult({ success: false, channel, message: response.data.message || 'Error al enviar notificación' });
       }
     } catch (error) {
-      // Si el endpoint no existe, simular éxito para demo
-      setTestResult({ success: true, channel, message: 'Prueba simulada (endpoint en desarrollo)' });
+      console.error('Error enviando notificación de prueba:', error);
+      const errorMsg = error.response?.data?.detail || error.message || 'Error al enviar notificación';
+      setTestResult({ success: false, channel, message: errorMsg });
     }
     
     setTesting(null);
@@ -109,7 +136,20 @@ const NotificationsPage = () => {
   return (
     <div className="notifications-page">
       <div className="page-header">
-        <h1>🔔 Centro de Notificaciones</h1>
+        <div className="header-main">
+          <h1>🔔 Centro de Notificaciones</h1>
+          <div className="health-leds">
+            <div className={`led led-${health.telegram}`} title={`Telegram: ${health.telegram}`}>
+              📱 <span className="led-dot"></span>
+            </div>
+            <div className={`led led-${health.discord}`} title={`Discord: ${health.discord}`}>
+              🎮 <span className="led-dot"></span>
+            </div>
+            <div className={`led led-${health.email}`} title={`Email: ${health.email}`}>
+              📧 <span className="led-dot"></span>
+            </div>
+          </div>
+        </div>
         <p className="subtitle">Configuración y monitoreo de alertas del sistema</p>
       </div>
 

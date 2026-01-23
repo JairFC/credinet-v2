@@ -113,6 +113,7 @@ from app.modules.debt_payments.presentation import router as debt_payments_route
 from app.modules.shared.routes import router as shared_router
 from app.modules.loans.routes_simulator import router as simulator_router
 from app.scheduler.routes import router as scheduler_router
+from app.modules.notifications.routes import router as notifications_router
 
 app.include_router(auth_router, prefix=settings.api_v1_prefix)
 app.include_router(catalogs_router, prefix=settings.api_v1_prefix)
@@ -137,6 +138,7 @@ app.include_router(scheduler_router, prefix=settings.api_v1_prefix)
 app.include_router(statements_router, prefix=settings.api_v1_prefix)
 app.include_router(debt_payments_router, prefix=settings.api_v1_prefix)
 app.include_router(shared_router, prefix=settings.api_v1_prefix)
+app.include_router(notifications_router, prefix=settings.api_v1_prefix)
 
 
 if __name__ == "__main__":

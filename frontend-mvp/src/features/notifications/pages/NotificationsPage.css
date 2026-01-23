@@ -8,6 +8,14 @@
   margin-bottom: 2rem;
 }
 
+.page-header .header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
 .page-header h1 {
   font-size: 1.75rem;
   color: var(--text-primary);
@@ -17,6 +25,63 @@
 .page-header .subtitle {
   color: var(--text-secondary);
   font-size: 0.95rem;
+}
+
+/* Health LEDs */
+.health-leds {
+  display: flex;
+  gap: 1rem;
+  background: var(--bg-secondary);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.led {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.led-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 2s infinite;
+}
+
+.led-ok .led-dot {
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+}
+
+.led-not_configured .led-dot {
+  background: #6b7280;
+  box-shadow: 0 0 4px #6b7280;
+  animation: none;
+}
+
+.led-error .led-dot {
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+  animation: pulse-error 1s infinite;
+}
+
+.led-unknown .led-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 4px #f59e0b;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes pulse-error {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.1); }
 }
 
 .section {

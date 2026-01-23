@@ -1,459 +1,656 @@
 /**
- * NuevoConvenioPage.css - Crear Convenio desde Préstamos
- * Todas las clases scopeadas con .nuevo-convenio-page
+ * NuevoConvenioPage.css - Diseño limpio y moderno
+ * Prefijo: nc- (nuevo convenio)
  */
 
 .nuevo-convenio-page {
-  padding: 20px;
-  max-width: 1000px;
+  max-width: 900px;
   margin: 0 auto;
-  background: var(--surface-ground, #0f0f0f);
+  padding: 24px;
   min-height: 100vh;
 }
 
-/* ===================== HEADER ===================== */
-.nuevo-convenio-page .page-header {
+/* ================= HEADER ================= */
+.nc-header {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+  border-radius: 16px;
+  padding: 32px;
   margin-bottom: 24px;
 }
 
-.nuevo-convenio-page .page-header h1 {
+.nc-header h1 {
   font-size: 1.75rem;
-  color: var(--text-primary, #f3f4f6);
-  margin-bottom: 8px;
+  color: #fff;
+  margin: 0 0 8px 0;
+  font-weight: 700;
 }
 
-.nuevo-convenio-page .page-description {
-  color: var(--text-secondary, #9ca3af);
+.nc-header p {
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
   font-size: 0.95rem;
 }
 
-/* ===================== ALERTAS ===================== */
-.nuevo-convenio-page .alert {
-  padding: 12px 16px;
-  border-radius: 8px;
+/* ================= ALERT ================= */
+.nc-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 10px;
   margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
 }
 
-.nuevo-convenio-page .alert-error {
-  background-color: rgba(244, 67, 54, 0.15);
-  border: 1px solid rgba(244, 67, 54, 0.3);
-  color: #f44336;
+.nc-alert-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
 }
 
-.nuevo-convenio-page .alert-success {
-  background-color: rgba(76, 175, 80, 0.15);
-  border: 1px solid rgba(76, 175, 80, 0.3);
-  color: #4caf50;
-}
-
-.nuevo-convenio-page .alert-icon {
+.nc-alert button {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: inherit;
   font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.7;
 }
 
-/* ===================== STEPS ===================== */
-.nuevo-convenio-page .steps-header {
-  background: var(--surface-card, #1a1a1a);
-  padding: 20px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  border: 1px solid var(--border-color, #2a2a2a);
+.nc-alert button:hover {
+  opacity: 1;
 }
 
-.nuevo-convenio-page .steps-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-primary, #f3f4f6);
-  margin: 0 0 16px 0;
+/* ================= SECTION ================= */
+.nc-section {
+  background: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
 }
 
-.nuevo-convenio-page .steps-container {
-  display: flex;
-  gap: 32px;
-  align-items: center;
-}
-
-.nuevo-convenio-page .step {
+.nc-section-header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-.nuevo-convenio-page .step-number {
+.nc-step-badge {
   width: 32px;
   height: 32px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 0.9rem;
-  background: var(--surface-elevated, #2a2a2a);
-  color: var(--text-secondary, #9ca3af);
-  border: 2px solid var(--border-color, #3a3a3a);
+  color: #fff;
+  flex-shrink: 0;
 }
 
-.nuevo-convenio-page .step.active .step-number {
-  background: var(--brand-gradient, linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%));
-  color: white;
-  border-color: transparent;
-}
-
-.nuevo-convenio-page .step.completed .step-number {
-  background: #4caf50;
-  color: white;
-  border-color: transparent;
-}
-
-.nuevo-convenio-page .step-label {
-  font-size: 0.9rem;
-  color: var(--text-secondary, #9ca3af);
-}
-
-.nuevo-convenio-page .step.active .step-label {
-  color: var(--text-primary, #f3f4f6);
-  font-weight: 600;
-}
-
-/* ===================== FORM SECTION ===================== */
-.nuevo-convenio-page .form-section {
-  background: var(--surface-card, #1a1a1a);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 20px;
-  border: 1px solid var(--border-color, #2a2a2a);
-}
-
-.nuevo-convenio-page .section-title {
+.nc-section-header h2 {
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-primary, #f3f4f6);
-  margin: 0 0 20px 0;
+  color: #f4f4f5;
+  margin: 0;
+}
+
+.nc-select-all {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: 0.85rem;
+  color: #a1a1aa;
+  cursor: pointer;
 }
 
-/* Search Associate */
-.nuevo-convenio-page .search-group {
-  margin-bottom: 20px;
+.nc-select-all input {
+  width: 16px;
+  height: 16px;
+  accent-color: #6366f1;
 }
 
-.nuevo-convenio-page .search-label {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-secondary, #9ca3af);
-  margin-bottom: 8px;
-  display: block;
-}
-
-.nuevo-convenio-page .search-input-wrapper {
+/* ================= SEARCH ================= */
+.nc-search-wrapper {
   position: relative;
 }
 
-.nuevo-convenio-page .search-input {
+.nc-search-input {
   width: 100%;
-  padding: 12px 40px 12px 16px;
-  border: 1px solid var(--border-color, #2a2a2a);
-  border-radius: 8px;
+  padding: 14px 18px;
+  background: #09090b;
+  border: 1px solid #3f3f46;
+  border-radius: 10px;
   font-size: 0.95rem;
-  background: var(--surface-elevated, #1a1a1a);
-  color: var(--text-primary, #f3f4f6);
-  transition: all 0.2s;
+  color: #f4f4f5;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.nuevo-convenio-page .search-input:focus {
+.nc-search-input:focus {
   outline: none;
-  border-color: var(--brand-primary, #6366F1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
-.nuevo-convenio-page .search-icon {
+.nc-search-input::placeholder {
+  color: #71717a;
+}
+
+.nc-search-loading {
   position: absolute;
-  right: 12px;
+  right: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-secondary, #9ca3af);
+  animation: nc-pulse 1s infinite;
 }
 
-/* Associate Card */
-.nuevo-convenio-page .associate-selected-card {
-  background: var(--surface-elevated, #222);
-  padding: 16px;
-  border-radius: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid var(--border-color, #2a2a2a);
+@keyframes nc-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
-.nuevo-convenio-page .associate-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.nuevo-convenio-page .associate-name {
-  font-weight: 600;
-  color: var(--text-primary, #f3f4f6);
-  font-size: 1rem;
-}
-
-.nuevo-convenio-page .associate-meta {
-  font-size: 0.85rem;
-  color: var(--text-secondary, #9ca3af);
-}
-
-/* Search Results */
-.nuevo-convenio-page .search-results {
+/* ================= DROPDOWN ================= */
+.nc-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 6px);
   left: 0;
   right: 0;
-  background: var(--surface-card, #1a1a1a);
-  border: 1px solid var(--border-color, #2a2a2a);
-  border-radius: 8px;
-  margin-top: 4px;
-  max-height: 300px;
-  overflow-y: auto;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-height: 280px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.nuevo-convenio-page .search-result-item {
-  padding: 12px 16px;
+.nc-dropdown li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
   cursor: pointer;
-  border-bottom: 1px solid var(--border-color, #2a2a2a);
+  border-bottom: 1px solid #27272a;
   transition: background 0.15s;
 }
 
-.nuevo-convenio-page .search-result-item:hover {
-  background: var(--surface-hover, #2a2a2a);
-}
-
-.nuevo-convenio-page .search-result-item:last-child {
+.nc-dropdown li:last-child {
   border-bottom: none;
 }
 
-/* Loans List */
-.nuevo-convenio-page .loans-list {
+.nc-dropdown li:hover {
+  background: #27272a;
+}
+
+.nc-dropdown-main {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 2px;
 }
 
-.nuevo-convenio-page .loan-card {
-  background: var(--surface-elevated, #222);
-  padding: 16px;
-  border-radius: 10px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 2px solid transparent;
+.nc-dropdown-main strong {
+  color: #f4f4f5;
+  font-size: 0.95rem;
 }
 
-.nuevo-convenio-page .loan-card:hover {
-  background: var(--surface-hover, #2a2a2a);
+.nc-dropdown-main span {
+  color: #71717a;
+  font-size: 0.8rem;
 }
 
-.nuevo-convenio-page .loan-card.selected {
-  border-color: var(--brand-primary, #6366F1);
-  background: rgba(99, 102, 241, 0.1);
-}
-
-.nuevo-convenio-page .loan-info {
-  flex: 1;
-}
-
-.nuevo-convenio-page .loan-id {
+.nc-dropdown-badge {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-primary, #f3f4f6);
+}
+
+.nc-no-results {
+  padding: 20px;
+  text-align: center;
+  color: #71717a;
+  font-style: italic;
+}
+
+/* ================= ASSOCIATE CARD ================= */
+.nc-associate-card {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 24px;
+  align-items: center;
+  background: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .nc-associate-card {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.nc-associate-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.nc-associate-avatar {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.nc-associate-info h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #f4f4f5;
+}
+
+.nc-associate-info span {
+  font-size: 0.85rem;
+  color: #71717a;
+}
+
+.nc-associate-stats {
+  display: flex;
+  gap: 20px;
+}
+
+.nc-stat {
+  text-align: center;
+}
+
+.nc-stat-label {
+  display: block;
+  font-size: 0.7rem;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   margin-bottom: 4px;
 }
 
-.nuevo-convenio-page .loan-client {
-  font-size: 0.9rem;
-  color: var(--text-secondary, #9ca3af);
-}
-
-.nuevo-convenio-page .loan-amounts {
-  text-align: right;
-}
-
-.nuevo-convenio-page .loan-total {
+.nc-stat-value {
+  font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-primary, #f3f4f6);
+  color: #f4f4f5;
 }
 
-.nuevo-convenio-page .loan-pending {
+.nc-stat-warning {
+  color: #fbbf24;
+}
+
+.nc-stat-success {
+  color: #4ade80;
+}
+
+.nc-btn-change {
+  padding: 8px 16px;
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  color: #a1a1aa;
   font-size: 0.85rem;
-  color: var(--text-secondary, #9ca3af);
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* Summary */
-.nuevo-convenio-page .summary-section {
-  background: var(--surface-elevated, #222);
-  padding: 20px;
-  border-radius: 10px;
-  margin-top: 20px;
+.nc-btn-change:hover {
+  background: #3f3f46;
+  color: #f4f4f5;
 }
 
-.nuevo-convenio-page .summary-title {
-  font-size: 1rem;
+/* ================= LOADING & EMPTY ================= */
+.nc-loading, .nc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  color: #71717a;
+  gap: 12px;
+}
+
+.nc-empty span {
+  font-size: 2.5rem;
+}
+
+.nc-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #27272a;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: nc-spin 0.8s linear infinite;
+}
+
+@keyframes nc-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ================= LOANS GRID ================= */
+.nc-loans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.nc-loan-card {
+  display: flex;
+  gap: 14px;
+  background: #09090b;
+  border: 2px solid #27272a;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nc-loan-card:hover {
+  border-color: #3f3f46;
+  background: #0f0f12;
+}
+
+.nc-loan-card.selected {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.nc-loan-checkbox {
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.nc-loan-checkbox input {
+  width: 18px;
+  height: 18px;
+  accent-color: #6366f1;
+}
+
+.nc-loan-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.nc-loan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.nc-loan-id {
+  font-weight: 700;
+  color: #a5b4fc;
+  font-size: 0.9rem;
+}
+
+.nc-loan-date {
+  font-size: 0.75rem;
+  color: #52525b;
+}
+
+.nc-loan-client {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #a1a1aa;
+  margin-bottom: 12px;
+}
+
+.nc-loan-details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.nc-loan-detail {
+  text-align: center;
+}
+
+.nc-loan-detail span {
+  display: block;
+  font-size: 0.65rem;
+  color: #52525b;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.nc-loan-detail strong {
+  font-size: 0.85rem;
+  color: #d4d4d8;
+}
+
+.nc-loan-highlight strong {
+  color: #fbbf24;
+}
+
+/* ================= PLAN CONFIG ================= */
+.nc-plan-config {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 600px) {
+  .nc-plan-config {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nc-plan-input label {
+  display: block;
+  font-size: 0.85rem;
+  color: #a1a1aa;
+  margin-bottom: 8px;
+}
+
+.nc-months-control {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.nc-months-control button {
+  width: 40px;
+  height: 44px;
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  color: #f4f4f5;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.nc-months-control button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.nc-months-control button:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
+.nc-months-control button:hover {
+  background: #3f3f46;
+}
+
+.nc-months-control input {
+  width: 60px;
+  height: 44px;
+  text-align: center;
+  background: #09090b;
+  border: 1px solid #3f3f46;
+  border-left: none;
+  border-right: none;
+  color: #f4f4f5;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: var(--text-primary, #f3f4f6);
+}
+
+.nc-months-control input:focus {
+  outline: none;
+}
+
+.nc-plan-notes textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: #09090b;
+  border: 1px solid #3f3f46;
+  border-radius: 10px;
+  color: #f4f4f5;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.nc-plan-notes textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.nc-plan-notes textarea::placeholder {
+  color: #52525b;
+}
+
+/* ================= SUMMARY ================= */
+.nc-summary {
+  background: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.nc-summary h3 {
+  margin: 0 0 16px 0;
+  font-size: 1rem;
+  color: #f4f4f5;
+}
+
+.nc-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
   margin-bottom: 16px;
 }
 
-.nuevo-convenio-page .summary-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border-color, #2a2a2a);
+@media (max-width: 600px) {
+  .nc-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.nuevo-convenio-page .summary-row:last-child {
-  border-bottom: none;
-  padding-top: 16px;
-  margin-top: 8px;
-  border-top: 2px solid var(--border-color, #3a3a3a);
+.nc-summary-item {
+  text-align: center;
+  padding: 16px 12px;
+  background: #18181b;
+  border-radius: 10px;
 }
 
-.nuevo-convenio-page .summary-label {
-  color: var(--text-secondary, #9ca3af);
-  font-size: 0.9rem;
+.nc-summary-item span {
+  display: block;
+  font-size: 0.7rem;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
 }
 
-.nuevo-convenio-page .summary-value {
-  font-weight: 600;
-  color: var(--text-primary, #f3f4f6);
+.nc-summary-item strong {
+  font-size: 1.1rem;
+  color: #f4f4f5;
 }
 
-.nuevo-convenio-page .summary-row.total .summary-value {
-  font-size: 1.3rem;
-  color: #f44336;
+.nc-summary-total {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-/* ===================== BUTTONS ===================== */
-.nuevo-convenio-page .form-actions {
+.nc-summary-total strong {
+  color: #f87171;
+}
+
+.nc-summary-monthly {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.nc-summary-monthly strong {
+  color: #4ade80;
+}
+
+.nc-summary-note {
+  padding: 14px 16px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #93c5fd;
+  line-height: 1.5;
+}
+
+/* ================= ACTIONS ================= */
+.nc-actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  margin-top: 24px;
+  margin-top: 8px;
 }
 
-.nuevo-convenio-page .btn {
-  padding: 12px 24px;
-  border-radius: 8px;
+.nc-btn {
+  padding: 12px 28px;
+  border-radius: 10px;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
-.nuevo-convenio-page .btn-primary {
-  background: var(--brand-gradient, linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%));
-  color: white;
+.nc-btn-secondary {
+  background: #27272a;
+  color: #d4d4d8;
+  border: 1px solid #3f3f46;
 }
 
-.nuevo-convenio-page .btn-primary:hover:not(:disabled) {
+.nc-btn-secondary:hover {
+  background: #3f3f46;
+}
+
+.nc-btn-primary {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+}
+
+.nc-btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
 }
 
-.nuevo-convenio-page .btn-secondary {
-  background: var(--surface-elevated, #2a2a2a);
-  color: var(--text-primary, #f3f4f6);
-  border: 1px solid var(--border-color, #3a3a3a);
-}
-
-.nuevo-convenio-page .btn-secondary:hover {
-  background: var(--surface-hover, #333);
-}
-
-.nuevo-convenio-page .btn:disabled {
+.nc-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* ===================== LOADING ===================== */
-.nuevo-convenio-page .loading-section {
-  text-align: center;
-  padding: 40px;
-}
-
-.nuevo-convenio-page .spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border-color, #2a2a2a);
-  border-top: 3px solid var(--brand-primary, #6366F1);
-  border-radius: 50%;
-  animation: nuevo-convenio-spin 1s linear infinite;
-  margin: 0 auto 16px;
-}
-
-@keyframes nuevo-convenio-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.nuevo-convenio-page .loading-text {
-  color: var(--text-secondary, #9ca3af);
-}
-
-/* Empty State */
-.nuevo-convenio-page .empty-state {
-  text-align: center;
-  padding: 40px;
-  color: var(--text-secondary, #9ca3af);
-}
-
-.nuevo-convenio-page .empty-icon {
-  font-size: 3rem;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-/* ===================== RESPONSIVE ===================== */
-@media (max-width: 768px) {
-  .nuevo-convenio-page {
-    padding: 16px;
-  }
-
-  .nuevo-convenio-page .steps-container {
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  .nuevo-convenio-page .form-section {
-    padding: 16px;
-  }
-
-  .nuevo-convenio-page .loan-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .nuevo-convenio-page .loan-amounts {
-    text-align: left;
-    width: 100%;
-  }
-
-  .nuevo-convenio-page .form-actions {
-    flex-direction: column;
-  }
-
-  .nuevo-convenio-page .btn {
-    width: 100%;
-    justify-content: center;
-  }
+  transform: none;
 }
