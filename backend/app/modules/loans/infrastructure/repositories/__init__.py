@@ -406,9 +406,9 @@ class PostgreSQLLoanRepository(LoanRepository):
         associate_profile_id = profile_row[0]
         
         # Llamar función DB con el associate_profile_id correcto
-        # Usar text() con cast explícito a NUMERIC para evitar error de tipo
+        # Usar CAST() en lugar de ::numeric para evitar conflicto con named parameters de SQLAlchemy
         credit_check_query = text(
-            "SELECT check_associate_available_credit(:profile_id, :amount::numeric)"
+            "SELECT check_associate_available_credit(:profile_id, CAST(:amount AS numeric))"
         )
         result = await self.session.execute(
             credit_check_query,

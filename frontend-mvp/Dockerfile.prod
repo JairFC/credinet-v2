@@ -1,14 +1,8 @@
 # =============================================================================
-# CrediNet V2 - Frontend Dockerfile
+# CrediNet V2 - Frontend Dockerfile (Producción con Auto-Rebuild)
 # =============================================================================
-# Framework: React 18 + Vite 7.1.14 (Rolldown)
-# Architecture: Feature-Sliced Design
-# 
-# MODOS DE EJECUCIÓN:
-# - Desarrollo local: CMD ["npm", "run", "dev"]
-# - Producción/Remoto: CMD ["npm", "run", "prod"] (con serve)
-#
-# Para cambiar el modo, usa docker-compose.override.yml o variable FRONTEND_MODE
+# Modo: Servidor estático con watch para auto-rebuild
+# Optimizado para acceso remoto via ZeroTier
 # =============================================================================
 
 FROM node:20-alpine
@@ -16,28 +10,29 @@ FROM node:20-alpine
 # Metadata
 LABEL maintainer="CrediNet Team"
 LABEL version="2.0.0"
-LABEL description="CrediNet V2 Frontend - React 18 + Vite"
+LABEL description="CrediNet V2 Frontend - Production Mode with Auto-Rebuild"
 
-# Instalar serve globalmente para modo producción
+# Instalar serve globalmente para servir archivos estáticos
 RUN npm install -g serve
 
 # Establecer directorio de trabajo
 WORKDIR /app
 
 # Variables de entorno
+ENV NODE_ENV=production
 ENV VITE_HOST=0.0.0.0
-ENV VITE_PORT=5173
+ENV PORT=5173
 
 # Copiar archivos de dependencias primero (para aprovechar cache de Docker)
 COPY package.json package-lock.json ./
 
-# Instalar TODAS las dependencias (incluyendo devDeps para build)
-RUN npm ci --prefer-offline --no-audit --include=dev
+# Instalar dependencias (incluyendo devDependencies para build)
+RUN npm ci --prefer-offline --no-audit
 
 # Copiar el resto de los archivos del proyecto
 COPY . .
 
-# Build para producción (se puede actualizar con rebuild-frontend.sh)
+# Build inicial
 RUN npm run build
 
 # Exponer puerto
@@ -47,6 +42,5 @@ EXPOSE 5173
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD node -e "require('http').get('http://localhost:5173', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Por defecto: modo producción (funciona con acceso remoto)
-# Para desarrollo local, cambiar a: ["npm", "run", "dev"]
+# Servir archivos estáticos desde dist
 CMD ["serve", "-s", "dist", "-l", "5173"]

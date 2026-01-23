@@ -100,7 +100,8 @@ services:
   # ===========================================================================
   # FRONTEND (React 18 + Vite 7.1.14 - Feature-Sliced Design)
   # ===========================================================================
-  # Estado: Sprint 7 completo (Auth + Dashboard con Navbar)
+  # Modo: Producción con serve (compatible con acceso remoto ZeroTier)
+  # Para actualizar después de git pull: ./scripts/rebuild-frontend.sh
   # ===========================================================================
   frontend:
     build:
@@ -109,18 +110,16 @@ services:
     container_name: credinet-frontend
     restart: unless-stopped
     environment:
-      # Vite Configuration
-      - VITE_API_URL=${VITE_API_URL:-http://192.168.98.98:8000}
+      # Vite Configuration (para build)
+      - VITE_API_URL=${VITE_API_URL:-http://10.5.26.141:8000}
       - VITE_APP_NAME=${VITE_APP_NAME:-CrediNet V2}
       - VITE_APP_VERSION=${VITE_APP_VERSION:-2.0.0}
-      
-      # Hot Reload (Development)
-      - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING:-true}
-      - WATCHPACK_POLLING=${WATCHPACK_POLLING:-true}
     volumes:
-      - ./frontend-mvp:/app
-      - /app/node_modules
-      - /app/dist
+      # Montar código fuente para poder hacer rebuild sin recrear contenedor
+      - ./frontend-mvp/src:/app/src
+      - ./frontend-mvp/public:/app/public
+      - ./frontend-mvp/index.html:/app/index.html
+      - ./frontend-mvp/vite.config.js:/app/vite.config.js
     ports:
       - "${FRONTEND_PORT:-5173}:5173"
     depends_on:
