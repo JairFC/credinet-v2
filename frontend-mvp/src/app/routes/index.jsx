@@ -22,6 +22,9 @@ import AssociateCreatePage from "../../features/users/associates/pages/Associate
 // Agreements Module (Convenios y Reportes de Morosos)
 import { AgreementsPage, DefaultedReportsPage, CreateDefaultedReportPage, CreateAgreementPage, AgreementDetailPage, NuevoConvenioPage } from "../../features/agreements";
 
+// Notifications Module
+import { NotificationsPage } from "../../features/notifications";
+
 import MainLayout from '@/shared/components/layout/MainLayout';
 
 const AppRoutes = () => {
@@ -247,6 +250,18 @@ const AppRoutes = () => {
             <AdminRoute>
               <MainLayout>
                 <AgreementDetailPage />
+              </MainLayout>
+            </AdminRoute>
+          }
+        />
+
+        {/* Notificaciones */}
+        <Route
+          path="/notificaciones"
+          element={
+            <AdminRoute>
+              <MainLayout>
+                <NotificationsPage />
               </MainLayout>
             </AdminRoute>
           }
