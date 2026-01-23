@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_db
 from app.core.dependencies import require_admin
+from app.core.notifications import notify
 from app.modules.payments.application.dtos import (
     RegisterPaymentDTO,
     PaymentResponseDTO,
@@ -204,6 +205,17 @@ async def register_payment(
             marked_by=payload.marked_by,
             notes=payload.notes,
         )
+        
+        # 🔔 Notificación de pago registrado (solo grupo, no saturar)
+        try:
+            await notify.send(
+                title="Pago Registrado",
+                message=f"• Préstamo: #{payment.loan_id}\n• Pago #{payment.payment_number}\n• Monto: ${payment.amount_paid:,.2f}",
+                level="info",
+                to_personal=False
+            )
+        except Exception:
+            pass
         
         # Convertir entidad a DTO
         return PaymentResponseDTO(

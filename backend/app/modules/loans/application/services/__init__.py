@@ -32,6 +32,7 @@ from app.modules.loans.application.logger import (
     log_loan_cancelled,
     log_validation_error,
 )
+from app.core.notifications import notify
 
 
 class LoanService:
@@ -537,6 +538,16 @@ class LoanService:
             amount=float(loan.amount),
             first_payment_date=str(first_payment_date)
         )
+        
+        # 🔔 Notificación de préstamo aprobado
+        try:
+            await notify.send(
+                title="Préstamo Aprobado",
+                message=f"• ID: #{loan_id}\n• Monto: ${loan.amount:,.2f}\n• Plazo: {loan.term_biweeks} quincenas\n• Pago quincenal: ${loan.biweekly_payment:,.2f}",
+                level="success"
+            )
+        except Exception as e:
+            print(f"⚠️ Error enviando notificación: {e}")
         
         return approved_loan
     
