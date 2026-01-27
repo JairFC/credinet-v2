@@ -228,15 +228,24 @@ EOF
         local latest_backup=$(ls -t "$BACKUP_DIR"/backup_*.sql.gz 2>/dev/null | head -1)
         local backup_size=$(du -h "$latest_backup" 2>/dev/null | cut -f1)
         local backup_count=$(ls -1 "$BACKUP_DIR"/backup_*.sql.gz 2>/dev/null | wc -l)
+        local backup_filename=$(basename "$latest_backup")
         
         # ☁️ Subir a Google Drive
         local gdrive_status="❌ No configurado"
-        local gdrive_link=""
+        local gdrive_folder_link=""
+        local gdrive_file_link=""
         if command -v rclone &> /dev/null && rclone listremotes | grep -q "gdrive:"; then
             log "Sincronizando con Google Drive..."
             if rclone copy "$latest_backup" gdrive:credinet-backups/ --quiet; then
                 gdrive_status="✅ Sincronizado"
-                gdrive_link="https://drive.google.com/drive/folders/1GESaDOXif4eUPH2OD23Y9hAZtYE_DhE0"
+                gdrive_folder_link="https://drive.google.com/drive/folders/1r8ZGYYDaCXzfPcuATBXsvQi2xW-V6D_o"
+                
+                # Obtener el ID del archivo recién subido
+                local file_id=$(rclone lsjson "gdrive:credinet-backups/$backup_filename" 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d[0]['ID'] if d else '')" 2>/dev/null || echo "")
+                if [ -n "$file_id" ]; then
+                    gdrive_file_link="https://drive.google.com/file/d/${file_id}/view"
+                fi
+                
                 log_success "Backup subido a Google Drive"
             else
                 gdrive_status="⚠️ Error al sincronizar"
@@ -255,8 +264,11 @@ EOF
         
         # 🔔 Enviar notificación de éxito
         local notify_msg="• Archivo: $(basename $latest_backup)\n• Tamaño: $backup_size\n• Total backups: $backup_count\n• Google Drive: $gdrive_status"
-        if [ -n "$gdrive_link" ]; then
-            notify_msg="$notify_msg\n• 📂 Ver en Drive: $gdrive_link"
+        if [ -n "$gdrive_file_link" ]; then
+            notify_msg="$notify_msg\n• 📄 Descargar: $gdrive_file_link"
+        fi
+        if [ -n "$gdrive_folder_link" ]; then
+            notify_msg="$notify_msg\n• 📂 Carpeta: $gdrive_folder_link"
         fi
         
         if [ -x "$PROJECT_DIR/scripts/send-notification.sh" ]; then

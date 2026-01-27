@@ -65,3 +65,5 @@ archive_legacy/
 backups/*.tar.gz
 backups/*.tar.gz
 frontend-mvp/.vite/
+docs/credicuenta202512190600.sql
+docs/ASOCIADOS_LEGACY_PARA_REVISION.md
