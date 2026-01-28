@@ -64,7 +64,13 @@ class LoanEnhancedService:
                 l.total_interest,
                 l.total_commission,
                 l.commission_per_payment,
-                l.associate_payment
+                l.associate_payment,
+                -- ⭐ Campo para validar si puede eliminarse (tiene pagos en statements)
+                EXISTS (
+                    SELECT 1 FROM payments p 
+                    WHERE p.loan_id = l.id 
+                    AND p.cut_period_id IS NOT NULL
+                ) AS has_statement_payments
             FROM loans l
             JOIN users u_client ON u_client.id = l.user_id
             JOIN loan_statuses ls ON ls.id = l.status_id
@@ -111,4 +117,5 @@ class LoanEnhancedService:
             "total_commission": float(row[28]) if row[28] else 0.0,
             "commission_per_payment": float(row[29]) if row[29] else 0.0,
             "associate_payment": float(row[30]) if row[30] else 0.0,
+            "has_statement_payments": bool(row[31]),  # True si tiene pagos en statements
         }

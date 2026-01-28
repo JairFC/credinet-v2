@@ -545,7 +545,6 @@ async def update_client(
             title="📝 Datos de Cliente Modificados",
             message=(
                 f"**Cliente:** {client.first_name} {client.last_name} (ID: {client_id})\n"
-                f"**Modificado por:** {admin_name}\n"
                 f"**Sección:** Datos Personales\n\n"
                 f"**Cambios realizados:**\n{change_details}"
             ),
@@ -556,6 +555,7 @@ async def update_client(
             entity_type="user",
             entity_id=client_id,
             created_by=current_user_id,
+            created_by_name=admin_name,
             metadata={"old_values": old_values, "new_values": update_data}
         )
         
@@ -645,7 +645,6 @@ async def update_client_address(
             title="🏠 Dirección de Cliente Modificada",
             message=(
                 f"**Cliente:** {client_name} (ID: {client_id})\n"
-                f"**Modificado por:** {admin_name}\n"
                 f"**Sección:** Dirección\n\n"
                 f"**Cambios realizados:**\n{change_details}"
             ),
@@ -656,6 +655,7 @@ async def update_client_address(
             entity_type="address",
             entity_id=client_id,
             created_by=current_user_id,
+            created_by_name=admin_name,
             metadata={"old_values": old_values, "new_values": update_data}
         )
         
@@ -745,7 +745,6 @@ async def update_client_guarantor(
             title="🛡️ Aval de Cliente Modificado",
             message=(
                 f"**Cliente:** {client_name} (ID: {client_id})\n"
-                f"**Modificado por:** {admin_name}\n"
                 f"**Sección:** Aval/Fiador\n\n"
                 f"**Cambios realizados:**\n{change_details}"
             ),
@@ -756,6 +755,7 @@ async def update_client_guarantor(
             entity_type="guarantor",
             entity_id=client_id,
             created_by=current_user_id,
+            created_by_name=admin_name,
             metadata={"old_values": old_values, "new_values": update_data}
         )
         
@@ -845,7 +845,6 @@ async def update_client_beneficiary(
             title="👥 Beneficiario de Cliente Modificado",
             message=(
                 f"**Cliente:** {client_name} (ID: {client_id})\n"
-                f"**Modificado por:** {admin_name}\n"
                 f"**Sección:** Beneficiario\n\n"
                 f"**Cambios realizados:**\n{change_details}"
             ),
@@ -856,6 +855,7 @@ async def update_client_beneficiary(
             entity_type="beneficiary",
             entity_id=client_id,
             created_by=current_user_id,
+            created_by_name=admin_name,
             metadata={"old_values": old_values, "new_values": update_data}
         )
         

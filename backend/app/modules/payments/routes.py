@@ -208,11 +208,23 @@ async def register_payment(
         
         # 🔔 Notificación de pago registrado (solo grupo, no saturar)
         try:
+            # Obtener nombre del usuario que marcó el pago
+            from sqlalchemy import text
+            async with get_async_db().__anext__() as db:
+                result = await db.execute(
+                    text("SELECT first_name || ' ' || last_name FROM users WHERE id = :user_id"),
+                    {"user_id": payload.marked_by}
+                )
+                row = result.fetchone()
+                marked_by_name = row[0] if row and row[0] else f"ID #{payload.marked_by}"
+            
             await notify.send(
                 title="Pago Registrado",
                 message=f"• Préstamo: #{payment.loan_id}\n• Pago #{payment.payment_number}\n• Monto: ${payment.amount_paid:,.2f}",
                 level="info",
-                to_personal=False
+                to_personal=False,
+                created_by=payload.marked_by,
+                created_by_name=marked_by_name
             )
         except Exception:
             pass

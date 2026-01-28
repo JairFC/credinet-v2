@@ -541,20 +541,22 @@ class LoanService:
         
         # 🔔 Notificación de préstamo aprobado
         try:
-            # Obtener nombres del asociado y cliente para la notificación
+            # Obtener nombres del asociado, cliente y aprobador para la notificación
             # Nota: Tanto clientes como asociados están en la tabla 'users'
             from sqlalchemy import text
             result = await self.session.execute(
                 text("""
                     SELECT 
                         (SELECT first_name || ' ' || last_name FROM users WHERE id = :associate_id) AS associate_name,
-                        (SELECT first_name || ' ' || last_name FROM users WHERE id = :client_id) AS client_name
+                        (SELECT first_name || ' ' || last_name FROM users WHERE id = :client_id) AS client_name,
+                        (SELECT first_name || ' ' || last_name FROM users WHERE id = :approved_by) AS approved_by_name
                 """),
-                {"associate_id": loan.associate_user_id, "client_id": loan.user_id}
+                {"associate_id": loan.associate_user_id, "client_id": loan.user_id, "approved_by": approved_by}
             )
             names = result.fetchone()
             associate_name = names[0] or f"ID #{loan.associate_user_id}" if names else f"ID #{loan.associate_user_id}"
             client_name = names[1] or f"ID #{loan.user_id}" if names else f"ID #{loan.user_id}"
+            approved_by_name = names[2] or f"ID #{approved_by}" if names else f"ID #{approved_by}"
             
             # Calcular fecha aproximada de finalización
             from datetime import timedelta
@@ -576,7 +578,9 @@ class LoanService:
             await notify.send(
                 title="Préstamo Aprobado",
                 message="\n".join(msg_parts),
-                level="success"
+                level="success",
+                created_by=approved_by,
+                created_by_name=approved_by_name
             )
         except Exception as e:
             print(f"⚠️ Error enviando notificación: {e}")

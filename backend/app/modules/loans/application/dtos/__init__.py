@@ -185,6 +185,9 @@ class LoanResponseDTO(BaseModel):
     # ⭐ Información de renovación (si aplica)
     renewal_info: Optional[dict] = Field(None, description="Información de renovación si este préstamo reemplaza otro")
     
+    # ⭐ Validación de eliminación
+    has_statement_payments: bool = Field(default=False, description="True si tiene pagos en statements (no se puede eliminar)")
+    
     model_config = ConfigDict(from_attributes=True)
 
 

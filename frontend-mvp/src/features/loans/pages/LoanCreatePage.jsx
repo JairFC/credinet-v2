@@ -5,6 +5,7 @@ import { rateProfilesService } from '@/shared/api/services/rateProfilesService';
 import ClientSelector from '../../../shared/components/ClientSelector/ClientSelector';
 import AssociateSelector from '../../../shared/components/AssociateSelector/AssociateSelector';
 import LoanSummaryPreview from '../components/LoanSummaryPreview';
+import SuccessNotification from '../../../shared/components/SuccessNotification';
 import './LoanCreatePage.css';
 
 const LoanCreatePage = () => {
@@ -24,6 +25,14 @@ const LoanCreatePage = () => {
   // Estados para preview de cálculos
   const [calculation, setCalculation] = useState(null);
   const [calculatingPreview, setCalculatingPreview] = useState(false);
+
+  // ⭐ Estado para notificación de éxito
+  const [successNotification, setSuccessNotification] = useState({
+    isOpen: false,
+    loanId: null,
+    isRenewal: false,
+    renewalDetails: null
+  });
 
   // ⭐ ESTADOS PARA RENOVACIÓN
   const [clientActiveLoans, setClientActiveLoans] = useState([]);
@@ -331,28 +340,32 @@ const LoanCreatePage = () => {
         response = await loansService.renew(payload);
 
         const renewalInfo = response.data.renewal_info;
-        const netToClient = renewalInfo?.net_to_client || 0;
 
-        alert(
-          `✅ Préstamo renovado exitosamente!\n\n` +
-          `📋 RESUMEN DE RENOVACIÓN:\n` +
-          `─────────────────────────────\n` +
-          `• Préstamo anterior (#${selectedLoanToRenew.loan_id}) liquidado\n` +
-          `• Saldo liquidado: $${renewalInfo?.amount_liquidated?.toLocaleString('es-MX', { minimumFractionDigits: 2 }) || '0.00'}\n` +
-          `• Comisiones para asociado: $${renewalInfo?.commissions_owed_to_associate?.toLocaleString('es-MX', { minimumFractionDigits: 2 }) || '0.00'}\n` +
-          `─────────────────────────────\n` +
-          `💰 NETO PARA EL CLIENTE: $${netToClient.toLocaleString('es-MX', { minimumFractionDigits: 2 })}\n` +
-          `─────────────────────────────\n` +
-          `• Nuevo préstamo: #${response.data.id}\n` +
-          `• Estado: APROBADO (automático)`
-        );
+        // Mostrar notificación de éxito para renovación
+        setSuccessNotification({
+          isOpen: true,
+          loanId: response.data.id,
+          isRenewal: true,
+          renewalDetails: {
+            originalLoanId: selectedLoanToRenew.loan_id,
+            amountLiquidated: renewalInfo?.amount_liquidated || 0,
+            commissionsToAssociate: renewalInfo?.commissions_owed_to_associate || 0,
+            netToClient: renewalInfo?.net_to_client || 0
+          }
+        });
       } else {
         response = await loansService.create(payload);
-        alert('Préstamo creado exitosamente');
+        
+        // Mostrar notificación de éxito para préstamo nuevo
+        setSuccessNotification({
+          isOpen: true,
+          loanId: response.data.id,
+          isRenewal: false,
+          renewalDetails: null
+        });
       }
 
       console.log('✅ Préstamo creado exitosamente:', response.data);
-      navigate('/prestamos');
 
     } catch (err) {
       console.error('Error creando préstamo:', err);
@@ -398,8 +411,46 @@ const LoanCreatePage = () => {
   // Calcular el monto para filtrar asociados
   const loanAmount = parseFloat(formData.amount) || 0;
 
+  // Formatear moneda para la notificación
+  const formatCurrency = (amount) => {
+    return `$${parseFloat(amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+  };
+
   return (
     <div className="loan-create-page">
+      {/* ⭐ Notificación de éxito estilo Discord */}
+      <SuccessNotification
+        isOpen={successNotification.isOpen}
+        onClose={() => {
+          setSuccessNotification(prev => ({ ...prev, isOpen: false }));
+          navigate('/prestamos');
+        }}
+        title={successNotification.isRenewal ? '🔄 Préstamo Renovado' : '✅ Préstamo Creado'}
+        message={
+          successNotification.isRenewal && successNotification.renewalDetails
+            ? `Préstamo #${successNotification.loanId} creado correctamente.\n` +
+              `Préstamo anterior (#${successNotification.renewalDetails.originalLoanId}) liquidado.\n` +
+              `Neto para el cliente: ${formatCurrency(successNotification.renewalDetails.netToClient)}`
+            : `Préstamo #${successNotification.loanId} creado exitosamente.\nEstado: Pendiente de aprobación.`
+        }
+        icon={successNotification.isRenewal ? '🔄' : '💰'}
+        duration={0} // Sin auto-cerrar, requiere botón
+        actions={[
+          {
+            label: 'Ver Préstamo',
+            icon: '📋',
+            variant: 'secondary',
+            onClick: () => navigate(`/prestamos/${successNotification.loanId}`)
+          },
+          {
+            label: 'Aceptar',
+            icon: '✓',
+            variant: 'primary',
+            onClick: () => navigate('/prestamos')
+          }
+        ]}
+      />
+
       <div className="page-header">
         <div className="header-content">
           <div className="header-left">

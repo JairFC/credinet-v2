@@ -187,10 +187,26 @@ export default function LoanDetailPage() {
 
   // ============ FUNCIONES DE ELIMINACIÓN ============
   const canDeleteLoan = () => {
-    // No permitir eliminar préstamos PAID_OFF (4), DEFAULTED (5), CANCELLED (7)
     if (!loan) return false;
+    
+    // No permitir si tiene pagos en statements (ya fue incluido en un corte)
+    if (loan.has_statement_payments) return false;
+    
+    // No permitir eliminar préstamos PAID_OFF (4), DEFAULTED (5), CANCELLED (7)
     const forbiddenStates = [4, 5, 7];
     return !forbiddenStates.includes(loan.status_id);
+  };
+
+  const getDeleteButtonTooltip = () => {
+    if (!loan) return '';
+    if (loan.has_statement_payments) {
+      return 'No se puede eliminar: ya tiene pagos registrados en un statement';
+    }
+    const forbiddenStates = [4, 5, 7];
+    if (forbiddenStates.includes(loan.status_id)) {
+      return 'No se puede eliminar préstamos completados, defaulted o cancelados';
+    }
+    return 'Eliminar préstamo';
   };
 
   const handleDeleteClick = () => {
@@ -297,10 +313,13 @@ export default function LoanDetailPage() {
               📅 Ver Pagos
             </button>
           )}
-          {canDeleteLoan() && (
+          {/* Botón eliminar - mostrar deshabilitado si tiene pagos en statements */}
+          {(canDeleteLoan() || loan.has_statement_payments) && ![4, 5, 7].includes(loan.status_id) && (
             <button
-              className="btn-danger"
-              onClick={handleDeleteClick}
+              className={`btn-danger ${!canDeleteLoan() ? 'disabled' : ''}`}
+              onClick={canDeleteLoan() ? handleDeleteClick : undefined}
+              disabled={!canDeleteLoan()}
+              title={getDeleteButtonTooltip()}
             >
               🗑️ Eliminar
             </button>

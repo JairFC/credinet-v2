@@ -75,16 +75,17 @@ class NotificationService:
         
         return utc_str, chi_str
     
-    async def _send_telegram(self, chat_id: str, title: str, message: str, emoji: str) -> bool:
+    async def _send_telegram(self, chat_id: str, title: str, message: str, emoji: str, created_by_name: str = None) -> bool:
         """Enviar mensaje a Telegram."""
         if not self.telegram_token or not chat_id:
             return False
             
         utc_ts, chi_ts = self._get_timestamps()
+        created_line = f"\n👤 Realizado por: `{created_by_name}`" if created_by_name else ""
         
         text = f"""{emoji} *{title}*
 
-{message}
+{message}{created_line}
 
 📍 Servidor: `{self.hostname}`
 🕐 Chihuahua: `{chi_ts}`
@@ -106,7 +107,7 @@ class NotificationService:
             logger.warning(f"Error enviando Telegram: {e}")
             return False
     
-    async def _send_discord(self, title: str, message: str, emoji: str) -> bool:
+    async def _send_discord(self, title: str, message: str, emoji: str, created_by_name: str = None) -> bool:
         """Enviar mensaje a Discord."""
         if not self.discord_webhook:
             return False
@@ -114,7 +115,8 @@ class NotificationService:
         utc_ts, chi_ts = self._get_timestamps()
         
         # Discord usa newlines normales en content, no hay que escapar
-        content = f"{emoji} **{title}**\n\n{message}\n\n📍 Servidor: `{self.hostname}`\n🕐 Chihuahua: `{chi_ts}`\n🌐 UTC: `{utc_ts}`"
+        created_line = f"\n👤 Realizado por: `{created_by_name}`" if created_by_name else ""
+        content = f"{emoji} **{title}**\n\n{message}{created_line}\n\n📍 Servidor: `{self.hostname}`\n🕐 Chihuahua: `{chi_ts}`\n🌐 UTC: `{utc_ts}`"
         
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -144,6 +146,7 @@ class NotificationService:
         entity_type: str = None,
         entity_id: int = None,
         created_by: int = None,
+        created_by_name: str = None,  # ⭐ Nombre del usuario para mostrar en notificación
         metadata: dict = None,
     ) -> dict:
         """
@@ -161,6 +164,7 @@ class NotificationService:
             entity_type: Tipo de entidad relacionada (user, loan, agreement, etc)
             entity_id: ID de la entidad relacionada
             created_by: ID del usuario que generó el evento
+            created_by_name: Nombre del usuario para mostrar en la notificación
             metadata: Datos adicionales en formato JSON
             
         Returns:
@@ -172,18 +176,18 @@ class NotificationService:
         # Telegram personal
         if to_personal and self.telegram_chat_id:
             results["telegram_personal"] = await self._send_telegram(
-                self.telegram_chat_id, title, message, emoji
+                self.telegram_chat_id, title, message, emoji, created_by_name
             )
         
         # Telegram grupo
         if to_group and self.telegram_group_id:
             results["telegram_group"] = await self._send_telegram(
-                self.telegram_group_id, title, message, emoji
+                self.telegram_group_id, title, message, emoji, created_by_name
             )
         
         # Discord
         if to_discord and self.discord_webhook:
-            results["discord"] = await self._send_discord(title, message, emoji)
+            results["discord"] = await self._send_discord(title, message, emoji, created_by_name)
         
         # Persistir en base de datos
         if persist:
