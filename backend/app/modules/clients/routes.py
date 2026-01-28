@@ -4,12 +4,13 @@ Rutas FastAPI para el módulo de clients.
 Endpoints:
 - GET /clients → Listar clientes
 - GET /clients/:id → Detalle de un cliente
+- PATCH /clients/:id → Actualizar datos de un cliente
 """
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.database import get_async_db
 from app.core.dependencies import require_admin
@@ -18,6 +19,10 @@ from app.modules.clients.application.dtos import (
     ClientListItemDTO,
     ClientSearchItemDTO,
     PaginatedClientsDTO,
+    UpdateClientDTO,
+    UpdateAddressDTO,
+    UpdateGuarantorDTO,
+    UpdateBeneficiaryDTO,
 )
 from app.modules.clients.application.use_cases import (
     ListClientsUseCase,
@@ -27,6 +32,7 @@ from app.modules.clients.infrastructure.repositories.pg_client_repository import
 from app.modules.addresses.infrastructure.models.address_model import AddressModel
 from app.modules.guarantors.infrastructure.models.guarantor_model import GuarantorModel
 from app.modules.beneficiaries.infrastructure.models.beneficiary_model import BeneficiaryModel
+from app.modules.auth.infrastructure.models import UserModel
 
 
 router = APIRouter(
@@ -318,4 +324,294 @@ async def get_client_details(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching client details: {str(e)}"
+        )
+
+
+@router.patch("/{client_id}", response_model=dict)
+async def update_client(
+    client_id: int,
+    data: UpdateClientDTO,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Actualiza parcialmente los datos de un cliente.
+    
+    Solo actualiza los campos proporcionados (null = no cambiar).
+    Los cambios se registran automáticamente en audit_log.
+    
+    Args:
+        client_id: ID del cliente a actualizar
+        data: Campos a actualizar
+        
+    Returns:
+        Mensaje de éxito
+        
+    Raises:
+        404: Si el cliente no existe
+        409: Si el email/teléfono ya está en uso
+    """
+    try:
+        # Verificar que el cliente existe
+        result = await db.execute(
+            select(UserModel).where(UserModel.id == client_id)
+        )
+        client = result.scalar_one_or_none()
+        
+        if not client:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Cliente {client_id} no encontrado"
+            )
+        
+        # Construir datos de actualización (solo campos proporcionados)
+        update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+        
+        if not update_data:
+            return {"message": "No hay cambios para aplicar"}
+        
+        # Verificar unicidad de email si se cambió
+        if 'email' in update_data and update_data['email'] != client.email:
+            email_check = await db.execute(
+                select(UserModel).where(
+                    UserModel.email == update_data['email'],
+                    UserModel.id != client_id
+                )
+            )
+            if email_check.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El email {update_data['email']} ya está en uso"
+                )
+        
+        # Verificar unicidad de teléfono si se cambió
+        if 'phone_number' in update_data and update_data['phone_number'] != client.phone_number:
+            phone_check = await db.execute(
+                select(UserModel).where(
+                    UserModel.phone_number == update_data['phone_number'],
+                    UserModel.id != client_id
+                )
+            )
+            if phone_check.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El teléfono {update_data['phone_number']} ya está en uso"
+                )
+        
+        # Verificar unicidad de CURP si se cambió
+        if 'curp' in update_data and update_data['curp'] != client.curp:
+            curp_check = await db.execute(
+                select(UserModel).where(
+                    UserModel.curp == update_data['curp'],
+                    UserModel.id != client_id
+                )
+            )
+            if curp_check.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"El CURP {update_data['curp']} ya está en uso"
+                )
+        
+        # Aplicar actualización
+        await db.execute(
+            update(UserModel)
+            .where(UserModel.id == client_id)
+            .values(**update_data)
+        )
+        await db.commit()
+        
+        return {
+            "message": "Cliente actualizado correctamente",
+            "updated_fields": list(update_data.keys())
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error actualizando cliente: {str(e)}"
+        )
+
+
+@router.patch("/{client_id}/address", response_model=dict)
+async def update_client_address(
+    client_id: int,
+    data: UpdateAddressDTO,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Actualiza parcialmente la dirección de un cliente.
+    
+    Args:
+        client_id: ID del cliente (user_id)
+        data: Campos de dirección a actualizar
+        
+    Returns:
+        Mensaje de éxito
+        
+    Raises:
+        404: Si la dirección no existe
+    """
+    try:
+        # Verificar que la dirección existe
+        result = await db.execute(
+            select(AddressModel).where(AddressModel.user_id == client_id)
+        )
+        address = result.scalar_one_or_none()
+        
+        if not address:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Dirección del cliente {client_id} no encontrada"
+            )
+        
+        # Construir datos de actualización
+        update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+        
+        if not update_data:
+            return {"message": "No hay cambios para aplicar"}
+        
+        # Aplicar actualización
+        await db.execute(
+            update(AddressModel)
+            .where(AddressModel.user_id == client_id)
+            .values(**update_data)
+        )
+        await db.commit()
+        
+        return {
+            "message": "Dirección actualizada correctamente",
+            "updated_fields": list(update_data.keys())
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error actualizando dirección: {str(e)}"
+        )
+
+
+@router.patch("/{client_id}/guarantor", response_model=dict)
+async def update_client_guarantor(
+    client_id: int,
+    data: UpdateGuarantorDTO,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Actualiza parcialmente el aval de un cliente.
+    
+    Args:
+        client_id: ID del cliente (user_id)
+        data: Campos del aval a actualizar
+        
+    Returns:
+        Mensaje de éxito
+        
+    Raises:
+        404: Si el aval no existe
+    """
+    try:
+        # Verificar que el aval existe
+        result = await db.execute(
+            select(GuarantorModel).where(GuarantorModel.user_id == client_id)
+        )
+        guarantor = result.scalar_one_or_none()
+        
+        if not guarantor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Aval del cliente {client_id} no encontrado"
+            )
+        
+        # Construir datos de actualización
+        update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+        
+        if not update_data:
+            return {"message": "No hay cambios para aplicar"}
+        
+        # Aplicar actualización
+        await db.execute(
+            update(GuarantorModel)
+            .where(GuarantorModel.user_id == client_id)
+            .values(**update_data)
+        )
+        await db.commit()
+        
+        return {
+            "message": "Aval actualizado correctamente",
+            "updated_fields": list(update_data.keys())
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error actualizando aval: {str(e)}"
+        )
+
+
+@router.patch("/{client_id}/beneficiary", response_model=dict)
+async def update_client_beneficiary(
+    client_id: int,
+    data: UpdateBeneficiaryDTO,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Actualiza parcialmente el beneficiario de un cliente.
+    
+    Args:
+        client_id: ID del cliente (user_id)
+        data: Campos del beneficiario a actualizar
+        
+    Returns:
+        Mensaje de éxito
+        
+    Raises:
+        404: Si el beneficiario no existe
+    """
+    try:
+        # Verificar que el beneficiario existe
+        result = await db.execute(
+            select(BeneficiaryModel).where(BeneficiaryModel.user_id == client_id)
+        )
+        beneficiary = result.scalar_one_or_none()
+        
+        if not beneficiary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Beneficiario del cliente {client_id} no encontrado"
+            )
+        
+        # Construir datos de actualización
+        update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+        
+        if not update_data:
+            return {"message": "No hay cambios para aplicar"}
+        
+        # Aplicar actualización
+        await db.execute(
+            update(BeneficiaryModel)
+            .where(BeneficiaryModel.user_id == client_id)
+            .values(**update_data)
+        )
+        await db.commit()
+        
+        return {
+            "message": "Beneficiario actualizado correctamente",
+            "updated_fields": list(update_data.keys())
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error actualizando beneficiario: {str(e)}"
         )

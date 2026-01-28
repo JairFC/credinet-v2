@@ -4,6 +4,10 @@ from .client_dto import (
     ClientSearchItemDTO,
     CreateClientDTO,
     PaginatedClientsDTO,
+    UpdateClientDTO,
+    UpdateAddressDTO,
+    UpdateGuarantorDTO,
+    UpdateBeneficiaryDTO,
 )
 
 __all__ = [
@@ -12,4 +16,8 @@ __all__ = [
     'ClientSearchItemDTO',
     'CreateClientDTO',
     'PaginatedClientsDTO',
+    'UpdateClientDTO',
+    'UpdateAddressDTO',
+    'UpdateGuarantorDTO',
+    'UpdateBeneficiaryDTO',
 ]

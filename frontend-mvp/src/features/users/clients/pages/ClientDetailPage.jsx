@@ -260,8 +260,6 @@ const ClientDetailPage = () => {
   };
 
   const saveChanges = async () => {
-    // TODO: Backend endpoints para PATCH están pendientes de implementar
-    // Por ahora mostramos mensaje informativo
     try {
       setSaving(true);
       
@@ -270,16 +268,35 @@ const ClientDetailPage = () => {
 
       switch (editingSection) {
         case 'personal':
+          endpoint = `/api/v1/clients/${clientId}`;
+          updatePayload = {
+            first_name: editData.first_name,
+            last_name: editData.last_name,
+            birth_date: editData.birth_date,
+            curp: editData.curp
+          };
+          break;
         case 'contact':
-          endpoint = `/api/v1/users/${clientId}`;
-          updatePayload = editData;
+          endpoint = `/api/v1/clients/${clientId}`;
+          updatePayload = {
+            email: editData.email,
+            phone_number: editData.phone_number
+          };
           break;
         case 'address':
-          endpoint = `/api/v1/addresses/user/${clientId}`;
-          updatePayload = editData;
+          endpoint = `/api/v1/clients/${clientId}/address`;
+          updatePayload = {
+            street: editData.street,
+            external_number: editData.external_number,
+            internal_number: editData.internal_number,
+            colony: editData.colony,
+            municipality: editData.municipality,
+            state: editData.state,
+            zip_code: editData.zip_code
+          };
           break;
         case 'guarantor':
-          endpoint = `/api/v1/guarantors/user/${clientId}`;
+          endpoint = `/api/v1/clients/${clientId}/guarantor`;
           updatePayload = {
             full_name: editData.guarantor_full_name,
             relationship: editData.guarantor_relationship,
@@ -288,7 +305,7 @@ const ClientDetailPage = () => {
           };
           break;
         case 'beneficiary':
-          endpoint = `/api/v1/beneficiaries/user/${clientId}`;
+          endpoint = `/api/v1/clients/${clientId}/beneficiary`;
           updatePayload = {
             full_name: editData.beneficiary_full_name,
             relationship: editData.beneficiary_relationship,
@@ -299,17 +316,14 @@ const ClientDetailPage = () => {
           throw new Error('Sección no reconocida');
       }
 
-      // Intentar PATCH, si no existe probar PUT
-      try {
-        await apiClient.patch(endpoint, updatePayload);
-      } catch (patchErr) {
-        // Si PATCH falla con 405 (Method Not Allowed), intentar PUT
-        if (patchErr.response?.status === 405) {
-          await apiClient.put(endpoint, updatePayload);
-        } else {
-          throw patchErr;
+      // Limpiar valores vacíos del payload
+      Object.keys(updatePayload).forEach(key => {
+        if (updatePayload[key] === '' || updatePayload[key] === null || updatePayload[key] === undefined) {
+          delete updatePayload[key];
         }
-      }
+      });
+
+      await apiClient.patch(endpoint, updatePayload);
       
       setSuccessMessage(`Datos de ${getSectionName(editingSection)} actualizados correctamente`);
       setShowSuccess(true);

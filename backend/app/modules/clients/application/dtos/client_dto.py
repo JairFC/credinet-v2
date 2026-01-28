@@ -129,3 +129,79 @@ class PaginatedClientsDTO(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class UpdateClientDTO(BaseModel):
+    """DTO para actualización parcial de datos del cliente"""
+    first_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    last_name: Optional[str] = Field(None, min_length=2, max_length=100)
+    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = Field(None, max_length=10, pattern=r'^\d{10}$')
+    birth_date: Optional[date] = None
+    curp: Optional[str] = Field(None, max_length=18, pattern=r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$')
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "first_name": "María",
+                "last_name": "González Pérez",
+                "phone_number": "5551234567",
+                "curp": "GOGM900515MDFNRR02"
+            }
+        }
+
+
+class UpdateAddressDTO(BaseModel):
+    """DTO para actualización parcial de dirección"""
+    street: Optional[str] = Field(None, max_length=200)
+    external_number: Optional[str] = Field(None, max_length=20)
+    internal_number: Optional[str] = Field(None, max_length=20)
+    colony: Optional[str] = Field(None, max_length=100)
+    municipality: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    zip_code: Optional[str] = Field(None, max_length=10, pattern=r'^\d{5}$')
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "street": "Av. Insurgentes Sur",
+                "external_number": "1234",
+                "colony": "Del Valle",
+                "municipality": "Benito Juárez",
+                "state": "Ciudad de México",
+                "zip_code": "03100"
+            }
+        }
+
+
+class UpdateGuarantorDTO(BaseModel):
+    """DTO para actualización parcial de aval"""
+    full_name: Optional[str] = Field(None, max_length=200)
+    relationship: Optional[str] = Field(None, max_length=50)
+    phone_number: Optional[str] = Field(None, max_length=20)
+    curp: Optional[str] = Field(None, max_length=18, pattern=r'^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$')
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "full_name": "Juan Pérez López",
+                "relationship": "Hermano",
+                "phone_number": "5559876543"
+            }
+        }
+
+
+class UpdateBeneficiaryDTO(BaseModel):
+    """DTO para actualización parcial de beneficiario"""
+    full_name: Optional[str] = Field(None, max_length=200)
+    relationship: Optional[str] = Field(None, max_length=50)
+    phone_number: Optional[str] = Field(None, max_length=20)
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "full_name": "Ana Pérez López",
+                "relationship": "Esposa",
+                "phone_number": "5553214567"
+            }
+        }
