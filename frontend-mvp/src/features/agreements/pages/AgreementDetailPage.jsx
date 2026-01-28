@@ -223,8 +223,12 @@ const AgreementDetailPage = () => {
               <span className="info-value">{formatDate(agreement.agreement_date)}</span>
             </div>
             <div className="info-item">
-              <span className="info-label">Inicio Pagos</span>
-              <span className="info-value">{formatDate(agreement.start_date)}</span>
+              <span className="info-label">Primer Pago</span>
+              <span className="info-value">
+                {agreement.payments?.[0]?.payment_due_date 
+                  ? formatDate(agreement.payments[0].payment_due_date)
+                  : formatDate(agreement.start_date)}
+              </span>
             </div>
             <div className="info-item">
               <span className="info-label">Fin Estimado</span>
