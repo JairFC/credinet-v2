@@ -142,7 +142,6 @@ export default function AssociatesManagementPage() {
           </p>
         </div>
         <button className="btn-primary-action" onClick={handleCreateAssociate}>
-          <span className="btn-icon">+</span>
           Nuevo Asociado
         </button>
       </div>

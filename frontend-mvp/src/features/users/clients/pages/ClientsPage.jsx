@@ -124,7 +124,6 @@ export default function ClientsPage() {
           </p>
         </div>
         <button className="btn-primary-action" onClick={handleCreateClient}>
-          <span className="btn-icon">+</span>
           Nuevo Cliente
         </button>
       </div>
