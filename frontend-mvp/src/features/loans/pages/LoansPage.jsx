@@ -6,6 +6,8 @@ import { formatDateTime } from '@/shared/utils/dateUtils';
 import SuccessNotification from '@/shared/components/SuccessNotification';
 import './LoansPage.css';
 
+// v1.1 - SuccessNotification for loan approval
+
 /**
  * LoansPage - Vista principal de gestión de préstamos
  * 
@@ -319,15 +321,15 @@ export default function LoansPage() {
             icon: '📋',
             variant: 'secondary',
             onClick: () => {
-              if (successNotification.loan) {
-                navigate(`/prestamos/${successNotification.loan.id}`);
-              }
+              const loanId = successNotification.loan?.id;
               setSuccessNotification({ isOpen: false, loan: null });
+              if (loanId) {
+                navigate(`/prestamos/${loanId}`);
+              }
             }
           },
           {
             label: 'Aceptar',
-            icon: '✅',
             variant: 'primary',
             onClick: () => setSuccessNotification({ isOpen: false, loan: null })
           }
