@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { loansService } from '@/shared/api/services';
 import { formatDateTime } from '@/shared/utils/dateUtils';
+import SuccessNotification from '@/shared/components/SuccessNotification';
 import './LoansPage.css';
 
 /**
@@ -45,6 +46,12 @@ export default function LoansPage() {
   const [approveModal, setApproveModal] = useState({ isOpen: false, loan: null, notes: '' });
   const [rejectModal, setRejectModal] = useState({ isOpen: false, loan: null, reason: '' });
   const [actionLoading, setActionLoading] = useState(false);
+
+  // ⭐ Notificación de éxito para aprobación
+  const [successNotification, setSuccessNotification] = useState({
+    isOpen: false,
+    loan: null
+  });
 
   // Debounce de búsqueda para no hacer request en cada tecla
   // 800ms de espera para dar tiempo al usuario de terminar de escribir
@@ -186,6 +193,8 @@ export default function LoansPage() {
   const handleApproveLoan = async () => {
     if (!approveModal.loan) return;
 
+    const loanToApprove = approveModal.loan;
+
     try {
       setActionLoading(true);
 
@@ -194,13 +203,16 @@ export default function LoansPage() {
         notes: approveModal.notes.trim() || null
       };
 
-      await loansService.approve(approveModal.loan.id, payload);
+      await loansService.approve(loanToApprove.id, payload);
 
       setApproveModal({ isOpen: false, loan: null, notes: '' });
       await loadLoans();
 
-      console.log('✅ Préstamo aprobado exitosamente');
-      alert('Préstamo aprobado exitosamente');
+      // ⭐ Mostrar notificación elegante
+      setSuccessNotification({
+        isOpen: true,
+        loan: loanToApprove
+      });
     } catch (err) {
       console.error('Error aprobando préstamo:', err);
       console.error('Error response:', err.response);
@@ -287,6 +299,41 @@ export default function LoansPage() {
 
   return (
     <div className="loans-page">
+      {/* ⭐ Notificación de éxito estilo Discord */}
+      <SuccessNotification
+        isOpen={successNotification.isOpen}
+        onClose={() => setSuccessNotification({ isOpen: false, loan: null })}
+        title="✅ Préstamo Aprobado"
+        message={
+          successNotification.loan
+            ? `El préstamo #${successNotification.loan.id} ha sido aprobado exitosamente.\n` +
+              `Cliente: ${successNotification.loan.client_name || 'N/A'}\n` +
+              `Monto: $${Number(successNotification.loan.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+            : 'Préstamo aprobado exitosamente.'
+        }
+        icon="🎉"
+        duration={0}
+        actions={[
+          {
+            label: 'Ver Préstamo',
+            icon: '📋',
+            variant: 'secondary',
+            onClick: () => {
+              if (successNotification.loan) {
+                navigate(`/prestamos/${successNotification.loan.id}`);
+              }
+              setSuccessNotification({ isOpen: false, loan: null });
+            }
+          },
+          {
+            label: 'Aceptar',
+            icon: '✅',
+            variant: 'primary',
+            onClick: () => setSuccessNotification({ isOpen: false, loan: null })
+          }
+        ]}
+      />
+
       {/* Header */}
       <div className="loans-header">
         <div className="header-content">
