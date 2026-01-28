@@ -85,7 +85,15 @@ def get_db() -> Generator[Session, None, None]:
     """
     db = SessionLocal()
     try:
+        # Setear el usuario actual en la variable de sesión de PostgreSQL
+        user_id = current_user_id_var.get()
+        if user_id:
+            db.execute(text(f"SET LOCAL app.current_user_id = '{user_id}'"))
         yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
