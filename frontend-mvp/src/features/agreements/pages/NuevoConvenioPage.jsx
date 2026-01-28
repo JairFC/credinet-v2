@@ -24,7 +24,7 @@ const NuevoConvenioPage = () => {
   const [loans, setLoans] = useState([]);
   const [selectedLoans, setSelectedLoans] = useState([]);
   const [loadingLoans, setLoadingLoans] = useState(false);
-  const [paymentPlanMonths, setPaymentPlanMonths] = useState(6);
+  const [paymentPlanBiweeks, setPaymentPlanBiweeks] = useState(6);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -35,7 +35,7 @@ const NuevoConvenioPage = () => {
     return sum + (loan ? parseFloat(loan.pending_associate_payment || 0) : 0);
   }, 0);
   
-  const monthlyPayment = paymentPlanMonths > 0 ? totalSelected / paymentPlanMonths : 0;
+  const biweeklyPayment = paymentPlanBiweeks > 0 ? totalSelected / paymentPlanBiweeks : 0;
 
   // Búsqueda de asociados
   const searchAssociates = useCallback(async (term) => {
@@ -150,7 +150,7 @@ const NuevoConvenioPage = () => {
       const response = await agreementsService.createAgreementFromLoans({
         associate_profile_id: selectedAssociate.id,
         loan_ids: selectedLoans,
-        payment_plan_months: paymentPlanMonths,
+        payment_plan_biweeks: paymentPlanBiweeks,
         start_date: today,
         notes: notes || null
       });
@@ -352,17 +352,17 @@ const NuevoConvenioPage = () => {
 
             <div className="nc-plan-config">
               <div className="nc-plan-input">
-                <label>Número de meses</label>
+                <label>Número de quincenas</label>
                 <div className="nc-months-control">
-                  <button type="button" onClick={() => setPaymentPlanMonths(Math.max(1, paymentPlanMonths - 1))}>−</button>
+                  <button type="button" onClick={() => setPaymentPlanBiweeks(Math.max(1, paymentPlanBiweeks - 1))}>−</button>
                   <input
                     type="number"
-                    value={paymentPlanMonths}
-                    onChange={(e) => setPaymentPlanMonths(Math.min(36, Math.max(1, parseInt(e.target.value) || 1)))}
+                    value={paymentPlanBiweeks}
+                    onChange={(e) => setPaymentPlanBiweeks(Math.min(72, Math.max(1, parseInt(e.target.value) || 1)))}
                     min="1"
-                    max="36"
+                    max="72"
                   />
-                  <button type="button" onClick={() => setPaymentPlanMonths(Math.min(36, paymentPlanMonths + 1))}>+</button>
+                  <button type="button" onClick={() => setPaymentPlanBiweeks(Math.min(72, paymentPlanBiweeks + 1))}>+</button>
                 </div>
               </div>
               
@@ -387,22 +387,22 @@ const NuevoConvenioPage = () => {
                   <strong>{selectedLoans.length}</strong>
                 </div>
                 <div className="nc-summary-item">
-                  <span>Meses</span>
-                  <strong>{paymentPlanMonths}</strong>
+                  <span>Quincenas</span>
+                  <strong>{paymentPlanBiweeks}</strong>
                 </div>
                 <div className="nc-summary-item nc-summary-total">
                   <span>Total a Transferir</span>
                   <strong>{formatCurrency(totalSelected)}</strong>
                 </div>
                 <div className="nc-summary-item nc-summary-monthly">
-                  <span>Pago Mensual</span>
-                  <strong>{formatCurrency(monthlyPayment)}</strong>
+                  <span>Pago Quincenal</span>
+                  <strong>{formatCurrency(biweeklyPayment)}</strong>
                 </div>
               </div>
 
               <div className="nc-summary-note">
                 <strong>ℹ️ Nota:</strong> El monto se transferirá de "Pagos Pendientes" a "Deuda Consolidada". 
-                El crédito disponible no cambiará.
+                El crédito disponible no cambiará. Los pagos seguirán el calendario quincenal (días 15 y último del mes).
               </div>
             </div>
           </section>

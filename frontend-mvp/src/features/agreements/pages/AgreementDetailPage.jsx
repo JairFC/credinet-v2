@@ -229,16 +229,24 @@ const AgreementDetailPage = () => {
             </div>
             <div className="info-item">
               <span className="info-label">Plazo</span>
-              <span className="info-value">{agreement.payment_plan_months} meses</span>
+              <span className="info-value">
+                {agreement.payment_plan_periods 
+                  ? `${agreement.payment_plan_periods} quincenas` 
+                  : `${agreement.payment_plan_months} meses`}
+              </span>
             </div>
             <div className="info-item">
-              <span className="info-label">Pago Mensual</span>
-              <span className="info-value">{formatCurrency(agreement.monthly_payment_amount)}</span>
+              <span className="info-label">
+                {agreement.payment_frequency === 'biweekly' ? 'Pago Quincenal' : 'Pago Mensual'}
+              </span>
+              <span className="info-value">
+                {formatCurrency(agreement.period_payment_amount || agreement.monthly_payment_amount)}
+              </span>
             </div>
             <div className="info-item">
               <span className="info-label">Pagos Realizados</span>
               <span className="info-value">
-                {agreement.payments_made} de {agreement.payment_plan_months}
+                {agreement.payments_made} de {agreement.payment_plan_periods || agreement.payment_plan_months}
               </span>
             </div>
             {agreement.next_payment_date && (

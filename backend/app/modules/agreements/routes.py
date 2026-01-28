@@ -30,7 +30,7 @@ from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional, List
 from decimal import Decimal
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from app.core.database import get_async_db
 from app.core.notifications import notify
@@ -55,10 +55,13 @@ class CreateAgreementRequestDTO(BaseModel):
 class CreateAgreementFromLoansDTO(BaseModel):
     """DTO para crear convenio desde préstamos ACTIVOS."""
     loan_ids: List[int]  # IDs de préstamos activos a incluir en el convenio
-    payment_plan_months: int  # 1-36 meses
+    payment_plan_biweeks: int  # 1-72 quincenas (hasta 3 años)
     associate_profile_id: Optional[int] = None  # Opcional, se deduce de los préstamos
     start_date: Optional[date] = None  # Opcional, default: hoy
     notes: Optional[str] = None
+    
+    # ⚠️ DEPRECATED - Mantener para compatibilidad
+    payment_plan_months: Optional[int] = None  # Si se envía, se ignora
 
 
 class AgreementPaymentDTO(BaseModel):
@@ -86,8 +89,13 @@ class AgreementDetailDTO(BaseModel):
     agreement_number: str
     agreement_date: date
     total_debt_amount: Decimal
-    payment_plan_months: int
-    monthly_payment_amount: Decimal
+    # Legacy (mensual) - para convenios antiguos
+    payment_plan_months: Optional[int] = None
+    monthly_payment_amount: Optional[Decimal] = None
+    # Nuevo (quincenal) - para convenios nuevos
+    payment_plan_periods: Optional[int] = None
+    period_payment_amount: Optional[Decimal] = None
+    payment_frequency: str = 'biweekly'  # 'monthly' o 'biweekly'
     status: str
     start_date: date
     end_date: Optional[date]
@@ -172,8 +180,13 @@ async def list_agreements(
             "associate_name": row.associate_name,
             "total_paid": row.total_paid,
             "payments_made": row.payments_made,
+            # Legacy fields (for backward compatibility)
             "monthly_payment_amount": row.monthly_payment_amount,
             "payment_plan_months": row.payment_plan_months,
+            # New biweekly fields
+            "period_payment_amount": getattr(row, 'period_payment_amount', None),
+            "payment_plan_periods": getattr(row, 'payment_plan_periods', None),
+            "payment_frequency": getattr(row, 'payment_frequency', 'monthly') or 'monthly',
         })
     
     return {
@@ -257,6 +270,9 @@ async def get_agreement_detail(
         total_debt_amount=agreement.total_debt_amount,
         payment_plan_months=agreement.payment_plan_months,
         monthly_payment_amount=agreement.monthly_payment_amount,
+        payment_plan_periods=getattr(agreement, 'payment_plan_periods', None),
+        period_payment_amount=getattr(agreement, 'period_payment_amount', None),
+        payment_frequency=getattr(agreement, 'payment_frequency', 'monthly') or 'monthly',
         status=agreement.status,
         start_date=agreement.start_date,
         end_date=agreement.end_date,
@@ -476,11 +492,11 @@ async def create_agreement_from_loans(
       Al crear convenio: pending_payments_total baja, consolidated_debt sube → SIN CAMBIO
       Al pagar convenio: consolidated_debt baja → available_credit SUBE (se libera)
     """
-    # Validate months
-    if data.payment_plan_months < 1 or data.payment_plan_months > 36:
+    # Validate biweeks (quincenas)
+    if not data.payment_plan_biweeks or data.payment_plan_biweeks < 1 or data.payment_plan_biweeks > 72:
         raise HTTPException(
             status_code=400, 
-            detail="El plazo debe ser entre 1 y 36 meses"
+            detail="El plazo debe ser entre 1 y 72 quincenas (hasta 3 años)"
         )
     
     # Validate loans exist
@@ -634,8 +650,8 @@ async def create_agreement_from_loans(
             detail="No hay pagos pendientes del asociado en estos préstamos"
         )
     
-    # Calculate monthly payment
-    monthly_payment = (total_to_move / data.payment_plan_months).quantize(Decimal('0.01'))
+    # Calculate biweekly payment
+    biweekly_payment = (total_to_move / data.payment_plan_biweeks).quantize(Decimal('0.01'))
     
     # Generate agreement number (using MAX to handle gaps from deleted records)
     count_query = text("""
@@ -648,8 +664,14 @@ async def create_agreement_from_loans(
     next_num = count_result.scalar_one()
     agreement_number = f"CONV-{datetime.now().year}-{next_num:04d}"
     
-    # Calculate end date
-    end_date = data.start_date + relativedelta(months=data.payment_plan_months)
+    # ⭐ Calculate first payment date using the same biweekly logic as loans
+    # Uses calculate_first_payment_date SQL function
+    first_payment_query = text("SELECT calculate_first_payment_date(:start_date)")
+    first_payment_result = await db.execute(first_payment_query, {"start_date": start_date})
+    first_payment_date = first_payment_result.scalar_one()
+    
+    # Calculate end date (approximate based on biweeks)
+    end_date = first_payment_date + timedelta(days=15 * data.payment_plan_biweeks)
     
     # ========== TRANSACCIÓN ATÓMICA ==========
     
@@ -657,6 +679,9 @@ async def create_agreement_from_loans(
     available_credit_before = Decimal(str(associate.credit_limit)) - Decimal(str(associate.pending_payments_total)) - Decimal(str(associate.consolidated_debt))
     
     # 2. Create agreement
+    # NOTE: We insert BOTH legacy columns (payment_plan_months, monthly_payment_amount) AND new columns
+    # (payment_plan_periods, period_payment_amount, payment_frequency) to satisfy existing constraints
+    # and maintain backward compatibility. The legacy columns get equivalent values.
     insert_agreement = text("""
         INSERT INTO agreements (
             associate_profile_id,
@@ -665,6 +690,9 @@ async def create_agreement_from_loans(
             total_debt_amount,
             payment_plan_months,
             monthly_payment_amount,
+            payment_plan_periods,
+            period_payment_amount,
+            payment_frequency,
             status,
             start_date,
             end_date,
@@ -675,8 +703,11 @@ async def create_agreement_from_loans(
             :agreement_number,
             CURRENT_DATE,
             :total_debt_amount,
-            :payment_plan_months,
-            :monthly_payment_amount,
+            :payment_plan_periods,
+            :period_payment_amount,
+            :payment_plan_periods,
+            :period_payment_amount,
+            :payment_frequency,
             'ACTIVE',
             :start_date,
             :end_date,
@@ -690,8 +721,9 @@ async def create_agreement_from_loans(
         "associate_profile_id": associate_profile_id,
         "agreement_number": agreement_number,
         "total_debt_amount": total_to_move,
-        "payment_plan_months": data.payment_plan_months,
-        "monthly_payment_amount": monthly_payment,
+        "payment_plan_periods": data.payment_plan_biweeks,
+        "period_payment_amount": biweekly_payment,
+        "payment_frequency": "biweekly",
         "start_date": start_date,
         "end_date": end_date,
         "created_by": current_user["user_id"],
@@ -752,29 +784,51 @@ async def create_agreement_from_loans(
         "amount": total_to_move
     })
     
-    # 7. Generate payment schedule
-    payment_date = start_date
-    for i in range(1, data.payment_plan_months + 1):
+    # 7. Generate biweekly payment schedule
+    payment_date = first_payment_date  # Use calculated first payment date
+    
+    for i in range(1, data.payment_plan_biweeks + 1):
         # Last payment adjusts for rounding differences
-        if i == data.payment_plan_months:
-            payment_amount = total_to_move - (monthly_payment * (data.payment_plan_months - 1))
+        if i == data.payment_plan_biweeks:
+            payment_amount = total_to_move - (biweekly_payment * (data.payment_plan_biweeks - 1))
         else:
-            payment_amount = monthly_payment
+            payment_amount = biweekly_payment
+        
+        # ⭐ Find the correct cut_period_id for this payment date
+        # Same logic as generate_payment_schedule: find period where period_end_date <= payment_date
+        period_query = text("""
+            SELECT id FROM cut_periods
+            WHERE period_end_date < :payment_date
+            ORDER BY period_end_date DESC
+            LIMIT 1
+        """)
+        period_result = await db.execute(period_query, {"payment_date": payment_date})
+        period_row = period_result.fetchone()
+        cut_period_id = period_row.id if period_row else None
         
         await db.execute(text("""
             INSERT INTO agreement_payments (
-                agreement_id, payment_number, payment_amount, payment_due_date, status
+                agreement_id, payment_number, payment_amount, payment_due_date, cut_period_id, status
             ) VALUES (
-                :agreement_id, :payment_number, :payment_amount, :payment_due_date, 'PENDING'
+                :agreement_id, :payment_number, :payment_amount, :payment_due_date, :cut_period_id, 'PENDING'
             )
         """), {
             "agreement_id": agreement_id,
             "payment_number": i,
             "payment_amount": payment_amount,
-            "payment_due_date": payment_date
+            "payment_due_date": payment_date,
+            "cut_period_id": cut_period_id
         })
         
-        payment_date = payment_date + relativedelta(months=1)
+        # ⭐ Calculate next biweekly date (day 15 ↔ last day of month)
+        # Same logic as generate_amortization_schedule in PostgreSQL
+        if payment_date.day == 15:
+            # From day 15, go to last day of SAME month
+            next_month_first = payment_date.replace(day=1) + relativedelta(months=1)
+            payment_date = next_month_first - timedelta(days=1)
+        else:
+            # From last day of month, go to day 15 of NEXT month
+            payment_date = (payment_date.replace(day=1) + relativedelta(months=1)).replace(day=15)
     
     # 8. Verify available_credit didn't change
     verify_query = text("""
@@ -804,8 +858,8 @@ async def create_agreement_from_loans(
         message=f"• Número: {agreement_number}\n"
                 f"• Asociado ID: {associate_profile_id}\n"
                 f"• Deuda total: ${float(total_to_move):,.2f}\n"
-                f"• Plazo: {data.payment_plan_months} meses\n"
-                f"• Pago mensual: ${float(monthly_payment):,.2f}\n"
+                f"• Plazo: {data.payment_plan_biweeks} quincenas\n"
+                f"• Pago quincenal: ${float(biweekly_payment):,.2f}\n"
                 f"• Préstamos: {len(data.loan_ids)}\n"
                 f"• Creado por: Usuario #{current_user['user_id']}",
         level="warning",

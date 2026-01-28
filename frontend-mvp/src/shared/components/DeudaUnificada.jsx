@@ -323,12 +323,14 @@ const DeudaUnificada = ({ associateId, consolidatedDebt, onAbonarClick }) => {
                             <span className="value success">{formatCurrency(pagado)}</span>
                           </div>
                           <div className="detail">
-                            <span className="label">Cuota Mensual</span>
-                            <span className="value">{formatCurrency(convenio.monthly_payment_amount)}</span>
+                            <span className="label">
+                              {convenio.payment_frequency === 'biweekly' ? 'Cuota Quincenal' : 'Cuota Mensual'}
+                            </span>
+                            <span className="value">{formatCurrency(convenio.period_payment_amount || convenio.monthly_payment_amount)}</span>
                           </div>
                           <div className="detail">
                             <span className="label">Pagos</span>
-                            <span className="value">{convenio.payments_made} de {convenio.payment_plan_months}</span>
+                            <span className="value">{convenio.payments_made} de {convenio.payment_plan_periods || convenio.payment_plan_months}</span>
                           </div>
                         </div>
                         <div className="details-actions">

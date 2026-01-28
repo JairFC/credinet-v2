@@ -207,15 +207,21 @@ const ConveniosAsociado = ({ associateProfileId }) => {
                   <div className="details-grid">
                     <div className="detail-item">
                       <span className="label">Plazo:</span>
-                      <span className="value">{convenio.payment_plan_months} meses</span>
+                      <span className="value">
+                        {convenio.payment_plan_periods 
+                          ? `${convenio.payment_plan_periods} quincenas` 
+                          : `${convenio.payment_plan_months} meses`}
+                      </span>
                     </div>
                     <div className="detail-item">
-                      <span className="label">Cuota mensual:</span>
-                      <span className="value">{formatCurrency(convenio.monthly_payment_amount)}</span>
+                      <span className="label">
+                        {convenio.payment_frequency === 'biweekly' ? 'Cuota quincenal:' : 'Cuota mensual:'}
+                      </span>
+                      <span className="value">{formatCurrency(convenio.period_payment_amount || convenio.monthly_payment_amount)}</span>
                     </div>
                     <div className="detail-item">
                       <span className="label">Pagos realizados:</span>
-                      <span className="value">{convenio.payments_made} de {convenio.payment_plan_months}</span>
+                      <span className="value">{convenio.payments_made} de {convenio.payment_plan_periods || convenio.payment_plan_months}</span>
                     </div>
                   </div>
 

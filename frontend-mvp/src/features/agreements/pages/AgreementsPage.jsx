@@ -255,12 +255,18 @@ const AgreementsPage = () => {
                           <span className="value amount">{formatCurrency(agreement.total_debt_amount)}</span>
                         </div>
                         <div className="info-row">
-                          <span className="label">Cuota mensual:</span>
-                          <span className="value">{formatCurrency(agreement.monthly_payment_amount)}</span>
+                          <span className="label">
+                            {agreement.payment_frequency === 'biweekly' ? 'Cuota quincenal:' : 'Cuota mensual:'}
+                          </span>
+                          <span className="value">{formatCurrency(agreement.period_payment_amount || agreement.monthly_payment_amount)}</span>
                         </div>
                         <div className="info-row">
                           <span className="label">Plazo:</span>
-                          <span className="value">{agreement.payment_plan_months} meses</span>
+                          <span className="value">
+                            {agreement.payment_plan_periods 
+                              ? `${agreement.payment_plan_periods} quincenas` 
+                              : `${agreement.payment_plan_months} meses`}
+                          </span>
                         </div>
                       </div>
                       
