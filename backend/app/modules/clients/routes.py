@@ -355,7 +355,7 @@ async def update_client(
         result = await db.execute(
             select(UserModel).where(UserModel.id == client_id)
         )
-        client = result.scalar_one_or_none()
+        client = result.unique().scalar_one_or_none()
         
         if not client:
             raise HTTPException(
@@ -372,7 +372,7 @@ async def update_client(
         # Verificar unicidad de email si se cambió
         if 'email' in update_data and update_data['email'] != client.email:
             email_check = await db.execute(
-                select(UserModel).where(
+                select(UserModel.id).where(
                     UserModel.email == update_data['email'],
                     UserModel.id != client_id
                 )
@@ -386,7 +386,7 @@ async def update_client(
         # Verificar unicidad de teléfono si se cambió
         if 'phone_number' in update_data and update_data['phone_number'] != client.phone_number:
             phone_check = await db.execute(
-                select(UserModel).where(
+                select(UserModel.id).where(
                     UserModel.phone_number == update_data['phone_number'],
                     UserModel.id != client_id
                 )
@@ -400,7 +400,7 @@ async def update_client(
         # Verificar unicidad de CURP si se cambió
         if 'curp' in update_data and update_data['curp'] != client.curp:
             curp_check = await db.execute(
-                select(UserModel).where(
+                select(UserModel.id).where(
                     UserModel.curp == update_data['curp'],
                     UserModel.id != client_id
                 )
