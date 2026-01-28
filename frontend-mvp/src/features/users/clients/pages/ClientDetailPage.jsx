@@ -694,6 +694,7 @@ const ClientDetailPage = () => {
           <AuditHistory
             tableName="users"
             recordId={client.id}
+            includeRelated={true}
             title=""
           />
         </CollapsibleSection>

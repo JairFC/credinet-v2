@@ -2,12 +2,18 @@
  * AuditHistory - Componente para mostrar historial de auditoría de un registro
  * 
  * Muestra quién creó, modificó y el historial de cambios de un registro específico
+ * 
+ * Props:
+ * - tableName: tabla principal (ej: 'users')
+ * - recordId: ID del registro
+ * - includeRelated: si es true y tableName='users', incluye addresses, guarantors, beneficiaries
+ * - title: título del componente
  */
 import { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
 import './AuditHistory.css';
 
-const AuditHistory = ({ tableName, recordId, title = 'Historial de Cambios' }) => {
+const AuditHistory = ({ tableName, recordId, includeRelated = false, title = 'Historial de Cambios' }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -18,14 +24,24 @@ const AuditHistory = ({ tableName, recordId, title = 'Historial de Cambios' }) =
     if (tableName && recordId) {
       fetchAuditHistory();
     }
-  }, [tableName, recordId]);
+  }, [tableName, recordId, includeRelated]);
 
   const fetchAuditHistory = async () => {
     try {
       setLoading(true);
       setError('');
-      const response = await apiClient.get(`/api/v1/audit/records/${tableName}/${recordId}`);
-      const logs = response.data || [];
+      
+      let logs = [];
+      
+      // Si es users y queremos incluir tablas relacionadas, usar el endpoint especial
+      if (tableName === 'users' && includeRelated) {
+        const response = await apiClient.get(`/api/v1/audit/users/${recordId}/full-history`);
+        logs = response.data || [];
+      } else {
+        const response = await apiClient.get(`/api/v1/audit/records/${tableName}/${recordId}`);
+        logs = response.data || [];
+      }
+      
       setHistory(logs);
 
       // Extraer nombres de usuarios de new_data._changed_by_name (agregado por backend)
@@ -75,6 +91,21 @@ const AuditHistory = ({ tableName, recordId, title = 'Historial de Cambios' }) =
       case 'DELETE': return { label: 'Eliminación', icon: '🗑️', class: 'op-delete' };
       default: return { label: operation, icon: '📝', class: '' };
     }
+  };
+
+  // Traducir nombres de tablas a español
+  const getTableLabel = (tableName) => {
+    const tableLabels = {
+      'users': 'Datos personales',
+      'addresses': 'Dirección',
+      'guarantors': 'Aval',
+      'beneficiaries': 'Beneficiario',
+      'loans': 'Préstamo',
+      'payments': 'Pago',
+      'associates': 'Asociado',
+      'associate_profiles': 'Perfil de asociado'
+    };
+    return tableLabels[tableName] || tableName;
   };
 
   const getActionDescription = (log) => {
@@ -297,13 +328,17 @@ const AuditHistory = ({ tableName, recordId, title = 'Historial de Cambios' }) =
             {updateLogs.map((log, index) => {
               const opInfo = getOperationLabel(log.operation, log);
               const detailedChanges = getDetailedChanges(log);
+              const sectionLabel = getTableLabel(log.table_name);
 
               return (
                 <div key={log.id || index} className={`audit-timeline-item ${opInfo.class}`}>
                   <div className="timeline-marker">{opInfo.icon}</div>
                   <div className="timeline-content">
                     <div className="timeline-header">
-                      <span className="timeline-operation">{opInfo.label}</span>
+                      <span className="timeline-operation">
+                        {opInfo.label}
+                        {sectionLabel && <span className="timeline-section"> • {sectionLabel}</span>}
+                      </span>
                       <span className="timeline-date">{formatDate(log.changed_at)}</span>
                     </div>
                     {log.changed_by && (
