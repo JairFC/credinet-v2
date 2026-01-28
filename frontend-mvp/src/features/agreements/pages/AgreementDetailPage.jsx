@@ -57,7 +57,10 @@ const AgreementDetailPage = () => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('es-MX', {
+    // Parse as local date to avoid timezone issues (YYYY-MM-DD format)
+    const parts = dateStr.split('T')[0].split('-');
+    const date = new Date(parts[0], parts[1] - 1, parts[2]);
+    return date.toLocaleDateString('es-MX', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -302,11 +305,10 @@ const AgreementDetailPage = () => {
               <thead>
                 <tr>
                   <th>#</th>
+                  <th>Período</th>
                   <th>Fecha Vencimiento</th>
                   <th>Monto</th>
                   <th>Estado</th>
-                  <th>Fecha Pago</th>
-                  <th>Referencia</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
@@ -314,11 +316,10 @@ const AgreementDetailPage = () => {
                 {agreement.payments.map(payment => (
                   <tr key={payment.id} className={`payment-row ${payment.status.toLowerCase()}`}>
                     <td>{payment.payment_number}</td>
+                    <td className="period-code">{payment.cut_period_code || '-'}</td>
                     <td>{formatDate(payment.payment_due_date)}</td>
                     <td>{formatCurrency(payment.payment_amount)}</td>
                     <td>{getStatusBadge(payment.status)}</td>
-                    <td>{payment.payment_date ? formatDate(payment.payment_date) : '-'}</td>
-                    <td>{payment.payment_reference || '-'}</td>
                     <td>
                       {payment.status === 'PENDING' && agreement.status === 'ACTIVE' && (
                         <button 
@@ -327,6 +328,11 @@ const AgreementDetailPage = () => {
                         >
                           💰 Registrar
                         </button>
+                      )}
+                      {payment.status === 'PAID' && payment.payment_reference && (
+                        <span className="payment-ref" title={`Ref: ${payment.payment_reference}`}>
+                          📋 {payment.payment_reference}
+                        </span>
                       )}
                     </td>
                   </tr>

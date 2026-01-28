@@ -70,9 +70,11 @@ class AgreementPaymentDTO(BaseModel):
     payment_number: int
     payment_amount: Decimal
     payment_due_date: date
-    payment_date: Optional[date]
-    payment_method_id: Optional[int]
-    payment_reference: Optional[str]
+    cut_period_id: Optional[int] = None
+    cut_period_code: Optional[str] = None
+    payment_date: Optional[date] = None
+    payment_method_id: Optional[int] = None
+    payment_reference: Optional[str] = None
     status: str
     created_at: datetime
 
@@ -231,11 +233,13 @@ async def get_agreement_detail(
     items_result = await db.execute(items_query, {"agreement_id": agreement_id})
     items = [dict(row._mapping) for row in items_result.fetchall()]
     
-    # Get payments
+    # Get payments with cut_period info
     payments_query = text("""
-        SELECT * FROM agreement_payments
-        WHERE agreement_id = :agreement_id
-        ORDER BY payment_number
+        SELECT ap.*, cp.cut_code as cut_period_code
+        FROM agreement_payments ap
+        LEFT JOIN cut_periods cp ON cp.id = ap.cut_period_id
+        WHERE ap.agreement_id = :agreement_id
+        ORDER BY ap.payment_number
     """)
     payments_result = await db.execute(payments_query, {"agreement_id": agreement_id})
     payments = []
@@ -250,6 +254,8 @@ async def get_agreement_detail(
             payment_number=row.payment_number,
             payment_amount=row.payment_amount,
             payment_due_date=row.payment_due_date,
+            cut_period_id=row.cut_period_id,
+            cut_period_code=row.cut_period_code,
             payment_date=row.payment_date,
             payment_method_id=row.payment_method_id,
             payment_reference=row.payment_reference,
