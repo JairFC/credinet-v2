@@ -151,6 +151,7 @@ export const PersonalDataSection = ({
               value={formData.first_name || ''}
               onChange={(e) => onChange({ first_name: e.target.value })}
               placeholder="Juan"
+              autoComplete="off"
               required
             />
           </div>
@@ -162,6 +163,7 @@ export const PersonalDataSection = ({
               value={formData.paternal_last_name || ''}
               onChange={(e) => onChange({ paternal_last_name: e.target.value })}
               placeholder="Pérez"
+              autoComplete="off"
               required
             />
           </div>
@@ -173,6 +175,7 @@ export const PersonalDataSection = ({
               value={formData.maternal_last_name || ''}
               onChange={(e) => onChange({ maternal_last_name: e.target.value })}
               placeholder="García"
+              autoComplete="off"
             />
           </div>
         </div>
@@ -197,7 +200,7 @@ export const PersonalDataSection = ({
               value={formData.gender || ''}
               onChange={(e) => onChange({ gender: e.target.value })}
               required
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Seleccionar género...</option>
               <option value="H">Hombre</option>
@@ -214,7 +217,7 @@ export const PersonalDataSection = ({
             value={formData.birth_state || ''}
             onChange={(e) => onChange({ birth_state: e.target.value })}
             required
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 max-h-[200px]"
+            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 max-h-[200px]"
           >
             <option value="">Seleccionar estado...</option>
             {states.map((state) => (
@@ -240,9 +243,20 @@ export const PersonalDataSection = ({
               <div className="flex gap-2 items-center">
                 <Input
                   value={curpDraft}
-                  disabled
-                  className="flex-1 bg-white dark:bg-gray-900 font-mono text-lg font-bold"
-                  title="CURP base generada automáticamente"
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase();
+                    if (value.length <= 16) {
+                      setCurpDraft(value);
+                      const fullCurp = value + homoclave;
+                      if (fullCurp.length === 18) {
+                        onChange({ curp: fullCurp });
+                      }
+                    }
+                  }}
+                  maxLength={16}
+                  className="flex-1 bg-white dark:bg-gray-900 font-mono text-lg font-bold border-2 border-blue-400"
+                  title="CURP base (primeros 16 caracteres) - Editable para casos especiales"
+                  autoComplete="off"
                 />
                 <Input
                   value={homoclave}
@@ -251,6 +265,7 @@ export const PersonalDataSection = ({
                   placeholder="00"
                   className="w-20 text-center font-mono text-lg font-bold border-2 border-blue-400"
                   title="Homoclave (últimos 2 dígitos) - Editable"
+                  autoComplete="off"
                 />
               </div>
               <div className="text-sm">
@@ -258,7 +273,7 @@ export const PersonalDataSection = ({
                   <strong>CURP completa:</strong> <span className="font-mono text-lg">{curpDraft}{homoclave}</span>
                 </p>
                 <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                  ✏️ Los últimos 2 dígitos (homoclave) son editables. Verifícalos con tu documento oficial.
+                  ✏️ Todos los 18 dígitos son editables. Los primeros 16 se autogeneran pero puedes ajustarlos para casos especiales.
                 </p>
               </div>
 

@@ -127,6 +127,7 @@ export const AddressSection = ({
               onChange={(e) => onChange({ zip_code: e.target.value })}
               placeholder="12345"
               maxLength={5}
+              autoComplete="off"
               required={required}
             />
             {zipLoading && (
@@ -148,7 +149,7 @@ export const AddressSection = ({
               id="colony"
               value={formData.colony || ''}
               onChange={(e) => onChange({ colony: e.target.value })}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="">Seleccionar colonia...</option>
               {colonies.map((colony, index) => (
@@ -170,6 +171,7 @@ export const AddressSection = ({
               onChange={(e) => onChange({ municipality: e.target.value })}
               placeholder="Se completa automáticamente"
               disabled={zipLoading}
+              autoComplete="off"
               required={required}
             />
           </div>
@@ -182,6 +184,7 @@ export const AddressSection = ({
               onChange={(e) => onChange({ state: e.target.value })}
               placeholder="Se completa automáticamente"
               disabled={zipLoading}
+              autoComplete="off"
               required={required}
             />
           </div>
@@ -195,6 +198,7 @@ export const AddressSection = ({
             value={formData.street || ''}
             onChange={(e) => onChange({ street: e.target.value })}
             placeholder="Av. Insurgentes"
+            autoComplete="off"
             required={required}
           />
         </div>
@@ -207,6 +211,7 @@ export const AddressSection = ({
               value={formData.external_number || ''}
               onChange={(e) => onChange({ external_number: e.target.value })}
               placeholder="123"
+              autoComplete="off"
               required={required}
             />
           </div>
@@ -218,6 +223,7 @@ export const AddressSection = ({
               value={formData.internal_number || ''}
               onChange={(e) => onChange({ internal_number: e.target.value })}
               placeholder="A (opcional)"
+              autoComplete="off"
             />
           </div>
         </div>

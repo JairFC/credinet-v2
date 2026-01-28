@@ -120,8 +120,7 @@ export const GuarantorSection = ({
               id="guarantor_first_name"
               value={formData.guarantor_first_name || ''}
               onChange={(e) => onChange({ guarantor_first_name: e.target.value })}
-              placeholder="Juan"
-            />
+              placeholder="Juan"              autoComplete="off"            />
           </div>
 
           <div className="space-y-2">
@@ -130,8 +129,7 @@ export const GuarantorSection = ({
               id="guarantor_paternal_last_name"
               value={formData.guarantor_paternal_last_name || ''}
               onChange={(e) => onChange({ guarantor_paternal_last_name: e.target.value })}
-              placeholder="Pérez"
-            />
+              placeholder="Pérez"              autoComplete="off"            />
           </div>
 
           <div className="space-y-2">
@@ -140,8 +138,7 @@ export const GuarantorSection = ({
               id="guarantor_maternal_last_name"
               value={formData.guarantor_maternal_last_name || ''}
               onChange={(e) => onChange({ guarantor_maternal_last_name: e.target.value })}
-              placeholder="García"
-            />
+              placeholder="García"              autoComplete="off"            />
           </div>
         </div>
 
@@ -163,7 +160,7 @@ export const GuarantorSection = ({
               id="guarantor_gender"
               value={formData.guarantor_gender || ''}
               onChange={(e) => onChange({ guarantor_gender: e.target.value })}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
             >
               <option value="">Seleccionar...</option>
               <option value="M">Masculino</option>
@@ -177,7 +174,7 @@ export const GuarantorSection = ({
               id="guarantor_birth_state"
               value={formData.guarantor_birth_state || ''}
               onChange={(e) => onChange({ guarantor_birth_state: e.target.value })}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
             >
               <option value="">Seleccionar...</option>
               <option value="AS">Aguascalientes</option>
@@ -224,7 +221,7 @@ export const GuarantorSection = ({
             id="guarantor_relationship"
             value={formData.guarantor_relationship || ''}
             onChange={(e) => onChange({ guarantor_relationship: e.target.value })}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
           >
             <option value="">Seleccionar...</option>
             {relationships.map((rel) => (
@@ -245,6 +242,7 @@ export const GuarantorSection = ({
             onChange={(e) => onChange({ guarantor_phone: e.target.value })}
             placeholder="5512345678"
             maxLength={10}
+            autoComplete="off"
           />
         </div>
 
