@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
 import ENDPOINTS from '../api/endpoints';
+import { formatDateOnly } from '../utils/dateUtils';
 
 /**
  * HistorialDeudas - Muestra el historial de deudas acumuladas de un asociado
@@ -53,11 +54,8 @@ const HistorialDeudas = ({ associateId }) => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    // Usar formatDateOnly para evitar offset de timezone
+    return formatDateOnly(dateStr, { monthFormat: 'short' });
   };
 
   if (loading) {

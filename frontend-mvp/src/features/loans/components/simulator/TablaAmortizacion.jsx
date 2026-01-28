@@ -7,6 +7,7 @@
  * - Saldo Pendiente: Total por pagar (incluyendo intereses futuros)
  * - Restante Asociado: Deuda real hacia CrediCuenta
  */
+import { formatDateOnly } from '@/shared/utils/dateUtils';
 import './TablaAmortizacion.css';
 
 export default function TablaAmortizacion({ payments }) {
@@ -21,17 +22,8 @@ export default function TablaAmortizacion({ payments }) {
     }).format(value);
   };
 
-  const formatDate = (dateStr) => {
-    // Parsear fecha en UTC para evitar problemas de timezone
-    // Si la fecha viene como "2025-12-15" (sin hora), agregarle la hora UTC
-    const date = new Date(dateStr + 'T12:00:00Z');
-    return new Intl.DateTimeFormat('es-MX', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      timeZone: 'UTC', // Formatear en UTC para mantener el día correcto
-    }).format(date);
-  };
+  // Usar formatDateOnly centralizado para evitar problemas de timezone
+  const formatDate = (dateStr) => formatDateOnly(dateStr, { monthFormat: 'numeric' });
 
   // Calcular totales
   const totals = payments.reduce((acc, payment) => ({

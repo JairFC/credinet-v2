@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { loansService } from '@/shared/api/services';
 import TablaAmortizacion from '../components/simulator/TablaAmortizacion';
 import LoanSummaryDisplay from '../components/LoanSummaryDisplay';
+import { formatDateTime, formatDateOnly } from '@/shared/utils/dateUtils';
 import './LoanDetailPage.css';
 
 /**
@@ -109,13 +110,8 @@ export default function LoanDetailPage() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // Usar formatDateTime para timestamps con hora (zone: America/Chihuahua)
+    return formatDateTime(dateString, { includeTime: true });
   };
 
   const formatPercent = (value) => {

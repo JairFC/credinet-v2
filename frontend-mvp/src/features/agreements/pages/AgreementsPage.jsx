@@ -13,6 +13,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { agreementsService } from '@/shared/api/services/agreementsService';
+import { formatDateTime } from '@/shared/utils/dateUtils';
 import './AgreementsPage.css';
 
 const STATUS_CONFIG = {
@@ -92,11 +93,8 @@ const AgreementsPage = () => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    // Usar formatDateTime para fechas de convenios (zona Chihuahua)
+    return formatDateTime(dateStr, { includeTime: false });
   };
 
   const calculateProgress = (agreement) => {

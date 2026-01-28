@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { loansService } from '@/shared/api/services';
+import { formatDateTime } from '@/shared/utils/dateUtils';
 import './LoansPage.css';
 
 /**
@@ -160,11 +161,8 @@ export default function LoansPage() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
+    // Usar formatDateTime con zona horaria Chihuahua, sin hora
+    return formatDateTime(dateString, { includeTime: false });
   };
 
   const getPaymentFrequency = (term_biweeks) => {

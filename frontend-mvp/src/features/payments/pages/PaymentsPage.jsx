@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/app/providers/AuthProvider';
 import { paymentsService } from '@/shared/api/services';
+import { formatDateOnly } from '@/shared/utils/dateUtils';
 import './PaymentsPage.css';
 
 /**
@@ -193,11 +194,8 @@ export default function PaymentsPage() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
+    // Las fechas de pago son solo día, usar formatDateOnly para evitar offset de timezone
+    return formatDateOnly(dateString, { monthFormat: 'numeric' });
   };
 
   const getStatusBadge = (status_id) => {

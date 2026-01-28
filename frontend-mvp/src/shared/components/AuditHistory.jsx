@@ -11,6 +11,7 @@
  */
 import { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
+import { formatDateTime, formatDateOnly } from '../utils/dateUtils';
 import './AuditHistory.css';
 
 const AuditHistory = ({ tableName, recordId, includeRelated = false, title = 'Historial de Cambios' }) => {
@@ -65,13 +66,8 @@ const AuditHistory = ({ tableName, recordId, includeRelated = false, title = 'Hi
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // Usar formatDateTime para timestamps de auditoría (zona Chihuahua)
+    return formatDateTime(dateString, { includeTime: true });
   };
 
   const getOperationLabel = (operation, log) => {
@@ -208,7 +204,8 @@ const AuditHistory = ({ tableName, recordId, includeRelated = false, title = 'Hi
           if (value === null || value === undefined || value === '') return '(vacío)';
           if (typeof value === 'boolean') return value ? 'Sí' : 'No';
           if (field === 'birth_date' && value) {
-            return new Date(value).toLocaleDateString('es-MX');
+            // Usar formatDateOnly para evitar offset de timezone
+            return formatDateOnly(value);
           }
           if (field === 'credit_limit' && typeof value === 'number') {
             return `$${value.toLocaleString('es-MX')}`;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
 import ENDPOINTS from '../api/endpoints';
+import { formatDateOnly } from '../utils/dateUtils';
 
 /**
  * PrestamosAsociado - Lista compacta de préstamos de un asociado
@@ -109,11 +110,8 @@ const PrestamosAsociado = ({ associateUserId }) => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
-    return new Date(dateStr).toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+    // Usar formatDateOnly para evitar offset de timezone
+    return formatDateOnly(dateStr, { monthFormat: 'short' });
   };
 
   const getStatusBadge = (statusId) => {

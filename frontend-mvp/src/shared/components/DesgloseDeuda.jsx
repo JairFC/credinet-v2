@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
 import ENDPOINTS from '../api/endpoints';
+import { formatDateOnly, formatDateTime } from '../utils/dateUtils';
 
 const DesgloseDeuda = ({ associateId }) => {
   const [debtSummary, setDebtSummary] = useState(null);
@@ -238,7 +239,7 @@ const DebtItemsTable = ({ items }) => {
                 }}
               >
                 <td style={{ padding: '12px', fontSize: '13px' }}>
-                  {new Date(item.created_at).toLocaleDateString('es-MX')}
+                  {formatDateTime(item.created_at, { includeTime: false })}
                 </td>
                 <td style={{ padding: '12px' }}>
                   {item.debt_concept}
@@ -404,7 +405,7 @@ const DebtPaymentsTable = ({ payments, allPayments }) => {
                   }}
                 >
                   <td style={{ padding: '12px' }}>
-                    {new Date(payment.payment_date).toLocaleDateString('es-MX')}
+                    {formatDateOnly(payment.payment_date)}
                   </td>
                   {showAllPayments && (
                     <td style={{ padding: '12px', textAlign: 'center' }}>

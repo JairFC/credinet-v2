@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/apiClient';
 import ENDPOINTS from '../api/endpoints';
+import { formatDateOnly } from '../utils/dateUtils';
 
 const TablaDesglosePagos = ({ statementId }) => {
   const [data, setData] = useState(null);
@@ -175,7 +176,7 @@ const TablaDesglosePagos = ({ statementId }) => {
                 }}
               >
                 <td style={{ padding: '12px' }}>
-                  {new Date(payment.payment_date).toLocaleDateString('es-MX')}
+                  {formatDateOnly(payment.payment_date)}
                 </td>
                 <td style={{
                   padding: '12px',

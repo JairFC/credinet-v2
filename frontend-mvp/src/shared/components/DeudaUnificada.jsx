@@ -18,6 +18,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/apiClient';
 import ENDPOINTS from '../api/endpoints';
+import { formatDateOnly } from '../utils/dateUtils';
 import './DeudaUnificada.css';
 
 const DeudaUnificada = ({ associateId, consolidatedDebt, onAbonarClick }) => {
@@ -109,11 +110,8 @@ const DeudaUnificada = ({ associateId, consolidatedDebt, onAbonarClick }) => {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('es-MX', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
+    // Usar formatDateOnly para evitar offset de timezone
+    return formatDateOnly(dateStr, { monthFormat: 'short' });
   };
 
   if (loading) {

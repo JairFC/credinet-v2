@@ -17,6 +17,7 @@ import apiClient from '../../../../shared/api/apiClient';
 import AuditHistory from '../../../../shared/components/AuditHistory';
 import PromoteRoleModal from '../../../../shared/components/PromoteRoleModal';
 import SuccessNotification from '../../../../shared/components/SuccessNotification';
+import { formatDateOnly, formatDateTime } from '../../../../shared/utils/dateUtils';
 import './ClientDetailPage.css';
 
 // Componente para sección colapsable y editable
@@ -433,14 +434,9 @@ const ClientDetailPage = () => {
     fetchClientData();
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('es-MX', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+  // ⭐ Usar formatDateOnly del módulo centralizado para fechas de solo día (birth_date)
+  // formatDateTime se usa para timestamps con hora (created_at, updated_at)
+  const formatDate = formatDateOnly;
 
   if (loading) {
     return (
