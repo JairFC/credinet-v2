@@ -93,8 +93,16 @@
   font-size: 28px;
   font-weight: 700;
   color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 255, 255, 0.1);
   letter-spacing: 0.5px;
+}
+
+/* Forzar blanco en todo el header-left */
+.client-detail-page .page-header .header-left h1,
+.client-detail-page .page-header .header-left > h1 {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
 .client-detail-page .header-meta {

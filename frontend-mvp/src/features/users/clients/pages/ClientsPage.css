@@ -148,7 +148,8 @@
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: 8px;
   font-size: 0.875rem;
-  background: var(--surface-card, white);
+  background: var(--surface-card, #1e293b);
+  color: #ffffff !important;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -159,7 +160,7 @@
 }
 
 .clients-page .search-input::placeholder {
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .clients-page .search-clear {

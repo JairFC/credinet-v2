@@ -46,11 +46,12 @@ export default function LoansPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   // Debounce de búsqueda para no hacer request en cada tecla
+  // 800ms de espera para dar tiempo al usuario de terminar de escribir
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
       setCurrentPage(1); // Reset página al buscar
-    }, 400);
+    }, 800);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 

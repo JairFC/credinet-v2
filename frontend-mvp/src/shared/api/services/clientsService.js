@@ -9,12 +9,25 @@ import { ENDPOINTS } from '../endpoints';
 export const clientsService = {
   /**
    * Obtiene lista paginada de clientes
+   * @param {Object} params - Parámetros de búsqueda
+   * @param {number} params.limit - Máximo de resultados
+   * @param {number} params.offset - Desplazamiento para paginación
+   * @param {boolean} params.active_only - Solo clientes activos
+   * @param {string} params.search - Término de búsqueda (opcional)
    */
   getAll: async (params = {}) => {
-    const { limit = 50, offset = 0, active_only = true } = params;
-    return apiClient.get(ENDPOINTS.clients.list, {
-      params: { limit, offset, active_only }
-    });
+    const queryParams = {
+      limit: params.limit || 50,
+      offset: params.offset || 0,
+      active_only: params.active_only !== undefined ? params.active_only : true,
+    };
+    
+    // Incluir search si existe y no está vacío
+    if (params.search && params.search.trim()) {
+      queryParams.search = params.search.trim();
+    }
+    
+    return apiClient.get(ENDPOINTS.clients.list, { params: queryParams });
   },
 
   /**

@@ -316,21 +316,23 @@ async def list_associates(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     active_only: bool = Query(True),
+    search: Optional[str] = Query(None, min_length=1, description="Buscar por nombre, username o email"),
     repo: PgAssociateRepository = Depends(get_associate_repository),
     db: AsyncSession = Depends(get_async_db),
 ):
     """
-    Lista todos los asociados con paginación.
+    Lista todos los asociados con paginación y búsqueda opcional.
     
     Args:
         limit: Máximo de registros (1-100)
         offset: Desplazamiento para paginación
         active_only: Si True, solo asociados activos
+        search: Término de búsqueda (nombre, username, email)
         
     Returns:
         Lista paginada de asociados con información de usuario
     """
-    from sqlalchemy import select
+    from sqlalchemy import select, or_
     from app.modules.associates.infrastructure.models import AssociateProfileModel
     from app.modules.auth.infrastructure.models import UserModel
     
@@ -372,12 +374,28 @@ async def list_associates(
         if active_only:
             stmt = stmt.where(AssociateProfileModel.active == True)
         
+        # Filtro de búsqueda
+        if search and search.strip():
+            search_term = f"%{search.lower().strip()}%"
+            stmt = stmt.where(
+                or_(
+                    func.lower(UserModel.username).like(search_term),
+                    func.lower(UserModel.first_name).like(search_term),
+                    func.lower(UserModel.last_name).like(search_term),
+                    func.lower(func.concat(UserModel.first_name, ' ', UserModel.last_name)).like(search_term),
+                    func.lower(UserModel.email).like(search_term),
+                )
+            )
+        
+        # Contar total antes de paginar (con filtros aplicados)
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total_result = await db.execute(count_stmt)
+        total = total_result.scalar() or 0
+        
         stmt = stmt.order_by(AssociateProfileModel.id).limit(limit).offset(offset)
         
         result = await db.execute(stmt)
         rows = result.all()
-        
-        total = await repo.count(active_only)
         
         items = [
             AssociateListItemDTO(

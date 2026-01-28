@@ -14,36 +14,51 @@ export default function ClientsPage() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({
-    active_only: true,
-    search: '',
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [activeOnly, setActiveOnly] = useState(true);
 
-  // Pagination
-  const [pagination, setPagination] = useState({
-    limit: 10,
-    offset: 0,
-    total: 0,
-  });
+  // Pagination - usando currentPage en lugar de offset para simplificar
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage] = useState(10);
 
+  // Debounce search - esperar 800ms antes de buscar en backend
+  // Reset de página incluido aquí para evitar múltiples renders
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1); // Reset página al buscar
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Cargar clientes cuando cambia la página, filtros o búsqueda
   useEffect(() => {
     loadClients();
-  }, [pagination.limit, pagination.offset, filters.active_only]);
+  }, [currentPage, activeOnly, debouncedSearch]);
 
   const loadClients = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await clientsService.getAll({
-        limit: pagination.limit,
-        offset: pagination.offset,
-        active_only: filters.active_only,
-      });
+      const params = {
+        limit: itemsPerPage,
+        offset: (currentPage - 1) * itemsPerPage,
+        active_only: activeOnly,
+      };
+
+      // Agregar búsqueda si hay término
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      const response = await clientsService.getAll(params);
 
       const data = response.data;
       setClients(Array.isArray(data.items) ? data.items : []);
-      setPagination((prev) => ({ ...prev, total: data.total || 0 }));
+      setTotalItems(data.total || 0);
     } catch (err) {
       console.error('Error loading clients:', err);
       setError(err.response?.data?.detail || 'Error al cargar clientes');
@@ -61,52 +76,26 @@ export default function ClientsPage() {
     navigate('/usuarios/clientes/nuevo');
   };
 
-  // Normaliza texto para búsqueda (quita acentos y convierte a minúsculas)
-  const normalizeText = (text) => {
-    if (!text) return '';
-    return text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-  };
-
-  // Búsqueda inteligente - busca en múltiples campos
-  const filteredClients = useMemo(() => {
-    if (!filters.search.trim()) return clients;
-
-    const searchTerms = normalizeText(filters.search).split(/\s+/).filter(Boolean);
-
-    return clients.filter((client) => {
-      const searchableText = normalizeText([
-        client.username,
-        client.full_name,
-        client.id?.toString(),
-        client.email,
-        client.phone_number,
-      ].filter(Boolean).join(' '));
-
-      return searchTerms.every(term => searchableText.includes(term));
-    });
-  }, [clients, filters.search]);
-
   // Estadísticas
   const stats = useMemo(() => {
     const activeCount = clients.filter(c => c.active).length;
     return {
-      total: pagination.total,
-      showing: filteredClients.length,
+      total: totalItems,
+      showing: clients.length,
       active: activeCount,
     };
-  }, [clients, filteredClients, pagination.total]);
+  }, [clients, totalItems]);
 
-  const totalPages = Math.ceil(pagination.total / pagination.limit);
-  const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   const goToPage = (page) => {
-    setPagination(prev => ({ ...prev, offset: (page - 1) * prev.limit }));
+    setCurrentPage(page);
   };
 
-  if (loading) {
+  // Solo mostrar loading inicial, no en búsquedas subsecuentes
+  const isInitialLoading = loading && clients.length === 0 && !debouncedSearch;
+
+  if (isInitialLoading) {
     return (
       <div className="clients-page">
         <div className="loading-screen">
@@ -159,14 +148,14 @@ export default function ClientsPage() {
           <input
             type="text"
             placeholder="Buscar por nombre, usuario o email..."
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
-          {filters.search && (
+          {searchTerm && (
             <button
               className="search-clear"
-              onClick={() => setFilters({ ...filters, search: '' })}
+              onClick={() => setSearchTerm('')}
             >
               ✕
             </button>
@@ -177,8 +166,8 @@ export default function ClientsPage() {
           <label className="toggle-label">
             <input
               type="checkbox"
-              checked={filters.active_only}
-              onChange={(e) => setFilters({ ...filters, active_only: e.target.checked })}
+              checked={activeOnly}
+              onChange={(e) => setActiveOnly(e.target.checked)}
               className="toggle-input"
             />
             <span className="toggle-switch"></span>
@@ -210,16 +199,16 @@ export default function ClientsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredClients.length === 0 ? (
+            {clients.length === 0 ? (
               <tr>
                 <td colSpan="7" className="empty-state">
                   <div className="empty-content">
                     <span className="empty-icon">📋</span>
                     <p>No se encontraron clientes</p>
-                    {filters.search && (
+                    {searchTerm && (
                       <button
                         className="btn-link"
-                        onClick={() => setFilters({ ...filters, search: '' })}
+                        onClick={() => setSearchTerm('')}
                       >
                         Limpiar búsqueda
                       </button>
@@ -228,7 +217,7 @@ export default function ClientsPage() {
                 </td>
               </tr>
             ) : (
-              filteredClients.map((client) => (
+              clients.map((client) => (
                 <tr key={client.id}>
                   <td className="col-id">
                     <span className="id-badge">{client.id}</span>
@@ -270,7 +259,7 @@ export default function ClientsPage() {
       {totalPages > 1 && (
         <div className="pagination-bar">
           <div className="pagination-info">
-            Mostrando {filteredClients.length} de {pagination.total} clientes
+            Mostrando {clients.length} de {totalItems} clientes
           </div>
           <div className="pagination-controls">
             <button

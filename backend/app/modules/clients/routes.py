@@ -6,7 +6,7 @@ Endpoints:
 - GET /clients/:id → Detalle de un cliente
 - PATCH /clients/:id → Actualizar datos de un cliente
 """
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +15,7 @@ from sqlalchemy import select, update
 from app.core.database import get_async_db
 from app.core.dependencies import require_admin, get_current_user_id
 from app.core.notifications import notify
+from app.core.constants import RoleId
 from app.modules.clients.application.dtos import (
     ClientResponseDTO,
     ClientListItemDTO,
@@ -53,15 +54,18 @@ async def list_clients(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     active_only: bool = Query(True),
+    search: Optional[str] = Query(None, min_length=1, description="Buscar por nombre, username, email o teléfono"),
     repo: PgClientRepository = Depends(get_client_repository),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """
-    Lista todos los clientes con paginación.
+    Lista todos los clientes con paginación y búsqueda opcional.
     
     Args:
         limit: Máximo de registros (1-100)
         offset: Desplazamiento para paginación
         active_only: Si True, solo clientes activos
+        search: Término de búsqueda (nombre, username, email, teléfono)
         
     Returns:
         Lista paginada de clientes
@@ -70,23 +74,87 @@ async def list_clients(
     - GET /clients → Primeros 50 clientes activos
     - GET /clients?limit=20&offset=40 → Página 3
     - GET /clients?active_only=false → Todos los clientes
+    - GET /clients?search=juan → Busca "juan" en todos los campos
     """
+    from sqlalchemy import select, func, or_
+    from app.modules.auth.infrastructure.models import UserModel, user_roles
+    
     try:
-        use_case = ListClientsUseCase(repo)
-        clients = await use_case.execute(limit, offset, active_only)
-        total = await repo.count(active_only)
-        
-        items = [
-            ClientListItemDTO(
-                id=c.id,
-                username=c.username,
-                full_name=c.get_full_name(),
-                email=c.email,
-                phone_number=c.phone_number,
-                active=c.active,
+        # Si hay búsqueda, usar query directa con filtros
+        if search and search.strip():
+            search_term = f"%{search.lower().strip()}%"
+            
+            # Subquery para obtener user_ids con rol CLIENTE (role_id=5)
+            client_role_subq = (
+                select(user_roles.c.user_id)
+                .where(user_roles.c.role_id == RoleId.CLIENTE)
+                .scalar_subquery()
             )
-            for c in clients
-        ]
+            
+            stmt = (
+                select(
+                    UserModel.id,
+                    UserModel.username,
+                    UserModel.first_name,
+                    UserModel.last_name,
+                    UserModel.email,
+                    UserModel.phone_number,
+                    UserModel.active,
+                )
+                .where(
+                    UserModel.id.in_(client_role_subq),
+                    or_(
+                        func.lower(UserModel.username).like(search_term),
+                        func.lower(UserModel.first_name).like(search_term),
+                        func.lower(UserModel.last_name).like(search_term),
+                        func.lower(func.concat(UserModel.first_name, ' ', UserModel.last_name)).like(search_term),
+                        func.lower(UserModel.email).like(search_term),
+                        UserModel.phone_number.like(search_term),
+                    )
+                )
+            )
+            
+            if active_only:
+                stmt = stmt.where(UserModel.active == True)
+            
+            # Contar total antes de paginar
+            count_stmt = select(func.count()).select_from(stmt.subquery())
+            total_result = await db.execute(count_stmt)
+            total = total_result.scalar() or 0
+            
+            # Aplicar paginación
+            stmt = stmt.order_by(UserModel.id).limit(limit).offset(offset)
+            result = await db.execute(stmt)
+            rows = result.all()
+            
+            items = [
+                ClientListItemDTO(
+                    id=row.id,
+                    username=row.username,
+                    full_name=f"{row.first_name or ''} {row.last_name or ''}".strip() or row.username,
+                    email=row.email,
+                    phone_number=row.phone_number,
+                    active=row.active,
+                )
+                for row in rows
+            ]
+        else:
+            # Sin búsqueda, usar el use case normal
+            use_case = ListClientsUseCase(repo)
+            clients = await use_case.execute(limit, offset, active_only)
+            total = await repo.count(active_only)
+            
+            items = [
+                ClientListItemDTO(
+                    id=c.id,
+                    username=c.username,
+                    full_name=c.get_full_name(),
+                    email=c.email,
+                    phone_number=c.phone_number,
+                    active=c.active,
+                )
+                for c in clients
+            ]
         
         return PaginatedClientsDTO(
             items=items,

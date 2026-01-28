@@ -14,36 +14,51 @@ export default function AssociatesManagementPage() {
   const [associates, setAssociates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({
-    active_only: true,
-    search: '',
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [activeOnly, setActiveOnly] = useState(true);
 
-  // Pagination
-  const [pagination, setPagination] = useState({
-    limit: 10,
-    offset: 0,
-    total: 0,
-  });
+  // Pagination - usando currentPage en lugar de offset para simplificar
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage] = useState(10);
 
+  // Debounce search - esperar 800ms antes de buscar en backend
+  // Reset de página incluido aquí para evitar múltiples renders
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1); // Reset página al buscar
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Cargar asociados cuando cambia la página, filtros o búsqueda
   useEffect(() => {
     loadAssociates();
-  }, [pagination.limit, pagination.offset, filters.active_only]);
+  }, [currentPage, activeOnly, debouncedSearch]);
 
   const loadAssociates = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await associatesService.getAll({
-        limit: pagination.limit,
-        offset: pagination.offset,
-        active_only: filters.active_only,
-      });
+      const params = {
+        limit: itemsPerPage,
+        offset: (currentPage - 1) * itemsPerPage,
+        active_only: activeOnly,
+      };
+
+      // Agregar búsqueda si hay término
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      const response = await associatesService.getAll(params);
 
       const data = response.data;
       setAssociates(Array.isArray(data.items) ? data.items : []);
-      setPagination((prev) => ({ ...prev, total: data.total || 0 }));
+      setTotalItems(data.total || 0);
     } catch (err) {
       console.error('Error loading associates:', err);
       setError(err.response?.data?.detail || 'Error al cargar asociados');
@@ -68,40 +83,9 @@ export default function AssociatesManagementPage() {
     }).format(amount || 0);
   };
 
-  // Normaliza texto para búsqueda (quita acentos y convierte a minúsculas)
-  const normalizeText = (text) => {
-    if (!text) return '';
-    return text
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-  };
-
-  // Búsqueda inteligente - busca en múltiples campos
-  const filteredAssociates = useMemo(() => {
-    if (!filters.search.trim()) return associates;
-
-    const searchTerms = normalizeText(filters.search).split(/\s+/).filter(Boolean);
-
-    return associates.filter((assoc) => {
-      // Campos donde buscar
-      const searchableText = normalizeText([
-        assoc.username,
-        assoc.full_name,
-        assoc.user_id?.toString(),
-        assoc.id?.toString(),
-        assoc.email,
-        assoc.phone_number,
-      ].filter(Boolean).join(' '));
-
-      // Todos los términos deben coincidir (búsqueda AND)
-      return searchTerms.every(term => searchableText.includes(term));
-    });
-  }, [associates, filters.search]);
-
   // Totales calculados
   const totals = useMemo(() => {
-    return filteredAssociates.reduce(
+    return associates.reduce(
       (acc, assoc) => ({
         creditLimit: acc.creditLimit + (parseFloat(assoc.credit_limit) || 0),
         pendingPaymentsTotal: acc.pendingPaymentsTotal + (parseFloat(assoc.pending_payments_total) || 0),
@@ -111,7 +95,7 @@ export default function AssociatesManagementPage() {
       }),
       { creditLimit: 0, pendingPaymentsTotal: 0, availableCredit: 0, consolidatedDebt: 0, pendingDebts: 0 }
     );
-  }, [filteredAssociates]);
+  }, [associates]);
 
   // Porcentaje de uso global (pending_payments_total + consolidated_debt vs credit_limit)
   const totalUsed = totals.pendingPaymentsTotal + totals.consolidatedDebt;
@@ -119,15 +103,17 @@ export default function AssociatesManagementPage() {
     ? ((totalUsed / totals.creditLimit) * 100).toFixed(1)
     : 0;
 
-  const totalPages = Math.ceil(pagination.total / pagination.limit);
-  const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   // Función para cambiar página
   const goToPage = (page) => {
-    setPagination(prev => ({ ...prev, offset: (page - 1) * prev.limit }));
+    setCurrentPage(page);
   };
 
-  if (loading) {
+  // Solo mostrar loading inicial, no en búsquedas subsecuentes
+  const isInitialLoading = loading && associates.length === 0 && !debouncedSearch;
+
+  if (isInitialLoading) {
     return (
       <div className="associates-page">
         <div className="loading-screen">
@@ -167,7 +153,7 @@ export default function AssociatesManagementPage() {
           <div className="summary-card summary-highlight">
             <div className="summary-icon">👥</div>
             <div className="summary-content">
-              <span className="summary-value">{pagination.total}</span>
+              <span className="summary-value">{totalItems}</span>
               <span className="summary-label">Asociados Activos</span>
             </div>
           </div>
@@ -224,14 +210,14 @@ export default function AssociatesManagementPage() {
           <input
             type="text"
             placeholder="Buscar por nombre, usuario, ID, email o teléfono..."
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
-          {filters.search && (
+          {searchTerm && (
             <button
               className="search-clear"
-              onClick={() => setFilters({ ...filters, search: '' })}
+              onClick={() => setSearchTerm('')}
             >
               ✕
             </button>
@@ -242,8 +228,8 @@ export default function AssociatesManagementPage() {
           <label className="toggle-label">
             <input
               type="checkbox"
-              checked={filters.active_only}
-              onChange={(e) => setFilters({ ...filters, active_only: e.target.checked })}
+              checked={activeOnly}
+              onChange={(e) => setActiveOnly(e.target.checked)}
               className="toggle-input"
             />
             <span className="toggle-switch"></span>
@@ -277,16 +263,16 @@ export default function AssociatesManagementPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredAssociates.length === 0 ? (
+            {associates.length === 0 ? (
               <tr>
                 <td colSpan="9" className="empty-state">
                   <div className="empty-content">
                     <span className="empty-icon">📋</span>
                     <p>No se encontraron asociados</p>
-                    {filters.search && (
+                    {searchTerm && (
                       <button
                         className="btn-link"
-                        onClick={() => setFilters({ ...filters, search: '' })}
+                        onClick={() => setSearchTerm('')}
                       >
                         Limpiar búsqueda
                       </button>
@@ -295,7 +281,7 @@ export default function AssociatesManagementPage() {
                 </td>
               </tr>
             ) : (
-              filteredAssociates.map((assoc) => {
+              associates.map((assoc) => {
                 // Calcular uso de crédito: (pending_payments_total + consolidated_debt) / credit_limit
                 const totalUsed = (parseFloat(assoc.pending_payments_total) || 0) + (parseFloat(assoc.consolidated_debt) || 0);
                 const usagePercent = assoc.credit_limit
@@ -373,7 +359,7 @@ export default function AssociatesManagementPage() {
       {totalPages > 1 && (
         <div className="pagination-bar">
           <div className="pagination-info">
-            Mostrando {filteredAssociates.length} de {pagination.total} asociados
+            Mostrando {associates.length} de {totalItems} asociados
           </div>
           <div className="pagination-controls">
             <button
