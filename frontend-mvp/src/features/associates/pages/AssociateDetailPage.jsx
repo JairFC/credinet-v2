@@ -53,7 +53,9 @@ const AssociateDetailPage = () => {
       if (response.data?.user_id) {
         try {
           const rolesRes = await associatesService.getUserRoles(response.data.user_id);
-          setUserRoles(rolesRes.data?.roles || []);
+          console.log('🔍 Roles response:', rolesRes.data);
+          // La API devuelve { success: true, data: { roles: [...] } }
+          setUserRoles(rolesRes.data?.data?.roles || rolesRes.data?.roles || []);
         } catch (roleErr) {
           console.error('Error fetching roles:', roleErr);
         }
