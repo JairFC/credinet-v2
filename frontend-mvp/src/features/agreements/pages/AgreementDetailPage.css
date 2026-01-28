@@ -70,7 +70,7 @@
 /* =============================================================================
    STATUS BADGES - Premium Glassmorphism Style
    ============================================================================= */
-.status-badge {
+.agreement-detail-page .status-badge {
   padding: 0.625rem 1.25rem;
   border-radius: 50px;
   font-size: 0.85rem;
@@ -82,42 +82,42 @@
   transition: all 0.3s ease;
 }
 
-.status-active {
+.agreement-detail-page .agreement-detail-page .status-active {
   background: linear-gradient(135deg, rgba(72, 187, 120, 0.15) 0%, rgba(56, 161, 105, 0.15) 100%);
   color: #38a169;
   border-color: rgba(72, 187, 120, 0.3);
   box-shadow: 0 0 20px rgba(72, 187, 120, 0.15);
 }
 
-.status-completed {
+.agreement-detail-page .agreement-detail-page .status-completed {
   background: linear-gradient(135deg, rgba(66, 153, 225, 0.15) 0%, rgba(49, 130, 206, 0.15) 100%);
   color: #3182ce;
   border-color: rgba(66, 153, 225, 0.3);
   box-shadow: 0 0 20px rgba(66, 153, 225, 0.15);
 }
 
-.status-defaulted,
-.status-overdue {
+.agreement-detail-page .status-defaulted,
+.agreement-detail-page .status-overdue {
   background: linear-gradient(135deg, rgba(245, 101, 101, 0.15) 0%, rgba(229, 62, 62, 0.15) 100%);
   color: #e53e3e;
   border-color: rgba(245, 101, 101, 0.3);
   box-shadow: 0 0 20px rgba(245, 101, 101, 0.15);
 }
 
-.status-cancelled {
+.agreement-detail-page .status-cancelled {
   background: linear-gradient(135deg, rgba(160, 174, 192, 0.15) 0%, rgba(113, 128, 150, 0.15) 100%);
   color: #718096;
   border-color: rgba(160, 174, 192, 0.3);
 }
 
-.status-pending {
+.agreement-detail-page .agreement-detail-page .status-pending {
   background: linear-gradient(135deg, rgba(236, 201, 75, 0.15) 0%, rgba(214, 158, 46, 0.15) 100%);
   color: #d69e2e;
   border-color: rgba(236, 201, 75, 0.3);
   box-shadow: 0 0 20px rgba(236, 201, 75, 0.1);
 }
 
-.status-paid {
+.agreement-detail-page .status-paid {
   background: linear-gradient(135deg, rgba(72, 187, 120, 0.15) 0%, rgba(56, 161, 105, 0.15) 100%);
   color: #38a169;
   border-color: rgba(72, 187, 120, 0.3);
@@ -289,7 +289,7 @@
 /* =============================================================================
    DETAIL CARDS - Glass Effect
    ============================================================================= */
-.detail-card {
+.agreement-detail-page .detail-card {
   background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
   border-radius: 16px;
   padding: 1.75rem;
@@ -302,7 +302,7 @@
   overflow: hidden;
 }
 
-.detail-card::before {
+.agreement-detail-page .agreement-detail-page .detail-card::before {
   content: '';
   position: absolute;
   top: 0;
@@ -314,18 +314,18 @@
   transition: opacity 0.3s ease;
 }
 
-.detail-card:hover {
+.agreement-detail-page .detail-card:hover {
   transform: translateY(-4px);
   box-shadow: 
     0 10px 20px -5px rgba(0, 0, 0, 0.08),
     0 20px 40px -10px rgba(0, 0, 0, 0.08);
 }
 
-.detail-card:hover::before {
+.agreement-detail-page .detail-card:hover::before {
   opacity: 1;
 }
 
-.detail-card h2 {
+.agreement-detail-page .detail-card h2 {
   font-size: 1.1rem;
   color: #1a202c;
   margin: 0 0 1.5rem 0;
@@ -340,13 +340,13 @@
 /* =============================================================================
    INFO GRID
    ============================================================================= */
-.info-grid {
+.agreement-detail-page .info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.25rem;
 }
 
-.info-item {
+.agreement-detail-page .info-item {
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
@@ -357,11 +357,11 @@
   transition: all 0.2s ease;
 }
 
-.info-item:hover {
+.agreement-detail-page .agreement-detail-page .info-item:hover {
   background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
 }
 
-.info-label {
+.agreement-detail-page .info-label {
   font-size: 0.75rem;
   color: #718096;
   text-transform: uppercase;
@@ -369,13 +369,13 @@
   font-weight: 600;
 }
 
-.info-value {
+.agreement-detail-page .info-value {
   font-size: 1rem;
   color: #1a202c;
   font-weight: 600;
 }
 
-.info-value.highlight {
+.agreement-detail-page .info-value.highlight {
   color: var(--brand-primary, #8B2635);
 }
 
@@ -415,21 +415,21 @@
   padding-right: 0.5rem;
 }
 
-.items-list::-webkit-scrollbar {
+.agreement-detail-page .items-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.items-list::-webkit-scrollbar-track {
+.agreement-detail-page .items-list::-webkit-scrollbar-track {
   background: #f1f5f9;
   border-radius: 3px;
 }
 
-.items-list::-webkit-scrollbar-thumb {
+.agreement-detail-page .items-list::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 3px;
 }
 
-.items-list::-webkit-scrollbar-thumb:hover {
+.agreement-detail-page .items-list::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
@@ -461,9 +461,9 @@
   font-size: 0.95rem;
 }
 
-.item-client,
-.item-loan,
-.item-desc {
+.agreement-detail-page .item-client,
+.agreement-detail-page .item-loan,
+.agreement-detail-page .item-desc {
   font-size: 0.8rem;
   color: #742a2a;
   opacity: 0.8;
@@ -543,23 +543,23 @@
   border-bottom-left-radius: 12px;
 }
 
-.payments-table tbody tr:last-child td:last-child {
+.agreement-detail-page .payments-table tbody tr:last-child td:last-child {
   border-bottom-right-radius: 12px;
 }
 
-.payment-row.paid {
+.agreement-detail-page .payment-row.paid {
   background: linear-gradient(90deg, #f0fff4 0%, #c6f6d5 100%) !important;
 }
 
-.payment-row.paid:hover {
+.agreement-detail-page .payment-row.paid:hover {
   background: linear-gradient(90deg, #c6f6d5 0%, #9ae6b4 100%) !important;
 }
 
-.payment-row.overdue {
+.agreement-detail-page .payment-row.overdue {
   background: linear-gradient(90deg, #fff5f5 0%, #fed7d7 100%) !important;
 }
 
-.payment-row.overdue:hover {
+.agreement-detail-page .payment-row.overdue:hover {
   background: linear-gradient(90deg, #fed7d7 0%, #feb2b2 100%) !important;
 }
 
@@ -761,7 +761,7 @@ textarea.form-control {
 /* =============================================================================
    BUTTONS
    ============================================================================= */
-.btn {
+.agreement-detail-page .btn {
   padding: 0.875rem 1.75rem;
   border-radius: 10px;
   font-size: 0.95rem;
@@ -801,7 +801,7 @@ textarea.form-control {
 /* =============================================================================
    LOADING & ERROR STATES
    ============================================================================= */
-.loading-state,
+.agreement-detail-page .loading-state,
 .error-state {
   text-align: center;
   padding: 4rem 2rem;
