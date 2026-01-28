@@ -564,9 +564,9 @@ class LoanService:
             # Determinar información del perfil de tasa
             profile_info = loan.profile_code or "custom"
             if profile_info == "custom":
-                profile_display = f"🎛️ Custom (Int: {loan.interest_rate}% | Com: {loan.commission_rate}%)"
+                profile_display = f"Custom (Int: {loan.interest_rate}% | Com: {loan.commission_rate}%)"
             else:
-                profile_display = f"📊 {profile_info.capitalize()} (Int: {loan.interest_rate}% | Com: {loan.commission_rate}%)"
+                profile_display = f"{profile_info.capitalize()} (Int: {loan.interest_rate}% | Com: {loan.commission_rate}%)"
             
             # Construir mensaje de notificación con información completa
             msg_parts = [
@@ -590,7 +590,7 @@ class LoanService:
                 f"• Fecha finalización: {end_date.strftime('%d/%m/%Y')}",
                 f"",
                 f"⚙️ **PERFIL DE TASA**",
-                f"• {profile_display}",
+                f"• Perfil: {profile_display}",
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             ]
             if notes:
