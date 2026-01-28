@@ -136,6 +136,13 @@ const LoginPage = () => {
       <div className="login-brand-panel">
         <div className="brand-content">
           <AnimatedLogo />
+          
+          {/* Main Slogan */}
+          <h2 className="brand-slogan">
+            Tu crédito, nuestra confianza
+          </h2>
+          
+          {/* Secondary Description */}
           <p className="brand-subtitle">
             Sistema integral de gestión de créditos
           </p>
