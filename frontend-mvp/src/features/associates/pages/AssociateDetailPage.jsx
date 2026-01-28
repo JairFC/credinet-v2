@@ -174,14 +174,14 @@ const AssociateDetailPage = () => {
           </div>
         </div>
         <div className="header-actions">
-          {!isAlsoClient && (
-            <button
-              className="btn btn-add-role"
-              onClick={() => setShowRoleModal(true)}
-            >
-              👤 Agregar Rol Cliente
-            </button>
-          )}
+          <button
+            className="btn btn-add-role"
+            onClick={() => setShowRoleModal(true)}
+            disabled={isAlsoClient}
+            title={isAlsoClient ? 'Este asociado ya es cliente' : 'Agregar rol de cliente'}
+          >
+            {isAlsoClient ? '✓ Ya es Cliente' : '👤 Agregar Rol Cliente'}
+          </button>
           <button
             className="btn btn-secondary"
             onClick={() => window.history.back()}

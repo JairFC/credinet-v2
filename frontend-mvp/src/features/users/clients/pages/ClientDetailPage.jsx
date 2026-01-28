@@ -483,16 +483,20 @@ const ClientDetailPage = () => {
         duration={3000}
       />
 
-      {/* Header */}
+      {/* Header - Similar al de AssociateDetailPage */}
       <div className="page-header">
         <div className="header-left">
-          <h1>👤 {client.full_name || `${client.first_name} ${client.last_name}`}</h1>
-          <span className={`status-badge ${client.active ? 'active' : 'inactive'}`}>
-            {client.active ? '✓ Activo' : '✗ Inactivo'}
-          </span>
-          {isAlsoAssociate && (
-            <span className="role-badge associate">⭐ Asociado</span>
-          )}
+          <h1>{client.full_name || `${client.first_name} ${client.last_name}`}</h1>
+          <div className="header-meta">
+            <span className={`status-badge ${client.active ? 'active' : 'inactive'}`}>
+              {client.active ? '● Activo' : '○ Inactivo'}
+            </span>
+            <span className="client-id">ID: #{client.id}</span>
+            {client.username && <span className="username">@{client.username}</span>}
+            {isAlsoAssociate && (
+              <span className="role-badge associate">También es Asociado</span>
+            )}
+          </div>
         </div>
         <div className="header-actions">
           <button
@@ -507,7 +511,7 @@ const ClientDetailPage = () => {
             className="btn btn-secondary"
             onClick={() => navigate('/usuarios/clientes')}
           >
-            ← Volver al Listado
+            ← Volver
           </button>
         </div>
       </div>
