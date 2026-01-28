@@ -44,11 +44,12 @@ def get_current_user_id(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user_id: Optional[int] = payload.get("sub")
+    # user_id está en campo separado (sub contiene username)
+    user_id: Optional[int] = payload.get("user_id")
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido",
+            detail="Token inválido: user_id no encontrado",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

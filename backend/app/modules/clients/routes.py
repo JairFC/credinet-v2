@@ -13,7 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 from app.core.database import get_async_db
-from app.core.dependencies import require_admin
+from app.core.dependencies import require_admin, get_current_user_id
+from app.core.notifications import notify
 from app.modules.clients.application.dtos import (
     ClientResponseDTO,
     ClientListItemDTO,
@@ -327,11 +328,50 @@ async def get_client_details(
         )
 
 
+# Mapeo de nombres de campos para notificaciones legibles
+FIELD_LABELS = {
+    # Datos personales
+    "first_name": "Nombre",
+    "last_name": "Apellidos",
+    "email": "Correo electrónico",
+    "phone_number": "Teléfono",
+    "curp": "CURP",
+    "birth_date": "Fecha de nacimiento",
+    # Dirección
+    "street": "Calle",
+    "exterior_number": "Número exterior",
+    "interior_number": "Número interior",
+    "colony": "Colonia",
+    "municipality": "Municipio",
+    "state": "Estado",
+    "zip_code": "Código postal",
+    # Aval
+    "full_name": "Nombre completo",
+    "relationship": "Parentesco",
+    # Beneficiario - usa los mismos campos que aval
+}
+
+
+def format_change_details(old_values: dict, new_values: dict) -> str:
+    """Formatea los cambios para notificación de Discord."""
+    lines = []
+    for field, new_val in new_values.items():
+        old_val = old_values.get(field, "(vacío)")
+        if old_val is None:
+            old_val = "(vacío)"
+        if new_val is None:
+            new_val = "(vacío)"
+        label = FIELD_LABELS.get(field, field)
+        lines.append(f"• **{label}**: `{old_val}` → `{new_val}`")
+    return "\n".join(lines)
+
+
 @router.patch("/{client_id}", response_model=dict)
 async def update_client(
     client_id: int,
     data: UpdateClientDTO,
     db: AsyncSession = Depends(get_async_db),
+    current_user_id: int = Depends(get_current_user_id),
 ):
     """
     Actualiza parcialmente los datos de un cliente.
@@ -411,6 +451,11 @@ async def update_client(
                     detail=f"El CURP {update_data['curp']} ya está en uso"
                 )
         
+        # Guardar valores anteriores para notificación
+        old_values = {}
+        for field in update_data.keys():
+            old_values[field] = getattr(client, field, None)
+        
         # Aplicar actualización
         await db.execute(
             update(UserModel)
@@ -418,6 +463,33 @@ async def update_client(
             .values(**update_data)
         )
         await db.commit()
+        
+        # Obtener nombre del admin que hace el cambio
+        admin_result = await db.execute(
+            select(UserModel.first_name, UserModel.last_name).where(UserModel.id == current_user_id)
+        )
+        admin = admin_result.first()
+        admin_name = f"{admin.first_name} {admin.last_name}" if admin else f"Usuario #{current_user_id}"
+        
+        # Enviar notificación a Discord
+        change_details = format_change_details(old_values, update_data)
+        await notify.send(
+            title="📝 Datos de Cliente Modificados",
+            message=(
+                f"**Cliente:** {client.first_name} {client.last_name} (ID: {client_id})\n"
+                f"**Modificado por:** {admin_name}\n"
+                f"**Sección:** Datos Personales\n\n"
+                f"**Cambios realizados:**\n{change_details}"
+            ),
+            level="warning",
+            to_discord=True,
+            to_group=False,
+            to_personal=False,
+            entity_type="user",
+            entity_id=client_id,
+            created_by=current_user_id,
+            metadata={"old_values": old_values, "new_values": update_data}
+        )
         
         return {
             "message": "Cliente actualizado correctamente",
@@ -439,6 +511,7 @@ async def update_client_address(
     client_id: int,
     data: UpdateAddressDTO,
     db: AsyncSession = Depends(get_async_db),
+    current_user_id: int = Depends(get_current_user_id),
 ):
     """
     Actualiza parcialmente la dirección de un cliente.
@@ -472,6 +545,11 @@ async def update_client_address(
         if not update_data:
             return {"message": "No hay cambios para aplicar"}
         
+        # Guardar valores anteriores para notificación
+        old_values = {}
+        for field in update_data.keys():
+            old_values[field] = getattr(address, field, None)
+        
         # Aplicar actualización
         await db.execute(
             update(AddressModel)
@@ -479,6 +557,39 @@ async def update_client_address(
             .values(**update_data)
         )
         await db.commit()
+        
+        # Obtener datos del cliente y admin
+        client_result = await db.execute(
+            select(UserModel.first_name, UserModel.last_name).where(UserModel.id == client_id)
+        )
+        client = client_result.unique().first()
+        client_name = f"{client.first_name} {client.last_name}" if client else f"Cliente #{client_id}"
+        
+        admin_result = await db.execute(
+            select(UserModel.first_name, UserModel.last_name).where(UserModel.id == current_user_id)
+        )
+        admin = admin_result.first()
+        admin_name = f"{admin.first_name} {admin.last_name}" if admin else f"Usuario #{current_user_id}"
+        
+        # Enviar notificación a Discord
+        change_details = format_change_details(old_values, update_data)
+        await notify.send(
+            title="🏠 Dirección de Cliente Modificada",
+            message=(
+                f"**Cliente:** {client_name} (ID: {client_id})\n"
+                f"**Modificado por:** {admin_name}\n"
+                f"**Sección:** Dirección\n\n"
+                f"**Cambios realizados:**\n{change_details}"
+            ),
+            level="warning",
+            to_discord=True,
+            to_group=False,
+            to_personal=False,
+            entity_type="address",
+            entity_id=client_id,
+            created_by=current_user_id,
+            metadata={"old_values": old_values, "new_values": update_data}
+        )
         
         return {
             "message": "Dirección actualizada correctamente",
@@ -500,6 +611,7 @@ async def update_client_guarantor(
     client_id: int,
     data: UpdateGuarantorDTO,
     db: AsyncSession = Depends(get_async_db),
+    current_user_id: int = Depends(get_current_user_id),
 ):
     """
     Actualiza parcialmente el aval de un cliente.
@@ -533,6 +645,11 @@ async def update_client_guarantor(
         if not update_data:
             return {"message": "No hay cambios para aplicar"}
         
+        # Guardar valores anteriores para notificación
+        old_values = {}
+        for field in update_data.keys():
+            old_values[field] = getattr(guarantor, field, None)
+        
         # Aplicar actualización
         await db.execute(
             update(GuarantorModel)
@@ -540,6 +657,39 @@ async def update_client_guarantor(
             .values(**update_data)
         )
         await db.commit()
+        
+        # Obtener datos del cliente y admin
+        client_result = await db.execute(
+            select(UserModel.first_name, UserModel.last_name).where(UserModel.id == client_id)
+        )
+        client = client_result.unique().first()
+        client_name = f"{client.first_name} {client.last_name}" if client else f"Cliente #{client_id}"
+        
+        admin_result = await db.execute(
+            select(UserModel.first_name, UserModel.last_name).where(UserModel.id == current_user_id)
+        )
+        admin = admin_result.first()
+        admin_name = f"{admin.first_name} {admin.last_name}" if admin else f"Usuario #{current_user_id}"
+        
+        # Enviar notificación a Discord
+        change_details = format_change_details(old_values, update_data)
+        await notify.send(
+            title="🛡️ Aval de Cliente Modificado",
+            message=(
+                f"**Cliente:** {client_name} (ID: {client_id})\n"
+                f"**Modificado por:** {admin_name}\n"
+                f"**Sección:** Aval/Fiador\n\n"
+                f"**Cambios realizados:**\n{change_details}"
+            ),
+            level="warning",
+            to_discord=True,
+            to_group=False,
+            to_personal=False,
+            entity_type="guarantor",
+            entity_id=client_id,
+            created_by=current_user_id,
+            metadata={"old_values": old_values, "new_values": update_data}
+        )
         
         return {
             "message": "Aval actualizado correctamente",
@@ -561,6 +711,7 @@ async def update_client_beneficiary(
     client_id: int,
     data: UpdateBeneficiaryDTO,
     db: AsyncSession = Depends(get_async_db),
+    current_user_id: int = Depends(get_current_user_id),
 ):
     """
     Actualiza parcialmente el beneficiario de un cliente.
@@ -594,6 +745,11 @@ async def update_client_beneficiary(
         if not update_data:
             return {"message": "No hay cambios para aplicar"}
         
+        # Guardar valores anteriores para notificación
+        old_values = {}
+        for field in update_data.keys():
+            old_values[field] = getattr(beneficiary, field, None)
+        
         # Aplicar actualización
         await db.execute(
             update(BeneficiaryModel)
@@ -601,6 +757,39 @@ async def update_client_beneficiary(
             .values(**update_data)
         )
         await db.commit()
+        
+        # Obtener datos del cliente y admin
+        client_result = await db.execute(
+            select(UserModel.first_name, UserModel.last_name).where(UserModel.id == client_id)
+        )
+        client = client_result.unique().first()
+        client_name = f"{client.first_name} {client.last_name}" if client else f"Cliente #{client_id}"
+        
+        admin_result = await db.execute(
+            select(UserModel.first_name, UserModel.last_name).where(UserModel.id == current_user_id)
+        )
+        admin = admin_result.first()
+        admin_name = f"{admin.first_name} {admin.last_name}" if admin else f"Usuario #{current_user_id}"
+        
+        # Enviar notificación a Discord
+        change_details = format_change_details(old_values, update_data)
+        await notify.send(
+            title="👥 Beneficiario de Cliente Modificado",
+            message=(
+                f"**Cliente:** {client_name} (ID: {client_id})\n"
+                f"**Modificado por:** {admin_name}\n"
+                f"**Sección:** Beneficiario\n\n"
+                f"**Cambios realizados:**\n{change_details}"
+            ),
+            level="warning",
+            to_discord=True,
+            to_group=False,
+            to_personal=False,
+            entity_type="beneficiary",
+            entity_id=client_id,
+            created_by=current_user_id,
+            metadata={"old_values": old_values, "new_values": update_data}
+        )
         
         return {
             "message": "Beneficiario actualizado correctamente",
