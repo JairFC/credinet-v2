@@ -996,32 +996,37 @@ async def cancel_agreement(
             detail=f"El convenio ya está {agreement.status.lower()}"
         )
     
-    # ⭐ VALIDACIÓN: No permitir cancelar si ya pasó un corte desde la creación
-    # Verificamos si el primer pago del convenio tiene fecha <= hoy
-    first_payment_query = text("""
-        SELECT ap.payment_due_date, ap.status, cp.status_id as period_status
+    # ⭐ VALIDACIÓN: No permitir cancelar si el primer pago del convenio ya salió en un statement
+    # Esto es más estricto: una vez que se genera el statement, el convenio no se puede cancelar
+    first_payment_in_statement_query = text("""
+        SELECT 
+            ap.payment_due_date,
+            ap.status as payment_status,
+            ap.cut_period_id,
+            EXISTS(
+                SELECT 1 FROM associate_payment_statements aps
+                WHERE aps.cut_period_id = ap.cut_period_id
+                  AND aps.user_id = (
+                      SELECT ap2.user_id FROM associate_profiles ap2 
+                      WHERE ap2.id = a.associate_profile_id
+                  )
+            ) as has_statement
         FROM agreement_payments ap
-        LEFT JOIN cut_periods cp ON cp.id = ap.cut_period_id
+        JOIN agreements a ON a.id = ap.agreement_id
         WHERE ap.agreement_id = :agreement_id
         ORDER BY ap.payment_number ASC
         LIMIT 1
     """)
-    first_payment_result = await db.execute(first_payment_query, {"agreement_id": agreement_id})
+    first_payment_result = await db.execute(first_payment_in_statement_query, {"agreement_id": agreement_id})
     first_payment = first_payment_result.fetchone()
     
-    if first_payment:
-        from datetime import date as date_type
-        today = date_type.today()
-        
-        # Si el primer pago ya venció y el período está cerrado (status >= 4), no permitir cancelar
-        if first_payment.payment_due_date and first_payment.payment_due_date < today:
-            if first_payment.period_status and first_payment.period_status >= 4:  # CLOSED o superior
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"No se puede cancelar el convenio: El primer pago ya venció "
-                           f"(vencimiento: {first_payment.payment_due_date}) y el período ya está cerrado. "
-                           f"Los convenios no pueden revertirse después de un corte."
-                )
+    if first_payment and first_payment.has_statement:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede cancelar el convenio: El primer pago (vencimiento: {first_payment.payment_due_date}) "
+                   f"ya fue incluido en un statement generado. "
+                   f"Los convenios no pueden revertirse después de aparecer en un statement."
+        )
     
     # Get loan_ids from this agreement
     loans_query = text("""
@@ -1095,29 +1100,38 @@ async def cancel_agreement(
         loans_to_restore = [lid for lid in loan_ids if lid not in loans_in_other_agreements]
         
         if loans_to_restore:
-            # Restore payments to PENDING
-            await db.execute(text("""
-                UPDATE payments
-                SET status_id = 1,  -- PENDING
-                    marking_notes = COALESCE(marking_notes, '') || E'\n[Restaurado por cancelación de convenio ' || :agreement_number || ']',
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE loan_id = ANY(:loan_ids)
-                  AND status_id = 13  -- IN_AGREEMENT
-            """), {
-                "loan_ids": loans_to_restore,
-                "agreement_number": agreement.agreement_number
-            })
+            # ⚠️ Desactivar trigger para evitar regeneración de pagos y doble conteo
+            await db.execute(text("ALTER TABLE loans DISABLE TRIGGER trigger_generate_payment_schedule"))
+            await db.execute(text("ALTER TABLE loans DISABLE TRIGGER trigger_update_associate_credit_on_loan_approval"))
             
-            # 4. Restore loans to ACTIVE
-            await db.execute(text("""
-                UPDATE loans
-                SET status_id = 2,  -- ACTIVE
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = ANY(:loan_ids)
-                  AND status_id = 9  -- IN_AGREEMENT
-            """), {
-                "loan_ids": loans_to_restore
-            })
+            try:
+                # Restore payments to PENDING
+                await db.execute(text("""
+                    UPDATE payments
+                    SET status_id = 1,  -- PENDING
+                        marking_notes = COALESCE(marking_notes, '') || E'\n[Restaurado por cancelación de convenio ' || :agreement_number || ']',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE loan_id = ANY(:loan_ids)
+                      AND status_id = 13  -- IN_AGREEMENT
+                """), {
+                    "loan_ids": loans_to_restore,
+                    "agreement_number": agreement.agreement_number
+                })
+                
+                # 4. Restore loans to ACTIVE
+                await db.execute(text("""
+                    UPDATE loans
+                    SET status_id = 2,  -- ACTIVE
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ANY(:loan_ids)
+                      AND status_id = 9  -- IN_AGREEMENT
+                """), {
+                    "loan_ids": loans_to_restore
+                })
+            finally:
+                # Reactivar triggers SIEMPRE
+                await db.execute(text("ALTER TABLE loans ENABLE TRIGGER trigger_generate_payment_schedule"))
+                await db.execute(text("ALTER TABLE loans ENABLE TRIGGER trigger_update_associate_credit_on_loan_approval"))
     
     # 5. Revert balance: MOVE from consolidated_debt BACK TO pending_payments_total
     if remaining_debt > 0:
