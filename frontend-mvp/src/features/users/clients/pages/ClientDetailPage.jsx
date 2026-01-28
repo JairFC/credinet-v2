@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { clientsService } from '../../../../shared/api/services/clientsService';
 import { associatesService } from '../../../../shared/api/services/associatesService';
+import { lookupZipCode } from '../../../../shared/api/services/zipCodeService';
 import apiClient from '../../../../shared/api/apiClient';
 import AuditHistory from '../../../../shared/components/AuditHistory';
 import PromoteRoleModal from '../../../../shared/components/PromoteRoleModal';
@@ -174,12 +175,70 @@ const ClientDetailPage = () => {
   // Notificación de éxito
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // Catálogos
+  const [relationships, setRelationships] = useState([]);
+  const [colonies, setColonies] = useState([]);
+  const [zipLoading, setZipLoading] = useState(false);
+  const [zipError, setZipError] = useState('');
 
   useEffect(() => {
     if (clientId) {
       fetchClientData();
+      fetchCatalogs();
     }
   }, [clientId]);
+  
+  // Cargar catálogo de parentesco
+  const fetchCatalogs = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/shared/relationships`);
+      if (response.ok) {
+        const data = await response.json();
+        setRelationships(data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching relationships:', err);
+    }
+  };
+  
+  // Buscar colonias cuando cambia el código postal
+  const handleZipCodeChange = async (zipCode) => {
+    updateEditData('zip_code', zipCode);
+    
+    if (zipCode.length !== 5) {
+      setColonies([]);
+      setZipError('');
+      return;
+    }
+    
+    setZipLoading(true);
+    setZipError('');
+    
+    try {
+      const result = await lookupZipCode(zipCode);
+      
+      if (result?.error) {
+        setZipError(result.message);
+        setColonies([]);
+      } else if (result?.success) {
+        // Auto-completar municipio y estado
+        updateEditData('municipality', result.municipality);
+        updateEditData('state', result.state);
+        setColonies(result.colonies || []);
+        
+        // Si solo hay una colonia, seleccionarla automáticamente
+        if (result.colonies?.length === 1) {
+          updateEditData('colony', result.colonies[0]);
+        }
+      }
+    } catch (err) {
+      setZipError('Error al buscar código postal');
+      setColonies([]);
+    } finally {
+      setZipLoading(false);
+    }
+  };
 
   const fetchClientData = async () => {
     try {
@@ -233,6 +292,14 @@ const ClientDetailPage = () => {
           state: client.address?.state || '',
           zip_code: client.address?.zip_code || ''
         });
+        // Cargar colonias del CP existente
+        if (client.address?.zip_code?.length === 5) {
+          lookupZipCode(client.address.zip_code).then(result => {
+            if (result?.success) {
+              setColonies(result.colonies || []);
+            }
+          });
+        }
         break;
       case 'guarantor':
         setEditData({
@@ -424,18 +491,18 @@ const ClientDetailPage = () => {
             {client.active ? '✓ Activo' : '✗ Inactivo'}
           </span>
           {isAlsoAssociate && (
-            <span className="role-badge associate">También es Asociado</span>
+            <span className="role-badge associate">⭐ Asociado</span>
           )}
         </div>
         <div className="header-actions">
-          {!isAlsoAssociate && (
-            <button
-              className="btn btn-promote"
-              onClick={() => setShowPromoteModal(true)}
-            >
-              🎯 Hacer Asociado
-            </button>
-          )}
+          <button
+            className="btn btn-promote"
+            onClick={() => setShowPromoteModal(true)}
+            disabled={isAlsoAssociate}
+            title={isAlsoAssociate ? 'Este cliente ya es asociado' : 'Convertir a asociado'}
+          >
+            {isAlsoAssociate ? '✓ Ya es Asociado' : '🎯 Hacer Asociado'}
+          </button>
           <button
             className="btn btn-secondary"
             onClick={() => navigate('/usuarios/clientes')}
@@ -554,6 +621,56 @@ const ClientDetailPage = () => {
         >
           {client.address ? (
             <div className="info-grid">
+              {/* Código Postal con búsqueda automática */}
+              <div className="info-item editing">
+                <label className="label">Código Postal:</label>
+                {editingSection === 'address' ? (
+                  <div className="zip-code-field">
+                    <input
+                      type="text"
+                      value={editData.zip_code || ''}
+                      onChange={(e) => handleZipCodeChange(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                      className={`edit-input ${zipError ? 'has-error' : ''}`}
+                      placeholder="12345"
+                      maxLength={5}
+                    />
+                    {zipLoading && <span className="zip-loading">⏳</span>}
+                    {zipError && <span className="field-error">{zipError}</span>}
+                  </div>
+                ) : (
+                  <span className="value">{client.address.zip_code || 'N/A'}</span>
+                )}
+              </div>
+
+              {/* Colonia - Desplegable cuando hay colonias disponibles */}
+              <div className="info-item editing">
+                <label className="label">Colonia:</label>
+                {editingSection === 'address' ? (
+                  colonies.length > 0 ? (
+                    <select
+                      value={editData.colony || ''}
+                      onChange={(e) => updateEditData('colony', e.target.value)}
+                      className="edit-input"
+                    >
+                      <option value="">Seleccionar colonia...</option>
+                      {colonies.map((col, idx) => (
+                        <option key={idx} value={col}>{col}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={editData.colony || ''}
+                      onChange={(e) => updateEditData('colony', e.target.value)}
+                      className="edit-input"
+                      placeholder="Ingrese CP para ver colonias"
+                    />
+                  )
+                ) : (
+                  <span className="value">{client.address.colony || 'N/A'}</span>
+                )}
+              </div>
+
               <EditableField
                 label="Calle"
                 value={editingSection === 'address' ? editData.street : client.address.street}
@@ -573,12 +690,6 @@ const ClientDetailPage = () => {
                 onChange={(v) => updateEditData('internal_number', v)}
               />
               <EditableField
-                label="Colonia"
-                value={editingSection === 'address' ? editData.colony : client.address.colony}
-                isEditing={editingSection === 'address'}
-                onChange={(v) => updateEditData('colony', v)}
-              />
-              <EditableField
                 label="Municipio"
                 value={editingSection === 'address' ? editData.municipality : client.address.municipality}
                 isEditing={editingSection === 'address'}
@@ -589,12 +700,6 @@ const ClientDetailPage = () => {
                 value={editingSection === 'address' ? editData.state : client.address.state}
                 isEditing={editingSection === 'address'}
                 onChange={(v) => updateEditData('state', v)}
-              />
-              <EditableField
-                label="Código Postal"
-                value={editingSection === 'address' ? editData.zip_code : client.address.zip_code}
-                isEditing={editingSection === 'address'}
-                onChange={(v) => updateEditData('zip_code', v.replace(/\D/g, '').slice(0, 5))}
               />
             </div>
           ) : (
@@ -622,12 +727,24 @@ const ClientDetailPage = () => {
                 isEditing={editingSection === 'guarantor'}
                 onChange={(v) => updateEditData('guarantor_full_name', v)}
               />
-              <EditableField
-                label="Parentesco"
-                value={editingSection === 'guarantor' ? editData.guarantor_relationship : client.guarantor.relationship}
-                isEditing={editingSection === 'guarantor'}
-                onChange={(v) => updateEditData('guarantor_relationship', v)}
-              />
+              {/* Parentesco - Desplegable con catálogo */}
+              <div className="info-item editing">
+                <label className="label">Parentesco:</label>
+                {editingSection === 'guarantor' ? (
+                  <select
+                    value={editData.guarantor_relationship || ''}
+                    onChange={(e) => updateEditData('guarantor_relationship', e.target.value)}
+                    className="edit-input"
+                  >
+                    <option value="">Seleccionar parentesco...</option>
+                    {relationships.map((rel) => (
+                      <option key={rel.id} value={rel.name}>{rel.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="value">{client.guarantor.relationship || 'N/A'}</span>
+                )}
+              </div>
               <EditableField
                 label="Teléfono"
                 value={editingSection === 'guarantor' ? editData.guarantor_phone : client.guarantor.phone_number}
@@ -666,12 +783,24 @@ const ClientDetailPage = () => {
                 isEditing={editingSection === 'beneficiary'}
                 onChange={(v) => updateEditData('beneficiary_full_name', v)}
               />
-              <EditableField
-                label="Parentesco"
-                value={editingSection === 'beneficiary' ? editData.beneficiary_relationship : client.beneficiary.relationship}
-                isEditing={editingSection === 'beneficiary'}
-                onChange={(v) => updateEditData('beneficiary_relationship', v)}
-              />
+              {/* Parentesco - Desplegable con catálogo */}
+              <div className="info-item editing">
+                <label className="label">Parentesco:</label>
+                {editingSection === 'beneficiary' ? (
+                  <select
+                    value={editData.beneficiary_relationship || ''}
+                    onChange={(e) => updateEditData('beneficiary_relationship', e.target.value)}
+                    className="edit-input"
+                  >
+                    <option value="">Seleccionar parentesco...</option>
+                    {relationships.map((rel) => (
+                      <option key={rel.id} value={rel.name}>{rel.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="value">{client.beneficiary.relationship || 'N/A'}</span>
+                )}
+              </div>
               <EditableField
                 label="Teléfono"
                 value={editingSection === 'beneficiary' ? editData.beneficiary_phone : client.beneficiary.phone_number}
