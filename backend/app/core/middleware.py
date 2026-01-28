@@ -10,6 +10,8 @@ import logging
 import time
 
 from .config import settings
+from .database import set_current_user
+from .security import decode_access_token
 from .exceptions import (
     AppException,
     NotFoundException,
@@ -149,4 +151,31 @@ def setup_middleware(app: FastAPI):
         )
         
         response.headers["X-Process-Time"] = str(process_time)
+        return response
+
+    # Middleware para setear el usuario actual para auditoría
+    @app.middleware("http")
+    async def set_audit_user(request: Request, call_next):
+        """
+        Extrae el user_id del token JWT y lo setea en el contexto
+        para que esté disponible en los triggers de auditoría.
+        """
+        user_id = None
+        
+        # Intentar obtener el token del header Authorization
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]  # Remover "Bearer "
+            try:
+                payload = decode_access_token(token)
+                if payload:
+                    user_id = payload.get("user_id")
+            except Exception:
+                pass  # Token inválido, continuar sin user_id
+        
+        # Setear el usuario en el contexto
+        if user_id:
+            set_current_user(user_id)
+        
+        response = await call_next(request)
         return response

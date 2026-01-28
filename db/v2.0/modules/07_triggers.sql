@@ -338,21 +338,30 @@ COMMENT ON TRIGGER trigger_update_associate_credit_on_level_change ON associate_
 -- CATEGORÍA 6: TRIGGERS DE AUDITORÍA GENERAL (v1.0)
 -- =============================================================================
 
--- Función genérica de auditoría
+-- Función genérica de auditoría (con soporte para changed_by desde variable de sesión)
 CREATE OR REPLACE FUNCTION audit_trigger_function()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_changed_by INTEGER;
 BEGIN
+    -- Intentar obtener el usuario de la variable de sesión
+    BEGIN
+        v_changed_by := current_setting('app.current_user_id', true)::INTEGER;
+    EXCEPTION WHEN OTHERS THEN
+        v_changed_by := NULL;
+    END;
+    
     IF (TG_OP = 'DELETE') THEN
-        INSERT INTO audit_log (table_name, record_id, operation, old_data)
-        VALUES (TG_TABLE_NAME, OLD.id, 'DELETE', row_to_json(OLD)::jsonb);
+        INSERT INTO audit_log (table_name, record_id, operation, old_data, changed_by)
+        VALUES (TG_TABLE_NAME, OLD.id, 'DELETE', row_to_json(OLD)::jsonb, v_changed_by);
         RETURN OLD;
     ELSIF (TG_OP = 'UPDATE') THEN
-        INSERT INTO audit_log (table_name, record_id, operation, old_data, new_data)
-        VALUES (TG_TABLE_NAME, NEW.id, 'UPDATE', row_to_json(OLD)::jsonb, row_to_json(NEW)::jsonb);
+        INSERT INTO audit_log (table_name, record_id, operation, old_data, new_data, changed_by)
+        VALUES (TG_TABLE_NAME, NEW.id, 'UPDATE', row_to_json(OLD)::jsonb, row_to_json(NEW)::jsonb, v_changed_by);
         RETURN NEW;
     ELSIF (TG_OP = 'INSERT') THEN
-        INSERT INTO audit_log (table_name, record_id, operation, new_data)
-        VALUES (TG_TABLE_NAME, NEW.id, 'INSERT', row_to_json(NEW)::jsonb);
+        INSERT INTO audit_log (table_name, record_id, operation, new_data, changed_by)
+        VALUES (TG_TABLE_NAME, NEW.id, 'INSERT', row_to_json(NEW)::jsonb, v_changed_by);
         RETURN NEW;
     END IF;
     RETURN NULL;

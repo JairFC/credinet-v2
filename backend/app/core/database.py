@@ -1,13 +1,30 @@
 """
 Database connection and session management using SQLAlchemy.
 """
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-from typing import Generator, AsyncGenerator
+from typing import Generator, AsyncGenerator, Optional
+from contextvars import ContextVar
 
 from .config import settings
+
+# ============================================================================= 
+# CONTEXT VAR para almacenar el usuario actual (thread-safe)
+# =============================================================================
+current_user_id_var: ContextVar[Optional[int]] = ContextVar('current_user_id', default=None)
+
+
+def set_current_user(user_id: int) -> None:
+    """Establecer el usuario actual para auditoría."""
+    current_user_id_var.set(user_id)
+
+
+def get_current_user() -> Optional[int]:
+    """Obtener el usuario actual."""
+    return current_user_id_var.get()
+
 
 # ============================================================================= # SYNC DATABASE (Para operaciones síncronas legacy)
 # =============================================================================
@@ -87,6 +104,12 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
     """
     async with AsyncSessionLocal() as session:
         try:
+            # Setear el usuario actual en la variable de sesión de PostgreSQL
+            user_id = current_user_id_var.get()
+            if user_id:
+                await session.execute(
+                    text(f"SET LOCAL app.current_user_id = '{user_id}'")
+                )
             yield session
             await session.commit()
         except Exception:
