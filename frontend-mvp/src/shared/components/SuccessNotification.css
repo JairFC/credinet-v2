@@ -1,0 +1,337 @@
+/**
+ * SuccessNotification.css - Estilos para notificaciones elegantes
+ */
+
+/* Overlay */
+.success-notification-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: overlayFadeIn 0.3s ease-out;
+}
+
+.success-notification-overlay.exiting {
+  animation: overlayFadeOut 0.3s ease-in forwards;
+}
+
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes overlayFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Notificación principal */
+.success-notification {
+  position: relative;
+  background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+  border-radius: 24px;
+  padding: 2.5rem 2rem 2rem;
+  min-width: 380px;
+  max-width: 450px;
+  text-align: center;
+  box-shadow: 
+    0 25px 80px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(16, 185, 129, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  animation: notificationSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+.success-notification.exiting {
+  animation: notificationSlideOut 0.3s ease-in forwards;
+}
+
+.success-notification.info {
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 
+    0 25px 80px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(59, 130, 246, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.success-notification.warning {
+  border-color: rgba(245, 158, 11, 0.3);
+  box-shadow: 
+    0 25px 80px rgba(0, 0, 0, 0.5),
+    0 0 80px rgba(245, 158, 11, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+@keyframes notificationSlideIn {
+  0% { opacity: 0; transform: scale(0.8) translateY(-20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes notificationSlideOut {
+  0% { opacity: 1; transform: scale(1) translateY(0); }
+  100% { opacity: 0; transform: scale(0.8) translateY(20px); }
+}
+
+/* Partículas de celebración */
+.celebration-particles {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.celebration-particles .particle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(135deg, #10b981, #34d399);
+  border-radius: 50%;
+  animation: particleExplode 1s ease-out forwards;
+  animation-delay: calc(var(--i) * 0.1s);
+}
+
+.success-notification.info .particle {
+  background: linear-gradient(135deg, #3b82f6, #60a5fa);
+}
+
+.success-notification.warning .particle {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+}
+
+@keyframes particleExplode {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: 
+      translate(
+        calc(cos(calc(var(--i) * 45deg)) * 80px),
+        calc(sin(calc(var(--i) * 45deg)) * 80px)
+      ) 
+      scale(1);
+  }
+}
+
+/* Icono principal */
+.notification-icon {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.icon-circle {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(52, 211, 153, 0.1));
+  border: 2px solid #10b981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: iconBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+}
+
+.success-notification.info .icon-circle {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(96, 165, 250, 0.1));
+  border-color: #3b82f6;
+}
+
+.success-notification.warning .icon-circle {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(251, 191, 36, 0.1));
+  border-color: #f59e0b;
+}
+
+@keyframes iconBounce {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.icon-emoji {
+  font-size: 2.5rem;
+  filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));
+}
+
+.icon-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 80px;
+  height: 80px;
+  transform: translate(-50%, -50%);
+  border: 2px solid #10b981;
+  border-radius: 50%;
+  animation: iconPulse 1.5s ease-out infinite;
+}
+
+.success-notification.info .icon-pulse {
+  border-color: #3b82f6;
+}
+
+.success-notification.warning .icon-pulse {
+  border-color: #f59e0b;
+}
+
+@keyframes iconPulse {
+  0% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.8); }
+}
+
+/* Contenido */
+.notification-content {
+  margin-bottom: 1.5rem;
+}
+
+.notification-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin: 0 0 0.5rem;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.notification-message {
+  font-size: 0.95rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Barra de progreso */
+.progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  animation: progressShrink linear forwards;
+}
+
+.success-notification.info .progress-fill {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.success-notification.warning .progress-fill {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+@keyframes progressShrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+/* Acciones */
+.notification-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.notification-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.notification-btn.primary {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.notification-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.notification-btn.secondary {
+  background: rgba(100, 116, 139, 0.2);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.notification-btn.secondary:hover {
+  background: rgba(100, 116, 139, 0.3);
+  color: #f1f5f9;
+}
+
+.btn-icon {
+  font-size: 1rem;
+}
+
+/* Botón de cerrar */
+.notification-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #64748b;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.notification-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .success-notification {
+    min-width: 320px;
+    max-width: 95vw;
+    margin: 0 1rem;
+    padding: 2rem 1.5rem 1.5rem;
+  }
+
+  .notification-title {
+    font-size: 1.25rem;
+  }
+
+  .icon-circle {
+    width: 64px;
+    height: 64px;
+  }
+
+  .icon-emoji {
+    font-size: 2rem;
+  }
+}

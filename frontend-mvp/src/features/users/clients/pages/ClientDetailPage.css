@@ -38,6 +38,26 @@
   margin-bottom: 2rem;
 }
 
+.client-detail-page .error-banner.save-error {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+}
+
+.client-detail-page .error-banner.save-error button {
+  background: transparent;
+  border: none;
+  color: #dc2626;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.client-detail-page .error-banner.save-error button:hover {
+  background: rgba(220, 38, 38, 0.1);
+  border-radius: 4px;
+}
+
 .client-detail-page .error-banner span {
   color: #dc2626;
   font-weight: 500;
@@ -139,6 +159,31 @@
   background: var(--brand-gradient, linear-gradient(135deg, #C4252D 0%, #9B1C22 100%));
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.client-detail-page .info-card .card-header.clickable {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.client-detail-page .info-card .card-header.clickable:hover {
+  background: linear-gradient(135deg, #d63640 0%, #a82028 100%);
+}
+
+.client-detail-page .header-left-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.client-detail-page .collapse-icon {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  transition: transform 0.2s;
 }
 
 .client-detail-page .info-card .card-header h2 {
@@ -149,6 +194,80 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* Header Actions (Inline buttons) */
+.client-detail-page .header-actions-inline {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.client-detail-page .btn-edit {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.client-detail-page .btn-edit:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.client-detail-page .btn-save {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  background: #10b981;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.client-detail-page .btn-save:hover:not(:disabled) {
+  background: #059669;
+}
+
+.client-detail-page .btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.client-detail-page .btn-cancel {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  background: rgba(239, 68, 68, 0.8);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.client-detail-page .btn-cancel:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 1);
+}
+
+.client-detail-page .btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Collapsed card state */
+.client-detail-page .info-card.collapsed .card-content {
+  display: none;
+}
+
+.client-detail-page .info-card.expanded .card-content {
+  display: block;
 }
 
 /* Info Grid */
@@ -181,6 +300,68 @@
   font-size: 1rem;
   color: var(--text-primary, #f3f4f6);
   font-weight: 500;
+}
+
+/* Editable Fields */
+.client-detail-page .info-item.editing {
+  position: relative;
+}
+
+.client-detail-page .edit-input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.9375rem;
+  border: 2px solid var(--border-color, #3a3a3a);
+  border-radius: 8px;
+  background: var(--surface-ground, #0f0f0f);
+  color: var(--text-primary, #f3f4f6);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.client-detail-page .edit-input:focus {
+  outline: none;
+  border-color: #C4252D;
+  box-shadow: 0 0 0 3px rgba(196, 37, 45, 0.2);
+}
+
+.client-detail-page .edit-input.has-error {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.client-detail-page .edit-input.has-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.client-detail-page .field-error {
+  font-size: 0.75rem;
+  color: #ef4444;
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.client-detail-page textarea.edit-input {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.client-detail-page select.edit-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+}
+
+/* No data text */
+.client-detail-page .no-data-text {
+  color: var(--text-secondary, #9ca3af);
+  font-style: italic;
+  padding: 1.5rem;
+  text-align: center;
 }
 
 .client-detail-page .profile-picture {

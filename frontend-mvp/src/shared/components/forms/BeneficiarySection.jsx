@@ -13,6 +13,28 @@ export const BeneficiarySection = ({
   collapsible = true
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+
+  // Validación de teléfono mexicano (10 dígitos)
+  const validatePhone = (phone) => {
+    if (!phone) return ''; // Opcional
+    const digitsOnly = phone.replace(/\D/g, '');
+    if (digitsOnly.length > 0 && digitsOnly.length < 10) {
+      return 'El teléfono debe tener 10 dígitos';
+    }
+    if (digitsOnly.length === 10 && !/^[1-9]\d{9}$/.test(digitsOnly)) {
+      return 'Formato de teléfono inválido';
+    }
+    return '';
+  };
+
+  const handlePhoneChange = (e) => {
+    const value = e.target.value.replace(/\D/g, ''); // Solo dígitos
+    if (value.length <= 10) {
+      onChange({ beneficiary_phone: value });
+      setPhoneError(validatePhone(value));
+    }
+  };
 
   // Relaciones por defecto (el endpoint del backend no existe aún)
   const relationships = [
@@ -117,11 +139,18 @@ export const BeneficiarySection = ({
             name="benef_phone_new"
             type="tel"
             value={formData.beneficiary_phone || ''}
-            onChange={(e) => onChange({ beneficiary_phone: e.target.value })}
+            onChange={handlePhoneChange}
             placeholder="5512345678"
             maxLength={10}
             autoComplete="new-password"
+            className={phoneError ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
           />
+          {phoneError && (
+            <p className="text-sm text-red-600 dark:text-red-400">⚠️ {phoneError}</p>
+          )}
+          {formData.beneficiary_phone?.length === 10 && !phoneError && (
+            <p className="text-sm text-green-600 dark:text-green-400">✓ Teléfono válido</p>
+          )}
         </div>
 
         <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md p-3">

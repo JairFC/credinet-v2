@@ -159,9 +159,11 @@ const AuditHistory = ({ tableName, recordId, title = 'Historial de Cambios' }) =
               {creationLog ? (
                 <>
                   {formatDate(creationLog.changed_at)}
-                  {creationLog.changed_by && (
-                    <span className="audit-by"> por <strong>{userCache[creationLog.changed_by] || `Usuario #${creationLog.changed_by}`}</strong></span>
-                  )}
+                  <span className="audit-by"> por <strong>
+                    {creationLog.changed_by 
+                      ? (userCache[creationLog.changed_by] || `Usuario #${creationLog.changed_by}`)
+                      : 'Sistema (Auto-registro)'}
+                  </strong></span>
                   {getActionDescription(creationLog) && (
                     <div className="audit-description">{getActionDescription(creationLog)}</div>
                   )}

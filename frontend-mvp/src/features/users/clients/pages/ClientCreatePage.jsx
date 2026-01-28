@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientsService } from '../../../../shared/api/services/clientsService';
 import SimpleModal from '../../../../shared/components/ui/SimpleModal';
+import SuccessNotification from '../../../../shared/components/SuccessNotification';
 import {
   prepareUserData,
   validateUserForm,
@@ -23,6 +24,8 @@ export default function ClientCreatePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [createdClientId, setCreatedClientId] = useState(null);
   const [autoGenerate, setAutoGenerate] = useState(true);
 
   const [formData, setFormData] = useState({
@@ -200,8 +203,8 @@ export default function ClientCreatePage() {
           console.error('Error al crear beneficiario:', beneficiaryError);
         }
       }
-      alert('✅ Cliente creado exitosamente');
-      navigate('/usuarios/clientes');
+      setCreatedClientId(userId);
+      setShowSuccessNotification(true);
     } catch (error) {
       console.error('❌ Error al crear cliente:', error);
 
@@ -224,6 +227,39 @@ export default function ClientCreatePage() {
         >
           {error}
         </SimpleModal>
+
+        {/* Notificación de éxito elegante */}
+        <SuccessNotification
+          isOpen={showSuccessNotification}
+          onClose={() => {
+            setShowSuccessNotification(false);
+            navigate('/usuarios/clientes');
+          }}
+          title="¡Cliente creado exitosamente!"
+          message={`${formData.first_name} ${formData.paternal_last_name} ha sido registrado en el sistema.`}
+          icon="🎉"
+          duration={5000}
+          actions={[
+            {
+              label: 'Ver Cliente',
+              icon: '👤',
+              variant: 'secondary',
+              onClick: () => {
+                setShowSuccessNotification(false);
+                navigate(`/usuarios/clientes/${createdClientId}`);
+              }
+            },
+            {
+              label: 'Ir al Listado',
+              icon: '📋',
+              variant: 'primary',
+              onClick: () => {
+                setShowSuccessNotification(false);
+                navigate('/usuarios/clientes');
+              }
+            }
+          ]}
+        />
 
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
