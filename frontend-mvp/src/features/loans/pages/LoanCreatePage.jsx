@@ -444,7 +444,7 @@ const LoanCreatePage = () => {
           },
           {
             label: 'Aceptar',
-            icon: '✓',
+            icon: '✅',
             variant: 'primary',
             onClick: () => navigate('/prestamos')
           }

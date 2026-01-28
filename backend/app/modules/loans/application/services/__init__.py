@@ -539,10 +539,9 @@ class LoanService:
             first_payment_date=str(first_payment_date)
         )
         
-        # 🔔 Notificación de préstamo aprobado
+        # 🔔 Notificación de préstamo aprobado (con detalles completos)
         try:
             # Obtener nombres del asociado, cliente y aprobador para la notificación
-            # Nota: Tanto clientes como asociados están en la tabla 'users'
             from sqlalchemy import text
             result = await self.session.execute(
                 text("""
@@ -562,25 +561,49 @@ class LoanService:
             from datetime import timedelta
             end_date = first_payment_date + timedelta(days=(loan.term_biweeks - 1) * 15)
             
-            # Construir mensaje de notificación
+            # Determinar información del perfil de tasa
+            profile_info = loan.profile_code or "custom"
+            if profile_info == "custom":
+                profile_display = f"🎛️ Custom (Int: {loan.interest_rate}% | Com: {loan.commission_rate}%)"
+            else:
+                profile_display = f"📊 {profile_info.capitalize()} (Int: {loan.interest_rate}% | Com: {loan.commission_rate}%)"
+            
+            # Construir mensaje de notificación con información completa
             msg_parts = [
-                f"• ID: #{loan_id}",
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                f"📋 **DATOS DEL PRÉSTAMO**",
+                f"• ID: `#{loan_id}`",
                 f"• Cliente: {client_name}",
                 f"• Asociado: {associate_name}",
-                f"• Monto: ${loan.amount:,.2f}",
+                f"",
+                f"💰 **INFORMACIÓN FINANCIERA**",
+                f"• Monto prestado: `${loan.amount:,.2f}`",
+                f"• Total a pagar: `${loan.total_payment:,.2f}`" if loan.total_payment else f"• Total a pagar: N/A",
+                f"• Total interés: `${loan.total_interest:,.2f}`" if loan.total_interest else f"• Total interés: N/A",
+                f"• Total comisión: `${loan.total_commission:,.2f}`" if loan.total_commission else f"• Total comisión: N/A",
+                f"",
+                f"📅 **PLAN DE PAGOS**",
                 f"• Plazo: {loan.term_biweeks} quincenas",
-                f"• Pago quincenal: ${loan.biweekly_payment:,.2f}",
-                f"• Fecha finalización: {end_date.strftime('%d/%m/%Y')}"
+                f"• Pago quincenal cliente: `${loan.biweekly_payment:,.2f}`" if loan.biweekly_payment else f"• Pago quincenal: N/A",
+                f"• Pago quincenal asociado: `${loan.associate_payment:,.2f}`" if loan.associate_payment else f"• Pago asociado: N/A",
+                f"• Primer pago: {first_payment_date.strftime('%d/%m/%Y')}",
+                f"• Fecha finalización: {end_date.strftime('%d/%m/%Y')}",
+                f"",
+                f"⚙️ **PERFIL DE TASA**",
+                f"• {profile_display}",
+                f"━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             ]
             if notes:
-                msg_parts.append(f"• Notas: {notes}")
+                msg_parts.insert(-1, f"📝 Notas: {notes}")
             
             await notify.send(
                 title="Préstamo Aprobado",
                 message="\n".join(msg_parts),
                 level="success",
                 created_by=approved_by,
-                created_by_name=approved_by_name
+                created_by_name=approved_by_name,
+                entity_type="loan",
+                entity_id=loan_id
             )
         except Exception as e:
             print(f"⚠️ Error enviando notificación: {e}")
