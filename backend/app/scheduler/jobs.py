@@ -240,8 +240,12 @@ async def _generate_statements(db, period_id: int, cut_code: str) -> int:
     """
     Genera statements para cada asociado que tiene pagos en el período.
     Retorna la cantidad de statements generados.
+    
+    IMPORTANTE: Excluye pagos IN_AGREEMENT (status_id=13) porque esos
+    ya fueron consolidados en un convenio y no deben aparecer en statements.
     """
     # Obtener asociados con pagos en el período
+    # EXCLUIR: status_id = 13 (IN_AGREEMENT) - estos pagos están en convenio
     result = await db.execute(
         text("""
         SELECT 
@@ -254,6 +258,7 @@ async def _generate_statements(db, period_id: int, cut_code: str) -> int:
         FROM payments p
         JOIN loans l ON l.id = p.loan_id
         WHERE p.cut_period_id = :period_id
+        AND p.status_id != 13  -- Excluir pagos IN_AGREEMENT
         AND l.associate_user_id IS NOT NULL
         GROUP BY l.associate_user_id
         """),

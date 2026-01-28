@@ -338,6 +338,7 @@ async def get_period_payments_preview(
         cut_code = period.cut_code
         
         # Obtener pagos de préstamos que vencen en este período
+        # EXCLUIR: status_id = 13 (IN_AGREEMENT) - estos están en convenio
         payments_result = await db.execute(
             text("""
             SELECT 
@@ -361,6 +362,7 @@ async def get_period_payments_preview(
             LEFT JOIN users uc ON uc.id = l.user_id
             LEFT JOIN payment_statuses ps ON ps.id = p.status_id
             WHERE p.cut_period_id = :period_id
+              AND p.status_id != 13  -- Excluir pagos IN_AGREEMENT
             ORDER BY ua.last_name, ua.first_name, p.payment_due_date
             """),
             {"period_id": period_id}
@@ -911,8 +913,11 @@ async def _generate_statements_for_period(db: AsyncSession, period_id: int):
     """
     Genera statements para cada asociado que tiene pagos en el período.
     Se ejecuta cuando se cierra el corte (CUTOFF → COLLECTING).
+    
+    IMPORTANTE: Excluye pagos IN_AGREEMENT (status_id=13) porque están en convenio.
     """
     # Obtener asociados con pagos en el período, agrupados
+    # EXCLUIR: status_id = 13 (IN_AGREEMENT) - estos están consolidados en convenio
     result = await db.execute(
         text("""
         SELECT 
@@ -925,7 +930,8 @@ async def _generate_statements_for_period(db: AsyncSession, period_id: int):
         FROM payments p
         JOIN loans l ON l.id = p.loan_id
         WHERE p.cut_period_id = :period_id
-        AND l.associate_user_id IS NOT NULL
+          AND p.status_id != 13  -- Excluir pagos IN_AGREEMENT
+          AND l.associate_user_id IS NOT NULL
         GROUP BY l.associate_user_id
         """),
         {"period_id": period_id}

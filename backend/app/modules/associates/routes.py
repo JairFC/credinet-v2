@@ -8,6 +8,7 @@ Endpoints:
 - GET /associates/:id/clients → Lista de clientes del asociado
 """
 from typing import Optional
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -15,6 +16,7 @@ import logging
 
 from app.core.database import get_async_db
 from app.core.dependencies import require_admin
+from app.core.notifications import notify
 from app.modules.auth.routes import get_current_user_id
 from app.modules.associates.application.dtos import (
     AssociateResponseDTO,
@@ -146,6 +148,18 @@ async def create_associate(
                 "default_commission_rate": float(new_profile.default_commission_rate),
             }
         }
+        
+        # 🔔 Notificación de nuevo asociado
+        asyncio.create_task(notify.send(
+            title="Nuevo Asociado Registrado",
+            message=f"• Nombre: {new_user.first_name} {new_user.last_name}\n"
+                    f"• Usuario: {new_user.username}\n"
+                    f"• Email: {new_user.email}\n"
+                    f"• Nivel: {new_profile.level_id}\n"
+                    f"• Límite crédito: ${float(new_profile.credit_limit):,.2f}",
+            level="success",
+            to_discord=True
+        ))
         
         logger.info(f"📤 Enviando respuesta: {response_data}")
         return response_data
@@ -1472,6 +1486,18 @@ async def promote_client_to_associate(
         await db.refresh(new_profile)
         
         logger.info(f"Usuario {user_id} promovido a asociado por usuario {current_user_id}")
+        
+        # 🔔 Notificación de promoción a asociado
+        asyncio.create_task(notify.send(
+            title="Cliente Promovido a Asociado",
+            message=f"• Nombre: {user.first_name} {user.last_name}\n"
+                    f"• Usuario: {user.username}\n"
+                    f"• Nivel: {new_profile.level_id}\n"
+                    f"• Límite crédito: ${float(new_profile.credit_limit):,.2f}\n"
+                    f"• Promovido por: Usuario #{current_user_id}",
+            level="success",
+            to_discord=True
+        ))
         
         return {
             "success": True,

@@ -138,6 +138,13 @@ class NotificationService:
         to_group: bool = True,
         to_personal: bool = True,
         to_discord: bool = True,
+        # Persistence options
+        persist: bool = True,
+        event_type: str = None,
+        entity_type: str = None,
+        entity_id: int = None,
+        created_by: int = None,
+        metadata: dict = None,
     ) -> dict:
         """
         Enviar notificación a todos los canales configurados.
@@ -149,6 +156,12 @@ class NotificationService:
             to_group: Enviar al grupo de Telegram
             to_personal: Enviar al chat personal de Telegram
             to_discord: Enviar a Discord
+            persist: Si True, guarda el evento en la base de datos
+            event_type: Tipo de evento para categorización
+            entity_type: Tipo de entidad relacionada (user, loan, agreement, etc)
+            entity_id: ID de la entidad relacionada
+            created_by: ID del usuario que generó el evento
+            metadata: Datos adicionales en formato JSON
             
         Returns:
             dict con resultados de cada canal
@@ -172,6 +185,24 @@ class NotificationService:
         if to_discord and self.discord_webhook:
             results["discord"] = await self._send_discord(title, message, emoji)
         
+        # Persistir en base de datos
+        if persist:
+            try:
+                await self._persist_event(
+                    event_type=event_type or title.replace(" ", "_").upper(),
+                    title=title,
+                    message=message,
+                    level=level,
+                    entity_type=entity_type,
+                    entity_id=entity_id,
+                    created_by=created_by,
+                    metadata=metadata,
+                    sent_to_telegram=results.get("telegram_personal", False) or results.get("telegram_group", False),
+                    sent_to_discord=results.get("discord", False)
+                )
+            except Exception as e:
+                logger.error(f"Error persistiendo evento: {e}")
+        
         # Log resultado
         success_count = sum(1 for v in results.values() if v)
         total_count = len(results)
@@ -182,6 +213,56 @@ class NotificationService:
             logger.warning(f"Notificación parcial: {title} ({success_count}/{total_count} canales)")
         
         return results
+    
+    async def _persist_event(
+        self,
+        event_type: str,
+        title: str,
+        message: str,
+        level: str,
+        entity_type: str = None,
+        entity_id: int = None,
+        created_by: int = None,
+        metadata: dict = None,
+        sent_to_telegram: bool = False,
+        sent_to_discord: bool = False
+    ) -> bool:
+        """Persiste el evento en la tabla system_events."""
+        import json
+        from app.core.database import async_engine
+        from sqlalchemy import text
+        from sqlalchemy.ext.asyncio import AsyncSession
+        
+        async with AsyncSession(async_engine) as session:
+            try:
+                await session.execute(text("""
+                    INSERT INTO system_events (
+                        event_type, title, message, level,
+                        entity_type, entity_id, created_by, metadata,
+                        sent_to_telegram, sent_to_discord
+                    ) VALUES (
+                        :event_type, :title, :message, :level,
+                        :entity_type, :entity_id, :created_by, :metadata,
+                        :sent_to_telegram, :sent_to_discord
+                    )
+                """), {
+                    "event_type": event_type,
+                    "title": title,
+                    "message": message,
+                    "level": level,
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                    "created_by": created_by,
+                    "metadata": json.dumps(metadata) if metadata else None,
+                    "sent_to_telegram": sent_to_telegram,
+                    "sent_to_discord": sent_to_discord
+                })
+                await session.commit()
+                return True
+            except Exception as e:
+                logger.error(f"Error inserting system_event: {e}")
+                await session.rollback()
+                return False
 
 
 # Instancia global

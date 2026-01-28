@@ -23,6 +23,7 @@ FÓRMULA CLAVE:
     - consolidated_debt -= $Y (baja)
     - available_credit += $Y (se libera crédito)
 """
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -32,6 +33,7 @@ from decimal import Decimal
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from app.core.database import get_async_db
+from app.core.notifications import notify
 from app.modules.auth.routes import get_current_user
 from .application.dtos import AgreementResponseDTO, AgreementListItemDTO, PaginatedAgreementsDTO
 from .application.use_cases import ListAgreementsUseCase, GetAssociateAgreementsUseCase
@@ -546,6 +548,57 @@ async def create_agreement_from_loans(
             detail="Algunos préstamos no existen, no están activos, o no pertenecen al asociado"
         )
     
+    # ⭐ VALIDACIÓN: Verificar que los préstamos no estén ya en un convenio ACTIVE
+    existing_agreements_query = text("""
+        SELECT ai.loan_id, a.agreement_number
+        FROM agreement_items ai
+        JOIN agreements a ON a.id = ai.agreement_id
+        WHERE ai.loan_id = ANY(:loan_ids)
+          AND a.status = 'ACTIVE'
+    """)
+    existing_result = await db.execute(existing_agreements_query, {"loan_ids": data.loan_ids})
+    existing_loans = existing_result.fetchall()
+    
+    if existing_loans:
+        conflicts = [f"Préstamo {row.loan_id} ya está en convenio {row.agreement_number}" for row in existing_loans]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Los siguientes préstamos ya están en convenios activos: {'; '.join(conflicts)}"
+        )
+    
+    # ⭐ VALIDACIÓN: Verificar que no haya abonos parciales en el statement actual
+    # Si hay un statement con paid_amount > 0, significa que el asociado ya hizo abonos
+    # y esos abonos se perderían si creamos el convenio
+    partial_payment_query = text("""
+        SELECT 
+            s.id as statement_id,
+            s.statement_number,
+            s.paid_amount,
+            s.total_amount_collected,
+            cp.cut_code,
+            p.loan_id
+        FROM associate_payment_statements s
+        JOIN cut_periods cp ON cp.id = s.cut_period_id
+        JOIN payments p ON p.loan_id = ANY(:loan_ids) AND p.cut_period_id = s.cut_period_id
+        WHERE s.user_id = :associate_user_id
+          AND s.paid_amount > 0
+          AND p.status_id = 1  -- PENDING (aún no en convenio)
+        LIMIT 1
+    """)
+    partial_result = await db.execute(partial_payment_query, {
+        "loan_ids": data.loan_ids,
+        "associate_user_id": associate_user_id
+    })
+    partial_row = partial_result.fetchone()
+    
+    if partial_row:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede crear convenio: El statement {partial_row.statement_number} "
+                   f"(período {partial_row.cut_code}) tiene ${float(partial_row.paid_amount):,.2f} en abonos. "
+                   f"Debe primero completar o anular los abonos existentes."
+        )
+    
     # ⭐ Calculate SUM of associate_payment PENDING for these loans
     # This is the amount the associate owes CrediCuenta from these loans
     pending_query = text("""
@@ -745,6 +798,20 @@ async def create_agreement_from_loans(
     
     await db.commit()
     
+    # 🔔 Notificación de convenio creado desde préstamos
+    asyncio.create_task(notify.send(
+        title="Convenio Creado desde Préstamos",
+        message=f"• Número: {agreement_number}\n"
+                f"• Asociado ID: {associate_profile_id}\n"
+                f"• Deuda total: ${float(total_to_move):,.2f}\n"
+                f"• Plazo: {data.payment_plan_months} meses\n"
+                f"• Pago mensual: ${float(monthly_payment):,.2f}\n"
+                f"• Préstamos: {len(data.loan_ids)}\n"
+                f"• Creado por: Usuario #{current_user['user_id']}",
+        level="warning",
+        to_discord=True
+    ))
+    
     # Return created agreement
     return await get_agreement_detail(agreement_id, db)
 
@@ -897,9 +964,26 @@ async def cancel_agreement(
     reason: Optional[str] = None,
     db: AsyncSession = Depends(get_async_db)
 ):
-    """Cancela un convenio."""
-    # Get agreement
-    query = text("SELECT * FROM agreements WHERE id = :agreement_id")
+    """
+    Cancela un convenio y revierte TODOS los cambios:
+    1. Marca el convenio como CANCELLED
+    2. Cancela los pagos pendientes del convenio (agreement_payments)
+    3. Restaura pagos de préstamos: IN_AGREEMENT (13) → PENDING (1)
+    4. Restaura préstamos: IN_AGREEMENT (9) → ACTIVE (2)
+    5. Revierte saldos: consolidated_debt -= X, pending_payments_total += X
+    
+    IMPORTANTE: available_credit NO debe cambiar (es una operación inversa a crear convenio)
+    """
+    # Get agreement with all details
+    query = text("""
+        SELECT a.*, 
+               ap.pending_payments_total, 
+               ap.consolidated_debt,
+               ap.credit_limit
+        FROM agreements a
+        JOIN associate_profiles ap ON ap.id = a.associate_profile_id
+        WHERE a.id = :agreement_id
+    """)
     result = await db.execute(query, {"agreement_id": agreement_id})
     agreement = result.fetchone()
     
@@ -912,20 +996,68 @@ async def cancel_agreement(
             detail=f"El convenio ya está {agreement.status.lower()}"
         )
     
-    # Get paid amount to restore
+    # ⭐ VALIDACIÓN: No permitir cancelar si ya pasó un corte desde la creación
+    # Verificamos si el primer pago del convenio tiene fecha <= hoy
+    first_payment_query = text("""
+        SELECT ap.payment_due_date, ap.status, cp.status_id as period_status
+        FROM agreement_payments ap
+        LEFT JOIN cut_periods cp ON cp.id = ap.cut_period_id
+        WHERE ap.agreement_id = :agreement_id
+        ORDER BY ap.payment_number ASC
+        LIMIT 1
+    """)
+    first_payment_result = await db.execute(first_payment_query, {"agreement_id": agreement_id})
+    first_payment = first_payment_result.fetchone()
+    
+    if first_payment:
+        from datetime import date as date_type
+        today = date_type.today()
+        
+        # Si el primer pago ya venció y el período está cerrado (status >= 4), no permitir cancelar
+        if first_payment.payment_due_date and first_payment.payment_due_date < today:
+            if first_payment.period_status and first_payment.period_status >= 4:  # CLOSED o superior
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"No se puede cancelar el convenio: El primer pago ya venció "
+                           f"(vencimiento: {first_payment.payment_due_date}) y el período ya está cerrado. "
+                           f"Los convenios no pueden revertirse después de un corte."
+                )
+    
+    # Get loan_ids from this agreement
+    loans_query = text("""
+        SELECT DISTINCT ai.loan_id 
+        FROM agreement_items ai 
+        WHERE ai.agreement_id = :agreement_id AND ai.loan_id IS NOT NULL
+    """)
+    loans_result = await db.execute(loans_query, {"agreement_id": agreement_id})
+    loan_ids = [row.loan_id for row in loans_result.fetchall()]
+    
+    # Get paid amount (what was already paid shouldn't be restored)
     paid_query = text("""
         SELECT COALESCE(SUM(payment_amount), 0) as paid
         FROM agreement_payments
         WHERE agreement_id = :agreement_id AND status = 'PAID'
     """)
     paid_result = await db.execute(paid_query, {"agreement_id": agreement_id})
-    paid_amount = paid_result.scalar_one()
+    paid_amount = Decimal(str(paid_result.scalar_one()))
     
-    # Cancel agreement
+    # Calculate amount to restore (what wasn't paid yet)
+    remaining_debt = Decimal(str(agreement.total_debt_amount)) - paid_amount
+    
+    # Capture available_credit BEFORE for verification
+    available_credit_before = (
+        Decimal(str(agreement.credit_limit)) - 
+        Decimal(str(agreement.pending_payments_total)) - 
+        Decimal(str(agreement.consolidated_debt))
+    )
+    
+    # ========== TRANSACCIÓN DE REVERSIÓN ==========
+    
+    # 1. Cancel agreement
     await db.execute(text("""
         UPDATE agreements
         SET status = 'CANCELLED',
-            notes = COALESCE(notes, '') || E'\n[CANCELADO]: ' || :reason,
+            notes = COALESCE(notes, '') || E'\n[CANCELADO ' || CURRENT_TIMESTAMP || ']: ' || :reason,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = :agreement_id
     """), {
@@ -933,7 +1065,7 @@ async def cancel_agreement(
         "reason": reason or "Sin razón especificada"
     })
     
-    # Cancel pending payments
+    # 2. Cancel pending agreement_payments
     await db.execute(text("""
         UPDATE agreement_payments
         SET status = 'CANCELLED',
@@ -941,13 +1073,58 @@ async def cancel_agreement(
         WHERE agreement_id = :agreement_id AND status = 'PENDING'
     """), {"agreement_id": agreement_id})
     
-    # If there were partial payments, restore remaining debt
-    remaining_debt = agreement.total_debt_amount - paid_amount
+    # 3. Restore loan payments: IN_AGREEMENT (13) → PENDING (1)
+    # Solo si los préstamos NO están en OTRO convenio ACTIVE
+    if loan_ids:
+        # Check which loans are NOT in another ACTIVE agreement
+        other_agreements_query = text("""
+            SELECT DISTINCT ai.loan_id
+            FROM agreement_items ai
+            JOIN agreements a ON a.id = ai.agreement_id
+            WHERE ai.loan_id = ANY(:loan_ids)
+              AND a.id != :agreement_id
+              AND a.status = 'ACTIVE'
+        """)
+        other_result = await db.execute(other_agreements_query, {
+            "loan_ids": loan_ids,
+            "agreement_id": agreement_id
+        })
+        loans_in_other_agreements = {row.loan_id for row in other_result.fetchall()}
+        
+        # Only restore loans NOT in other active agreements
+        loans_to_restore = [lid for lid in loan_ids if lid not in loans_in_other_agreements]
+        
+        if loans_to_restore:
+            # Restore payments to PENDING
+            await db.execute(text("""
+                UPDATE payments
+                SET status_id = 1,  -- PENDING
+                    marking_notes = COALESCE(marking_notes, '') || E'\n[Restaurado por cancelación de convenio ' || :agreement_number || ']',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE loan_id = ANY(:loan_ids)
+                  AND status_id = 13  -- IN_AGREEMENT
+            """), {
+                "loan_ids": loans_to_restore,
+                "agreement_number": agreement.agreement_number
+            })
+            
+            # 4. Restore loans to ACTIVE
+            await db.execute(text("""
+                UPDATE loans
+                SET status_id = 2,  -- ACTIVE
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ANY(:loan_ids)
+                  AND status_id = 9  -- IN_AGREEMENT
+            """), {
+                "loan_ids": loans_to_restore
+            })
+    
+    # 5. Revert balance: MOVE from consolidated_debt BACK TO pending_payments_total
     if remaining_debt > 0:
-        # Restore consolidated_debt for unpaid portion
         await db.execute(text("""
             UPDATE associate_profiles
-            SET consolidated_debt = COALESCE(consolidated_debt, 0) + :remaining,
+            SET consolidated_debt = GREATEST(0, COALESCE(consolidated_debt, 0) - :remaining),
+                pending_payments_total = COALESCE(pending_payments_total, 0) + :remaining,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = :associate_profile_id
         """), {
@@ -955,9 +1132,46 @@ async def cancel_agreement(
             "remaining": remaining_debt
         })
     
+    # 6. Verify available_credit didn't change (sanity check)
+    verify_query = text("""
+        SELECT credit_limit, pending_payments_total, consolidated_debt,
+               (credit_limit - pending_payments_total - consolidated_debt) as available_credit
+        FROM associate_profiles
+        WHERE id = :associate_profile_id
+    """)
+    verify_result = await db.execute(verify_query, {"associate_profile_id": agreement.associate_profile_id})
+    verify_row = verify_result.fetchone()
+    available_credit_after = Decimal(str(verify_row.available_credit))
+    
+    difference = abs(available_credit_before - available_credit_after)
+    if difference > Decimal('0.01'):
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error de integridad: available_credit cambió de {available_credit_before} a {available_credit_after}. Rollback ejecutado."
+        )
+    
     await db.commit()
     
-    return {"message": "Convenio cancelado", "agreement_id": agreement_id}
+    # 🔔 Notificación de convenio cancelado
+    asyncio.create_task(notify.send(
+        title="Convenio Cancelado",
+        message=f"• Número: {agreement.agreement_number}\n"
+                f"• ID Convenio: {agreement_id}\n"
+                f"• Deuda restaurada: ${float(remaining_debt):,.2f}\n"
+                f"• Préstamos restaurados: {len(loans_to_restore) if loan_ids else 0}",
+        level="warning",
+        to_discord=True
+    ))
+    
+    return {
+        "message": "Convenio cancelado exitosamente",
+        "agreement_id": agreement_id,
+        "agreement_number": agreement.agreement_number,
+        "restored_amount": float(remaining_debt),
+        "loans_restored": loans_to_restore if loan_ids else [],
+        "available_credit_verified": float(available_credit_after)
+    }
 
 
 # ============== DEBT BREAKDOWN ENDPOINT ==============

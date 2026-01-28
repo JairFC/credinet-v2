@@ -208,6 +208,19 @@ async def register(
     """
     try:
         user = await auth_service.register(request)
+        
+        # 🔔 Notificación de nuevo usuario registrado
+        import asyncio
+        asyncio.create_task(notify.send(
+            title="Nuevo Usuario Registrado",
+            message=f"• Nombre: {user.full_name}\n"
+                    f"• Usuario: {user.username}\n"
+                    f"• Email: {user.email}\n"
+                    f"• Roles: {', '.join(user.roles)}",
+            level="info",
+            to_discord=True
+        ))
+        
         return user
     
     except ValidationError as e:
