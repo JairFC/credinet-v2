@@ -115,10 +115,82 @@ const AuditHistory = ({ tableName, recordId, title = 'Historial de Cambios' }) =
       'username': 'Usuario',
       'credit_limit': 'Límite de crédito',
       'level_id': 'Nivel',
-      'default_commission_rate': 'Comisión'
+      'default_commission_rate': 'Comisión',
+      'street': 'Calle',
+      'external_number': 'Número exterior',
+      'internal_number': 'Número interior',
+      'colony': 'Colonia',
+      'municipality': 'Municipio',
+      'state': 'Estado',
+      'zip_code': 'Código postal',
+      'full_name': 'Nombre completo',
+      'relationship': 'Parentesco',
+      'updated_at': null // Ocultar este campo
     };
 
-    return log.changed_fields.map(field => fieldTranslations[field] || field);
+    return log.changed_fields
+      .filter(field => fieldTranslations[field] !== null && field !== 'updated_at')
+      .map(field => fieldTranslations[field] || field);
+  };
+
+  // Obtener los cambios detallados con valores anteriores y nuevos
+  const getDetailedChanges = (log) => {
+    if (!log.changed_fields || !log.old_data || !log.new_data) {
+      return [];
+    }
+
+    const fieldTranslations = {
+      'first_name': 'Nombre',
+      'last_name': 'Apellido',
+      'email': 'Email',
+      'phone_number': 'Teléfono',
+      'curp': 'CURP',
+      'birth_date': 'Fecha de nacimiento',
+      'active': 'Estado activo',
+      'username': 'Usuario',
+      'credit_limit': 'Límite de crédito',
+      'level_id': 'Nivel',
+      'default_commission_rate': 'Comisión',
+      'street': 'Calle',
+      'external_number': 'Número exterior',
+      'internal_number': 'Número interior',
+      'colony': 'Colonia',
+      'municipality': 'Municipio',
+      'state': 'Estado',
+      'zip_code': 'Código postal',
+      'full_name': 'Nombre completo',
+      'relationship': 'Parentesco'
+    };
+
+    // Campos a ignorar (no mostrar cambios de estos)
+    const ignoredFields = ['updated_at', 'password_hash', 'profile_picture_url', '_changed_by_name'];
+
+    return log.changed_fields
+      .filter(field => !ignoredFields.includes(field))
+      .map(field => {
+        const oldValue = log.old_data[field];
+        const newValue = log.new_data[field];
+        const fieldName = fieldTranslations[field] || field;
+
+        // Formatear valores especiales
+        const formatValue = (value) => {
+          if (value === null || value === undefined || value === '') return '(vacío)';
+          if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+          if (field === 'birth_date' && value) {
+            return new Date(value).toLocaleDateString('es-MX');
+          }
+          if (field === 'credit_limit' && typeof value === 'number') {
+            return `$${value.toLocaleString('es-MX')}`;
+          }
+          return String(value);
+        };
+
+        return {
+          field: fieldName,
+          oldValue: formatValue(oldValue),
+          newValue: formatValue(newValue)
+        };
+      });
   };
 
   // Encontrar el registro de creación
@@ -224,7 +296,7 @@ const AuditHistory = ({ tableName, recordId, title = 'Historial de Cambios' }) =
             <h4>📋 Historial de modificaciones</h4>
             {updateLogs.map((log, index) => {
               const opInfo = getOperationLabel(log.operation, log);
-              const changedFields = getChangedFieldsDisplay(log);
+              const detailedChanges = getDetailedChanges(log);
 
               return (
                 <div key={log.id || index} className={`audit-timeline-item ${opInfo.class}`}>
@@ -239,9 +311,16 @@ const AuditHistory = ({ tableName, recordId, title = 'Historial de Cambios' }) =
                         Por: {userCache[log.changed_by] || `Usuario #${log.changed_by}`}
                       </div>
                     )}
-                    {changedFields && changedFields.length > 0 && (
-                      <div className="timeline-fields">
-                        Campos modificados: {changedFields.join(', ')}
+                    {detailedChanges.length > 0 && (
+                      <div className="timeline-changes">
+                        {detailedChanges.map((change, idx) => (
+                          <div key={idx} className="change-detail">
+                            <span className="change-field">{change.field}:</span>
+                            <span className="change-old">{change.oldValue}</span>
+                            <span className="change-arrow">→</span>
+                            <span className="change-new">{change.newValue}</span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>

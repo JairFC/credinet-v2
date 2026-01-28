@@ -378,3 +378,76 @@
 .dark .audit-no-data {
   color: #9ca3af;
 }
+
+/* Estilos para cambios detallados (valor anterior → nuevo) */
+.timeline-changes {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.change-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  padding: 0.375rem 0.5rem;
+  background: #f8fafc;
+  border-radius: 4px;
+  border-left: 3px solid #3b82f6;
+}
+
+.change-field {
+  font-weight: 600;
+  color: #334155;
+  min-width: 100px;
+}
+
+.change-old {
+  color: #dc2626;
+  text-decoration: line-through;
+  opacity: 0.8;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.change-arrow {
+  color: #64748b;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.change-new {
+  color: #16a34a;
+  font-weight: 500;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Dark mode para cambios detallados */
+.dark .change-detail {
+  background: #1e293b;
+  border-left-color: #60a5fa;
+}
+
+.dark .change-field {
+  color: #e2e8f0;
+}
+
+.dark .change-old {
+  color: #f87171;
+}
+
+.dark .change-arrow {
+  color: #94a3b8;
+}
+
+.dark .change-new {
+  color: #4ade80;
+}
