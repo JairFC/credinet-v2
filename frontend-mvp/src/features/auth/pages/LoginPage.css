@@ -320,10 +320,10 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 .brand-slogan {
   margin-top: var(--space-10);
-  font-size: 2.25rem;
+  font-size: 1.75rem;
   font-weight: var(--font-bold);
-  line-height: 1.2;
-  letter-spacing: -0.03em;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
   color: white;
   text-align: center;
   opacity: 0;
