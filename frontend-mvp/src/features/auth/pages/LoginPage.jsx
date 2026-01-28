@@ -139,7 +139,7 @@ const LoginPage = () => {
           
           {/* Main Slogan */}
           <h2 className="brand-slogan">
-            Tu crédito, nuestra confianza
+            Con CrediCuenta usted si cuenta
           </h2>
           
           {/* Secondary Description */}
