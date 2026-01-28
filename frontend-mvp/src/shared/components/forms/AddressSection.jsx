@@ -123,11 +123,12 @@ export const AddressSection = ({
           <div className="relative">
             <Input
               id="zip_code"
+              name="addr_cp_new"
               value={formData.zip_code || ''}
               onChange={(e) => onChange({ zip_code: e.target.value })}
               placeholder="12345"
               maxLength={5}
-              autoComplete="off"
+              autoComplete="new-password"
               required={required}
             />
             {zipLoading && (
@@ -167,11 +168,12 @@ export const AddressSection = ({
             <Label htmlFor="municipality">Municipio {required && '*'}</Label>
             <Input
               id="municipality"
+              name="addr_muni_new"
               value={formData.municipality || ''}
               onChange={(e) => onChange({ municipality: e.target.value })}
               placeholder="Se completa automáticamente"
               disabled={zipLoading}
-              autoComplete="off"
+              autoComplete="new-password"
               required={required}
             />
           </div>
@@ -180,11 +182,12 @@ export const AddressSection = ({
             <Label htmlFor="state">Estado {required && '*'}</Label>
             <Input
               id="state"
+              name="addr_state_new"
               value={formData.state || ''}
               onChange={(e) => onChange({ state: e.target.value })}
               placeholder="Se completa automáticamente"
               disabled={zipLoading}
-              autoComplete="off"
+              autoComplete="new-password"
               required={required}
             />
           </div>
@@ -195,10 +198,11 @@ export const AddressSection = ({
           <Label htmlFor="street">Calle {required && '*'}</Label>
           <Input
             id="street"
+            name="addr_street_new"
             value={formData.street || ''}
             onChange={(e) => onChange({ street: e.target.value })}
             placeholder="Av. Insurgentes"
-            autoComplete="off"
+            autoComplete="new-password"
             required={required}
           />
         </div>
@@ -208,10 +212,11 @@ export const AddressSection = ({
             <Label htmlFor="external_number">Número Exterior {required && '*'}</Label>
             <Input
               id="external_number"
+              name="addr_ext_new"
               value={formData.external_number || ''}
               onChange={(e) => onChange({ external_number: e.target.value })}
               placeholder="123"
-              autoComplete="off"
+              autoComplete="new-password"
               required={required}
             />
           </div>
@@ -220,10 +225,11 @@ export const AddressSection = ({
             <Label htmlFor="internal_number">Número Interior</Label>
             <Input
               id="internal_number"
+              name="addr_int_new"
               value={formData.internal_number || ''}
               onChange={(e) => onChange({ internal_number: e.target.value })}
               placeholder="A (opcional)"
-              autoComplete="off"
+              autoComplete="new-password"
             />
           </div>
         </div>

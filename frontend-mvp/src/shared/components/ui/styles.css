@@ -543,3 +543,24 @@ select {
   background-size: 1.5em 1.5em;
   padding-right: 2.5rem;
 }
+
+/* Dark mode select options - Force dark background */
+@media (prefers-color-scheme: dark) {
+  select,
+  select.form-input,
+  select option {
+    background-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+  }
+}
+
+/* Dark mode class support for selects */
+.dark select,
+.dark select.form-input,
+.dark select option,
+html.dark select,
+html.dark select.form-input,
+html.dark select option {
+  background-color: #1f2937 !important;
+  color: #f3f4f6 !important;
+}

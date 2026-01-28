@@ -83,10 +83,11 @@ export const BeneficiarySection = ({
           <Label htmlFor="beneficiary_full_name">Nombre Completo</Label>
           <Input
             id="beneficiary_full_name"
+            name="benef_name_new"
             value={formData.beneficiary_full_name || ''}
             onChange={(e) => onChange({ beneficiary_full_name: e.target.value })}
             placeholder="Nombre completo del beneficiario"
-            autoComplete="off"
+            autoComplete="new-password"
           />
         </div>
 
@@ -113,12 +114,13 @@ export const BeneficiarySection = ({
           <Label htmlFor="beneficiary_phone">Teléfono</Label>
           <Input
             id="beneficiary_phone"
+            name="benef_phone_new"
             type="tel"
             value={formData.beneficiary_phone || ''}
             onChange={(e) => onChange({ beneficiary_phone: e.target.value })}
             placeholder="5512345678"
             maxLength={10}
-            autoComplete="off"
+            autoComplete="new-password"
           />
         </div>
 

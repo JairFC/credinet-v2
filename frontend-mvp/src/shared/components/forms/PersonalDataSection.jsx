@@ -148,10 +148,11 @@ export const PersonalDataSection = ({
             <Label htmlFor="first_name">Nombre(s) *</Label>
             <Input
               id="first_name"
+              name="client_fname_new"
               value={formData.first_name || ''}
               onChange={(e) => onChange({ first_name: e.target.value })}
               placeholder="Juan"
-              autoComplete="off"
+              autoComplete="new-password"
               required
             />
           </div>
@@ -160,10 +161,11 @@ export const PersonalDataSection = ({
             <Label htmlFor="paternal_last_name">Apellido Paterno *</Label>
             <Input
               id="paternal_last_name"
+              name="client_plname_new"
               value={formData.paternal_last_name || ''}
               onChange={(e) => onChange({ paternal_last_name: e.target.value })}
               placeholder="Pérez"
-              autoComplete="off"
+              autoComplete="new-password"
               required
             />
           </div>
@@ -172,10 +174,11 @@ export const PersonalDataSection = ({
             <Label htmlFor="maternal_last_name">Apellido Materno</Label>
             <Input
               id="maternal_last_name"
+              name="client_mlname_new"
               value={formData.maternal_last_name || ''}
               onChange={(e) => onChange({ maternal_last_name: e.target.value })}
               placeholder="García"
-              autoComplete="off"
+              autoComplete="new-password"
             />
           </div>
         </div>
@@ -242,6 +245,7 @@ export const PersonalDataSection = ({
             <>
               <div className="flex gap-2 items-center">
                 <Input
+                  name="curp_base_new"
                   value={curpDraft}
                   onChange={(e) => {
                     const value = e.target.value.toUpperCase();
@@ -256,16 +260,17 @@ export const PersonalDataSection = ({
                   maxLength={16}
                   className="flex-1 bg-white dark:bg-gray-900 font-mono text-lg font-bold border-2 border-blue-400"
                   title="CURP base (primeros 16 caracteres) - Editable para casos especiales"
-                  autoComplete="off"
+                  autoComplete="new-password"
                 />
                 <Input
+                  name="curp_homo_new"
                   value={homoclave}
                   onChange={(e) => handleHomoclaveChange(e.target.value.toUpperCase())}
                   maxLength={2}
                   placeholder="00"
                   className="w-20 text-center font-mono text-lg font-bold border-2 border-blue-400"
                   title="Homoclave (últimos 2 dígitos) - Editable"
-                  autoComplete="off"
+                  autoComplete="new-password"
                 />
               </div>
               <div className="text-sm">

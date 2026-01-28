@@ -118,27 +118,36 @@ export const GuarantorSection = ({
             <Label htmlFor="guarantor_first_name">Nombre(s)</Label>
             <Input
               id="guarantor_first_name"
+              name="guar_fname_new"
               value={formData.guarantor_first_name || ''}
               onChange={(e) => onChange({ guarantor_first_name: e.target.value })}
-              placeholder="Juan"              autoComplete="off"            />
+              placeholder="Juan"
+              autoComplete="new-password"
+            />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="guarantor_paternal_last_name">Apellido Paterno</Label>
             <Input
               id="guarantor_paternal_last_name"
+              name="guar_plname_new"
               value={formData.guarantor_paternal_last_name || ''}
               onChange={(e) => onChange({ guarantor_paternal_last_name: e.target.value })}
-              placeholder="Pérez"              autoComplete="off"            />
+              placeholder="Pérez"
+              autoComplete="new-password"
+            />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="guarantor_maternal_last_name">Apellido Materno</Label>
             <Input
               id="guarantor_maternal_last_name"
+              name="guar_mlname_new"
               value={formData.guarantor_maternal_last_name || ''}
               onChange={(e) => onChange({ guarantor_maternal_last_name: e.target.value })}
-              placeholder="García"              autoComplete="off"            />
+              placeholder="García"
+              autoComplete="new-password"
+            />
           </div>
         </div>
 
@@ -237,12 +246,13 @@ export const GuarantorSection = ({
           <Label htmlFor="guarantor_phone">Teléfono</Label>
           <Input
             id="guarantor_phone"
+            name="guar_phone_new"
             type="tel"
             value={formData.guarantor_phone || ''}
             onChange={(e) => onChange({ guarantor_phone: e.target.value })}
             placeholder="5512345678"
             maxLength={10}
-            autoComplete="off"
+            autoComplete="new-password"
           />
         </div>
 

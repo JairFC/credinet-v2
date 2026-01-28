@@ -489,23 +489,23 @@
   grid-column: 1 / -1;
 }
 
-.payments-table-container {
+.agreement-detail-page .payments-table-container {
   overflow-x: auto;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
 }
 
-.payments-table {
+.agreement-detail-page .payments-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
 
-.payments-table thead {
+.agreement-detail-page .payments-table thead {
   background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
 }
 
-.payments-table th {
+.agreement-detail-page .payments-table th {
   padding: 1rem 1.25rem;
   text-align: left;
   font-weight: 600;
@@ -515,31 +515,31 @@
   letter-spacing: 0.08em;
 }
 
-.payments-table th:first-child {
+.agreement-detail-page .payments-table th:first-child {
   border-top-left-radius: 12px;
 }
 
-.payments-table th:last-child {
+.agreement-detail-page .payments-table th:last-child {
   border-top-right-radius: 12px;
 }
 
-.payments-table td {
+.agreement-detail-page .payments-table td {
   padding: 1rem 1.25rem;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
   color: #2d3748;
 }
 
-.payments-table tbody tr {
+.agreement-detail-page .payments-table tbody tr {
   background: white;
   transition: all 0.2s ease;
 }
 
-.payments-table tbody tr:hover {
+.agreement-detail-page .payments-table tbody tr:hover {
   background: #f7fafc;
 }
 
-.payments-table tbody tr:last-child td:first-child {
+.agreement-detail-page .payments-table tbody tr:last-child td:first-child {
   border-bottom-left-radius: 12px;
 }
 
